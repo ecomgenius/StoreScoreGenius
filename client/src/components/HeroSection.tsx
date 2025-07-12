@@ -75,13 +75,21 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
         return;
       }
       
+      // Auto-add https:// if missing
+      let normalizedUrl = storeUrl.trim();
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = 'https://' + normalizedUrl;
+      }
+      
       // Basic URL validation
       try {
-        new URL(storeUrl);
+        new URL(normalizedUrl);
+        // Update the state with the normalized URL
+        setStoreUrl(normalizedUrl);
       } catch {
         toast({
           title: "Invalid URL",
-          description: "Please enter a valid URL starting with https://",
+          description: "Please enter a valid URL (e.g., desertcart.ae or https://www.allbirds.com)",
           variant: "destructive",
         });
         return;
@@ -101,7 +109,7 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
     onAnalysisStart();
     
     const analysisData = {
-      storeUrl: activeTab === 'shopify' ? storeUrl : undefined,
+      storeUrl: activeTab === 'shopify' ? (storeUrl.startsWith('http') ? storeUrl : 'https://' + storeUrl) : undefined,
       ebayUsername: activeTab === 'ebay' ? ebayUsername : undefined,
       storeType: activeTab,
     };
