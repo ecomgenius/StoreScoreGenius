@@ -189,11 +189,16 @@ export default function ResultsSection({ analysisResult }: ResultsSectionProps) 
             </h3>
             <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-md mx-auto border-2 border-gray-100">
               <div className="p-4">
-                <div 
-                  className="w-full h-80 bg-gray-50 rounded-lg flex items-center justify-center"
-                  dangerouslySetInnerHTML={{ 
-                    __html: atob(analysisResult.screenshot || '') 
+                <img 
+                  src={`data:image/svg+xml;base64,${analysisResult.screenshot}`}
+                  alt="Store Screenshot Preview"
+                  className="w-full h-auto max-h-80 object-contain rounded-lg"
+                  style={{ display: 'block', margin: '0 auto' }}
+                  onError={(e) => {
+                    console.error('Screenshot failed to load:', e);
+                    e.currentTarget.style.display = 'none';
                   }}
+                  onLoad={() => console.log('Screenshot loaded successfully')}
                 />
               </div>
             </div>
