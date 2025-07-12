@@ -20,7 +20,8 @@ export default function Dashboard() {
 
   const analyzeMutation = useMutation({
     mutationFn: async (data: { storeUrl?: string; ebayUsername?: string; storeType: string }) => {
-      return apiRequest('POST', '/api/analyze-store', data);
+      const response = await apiRequest('POST', '/api/analyze-store', data);
+      return response.json();
     },
     onSuccess: (data) => {
       console.log("✅ Dashboard received analysis result:", data);
