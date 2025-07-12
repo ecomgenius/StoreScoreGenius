@@ -270,26 +270,26 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Mobile Responsive:</span>
-                <span className={analysisResult.analysisData?.designAnalysis?.mobileResponsive ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.analysisData?.designAnalysis?.mobileResponsive ? '✓' : '✗'}
+                <span className={analysisResult.designAnalysis?.mobileResponsive ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.designAnalysis?.mobileResponsive ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Page Speed:</span>
-                <span className={(analysisResult.analysisData?.designAnalysis?.pageSpeed || 0) < 3 ? 'text-green-600' : 'text-yellow-600'}>
-                  {analysisResult.analysisData?.designAnalysis?.pageSpeed || 'N/A'}s
+                <span className={(analysisResult.designAnalysis?.pageSpeed || 0) < 3 ? 'text-green-600' : 'text-yellow-600'}>
+                  {analysisResult.designAnalysis?.pageSpeed || 'N/A'}s
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Navigation:</span>
-                <span className={analysisResult.analysisData?.designAnalysis?.navigationClarity ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.analysisData?.designAnalysis?.navigationClarity ? '✓' : '✗'}
+                <span className={analysisResult.designAnalysis?.navigationClarity ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.designAnalysis?.navigationClarity ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Branding:</span>
-                <span className={analysisResult.analysisData?.designAnalysis?.brandingConsistency ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.analysisData?.designAnalysis?.brandingConsistency ? '✓' : '✗'}
+                <span className={analysisResult.designAnalysis?.brandingConsistency ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.designAnalysis?.brandingConsistency ? '✓' : '✗'}
                 </span>
               </div>
             </div>
@@ -309,22 +309,22 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Product Count:</span>
-                <span className="text-gray-600">{analysisResult.analysisData?.productAnalysis?.productCount || 'N/A'}</span>
+                <span className="text-gray-600">{analysisResult.productAnalysis?.productCount || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span>High Quality Images:</span>
-                <span className={analysisResult.analysisData?.productAnalysis?.highQualityImages ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.analysisData?.productAnalysis?.highQualityImages ? '✓' : '✗'}
+                <span className={analysisResult.productAnalysis?.highQualityImages ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.productAnalysis?.highQualityImages ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Detailed Descriptions:</span>
-                <span className="text-gray-600">{analysisResult.analysisData?.productAnalysis?.detailedDescriptions || 0}%</span>
+                <span className="text-gray-600">{analysisResult.productAnalysis?.detailedDescriptions || 0}%</span>
               </div>
               <div className="flex justify-between">
                 <span>Structured Titles:</span>
-                <span className={analysisResult.analysisData?.productAnalysis?.structuredTitles ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.analysisData?.productAnalysis?.structuredTitles ? '✓' : '✗'}
+                <span className={analysisResult.productAnalysis?.structuredTitles ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.productAnalysis?.structuredTitles ? '✓' : '✗'}
                 </span>
               </div>
             </div>
