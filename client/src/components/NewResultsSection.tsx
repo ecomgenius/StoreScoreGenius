@@ -241,26 +241,26 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Mobile Responsive:</span>
-                <span className={analysisResult.designAnalysis.mobileResponsive ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.designAnalysis.mobileResponsive ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.designAnalysis?.mobileResponsive ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.designAnalysis?.mobileResponsive ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Page Speed:</span>
-                <span className={analysisResult.designAnalysis.pageSpeed < 3 ? 'text-green-600' : 'text-yellow-600'}>
-                  {analysisResult.designAnalysis.pageSpeed}s
+                <span className={(analysisResult.analysisData?.designAnalysis?.pageSpeed || 0) < 3 ? 'text-green-600' : 'text-yellow-600'}>
+                  {analysisResult.analysisData?.designAnalysis?.pageSpeed || 'N/A'}s
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Navigation:</span>
-                <span className={analysisResult.designAnalysis.navigationClarity ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.designAnalysis.navigationClarity ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.designAnalysis?.navigationClarity ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.designAnalysis?.navigationClarity ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Branding:</span>
-                <span className={analysisResult.designAnalysis.brandingConsistency ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.designAnalysis.brandingConsistency ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.designAnalysis?.brandingConsistency ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.designAnalysis?.brandingConsistency ? '✓' : '✗'}
                 </span>
               </div>
             </div>
@@ -280,22 +280,22 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Product Count:</span>
-                <span className="text-gray-600">{analysisResult.productAnalysis.productCount}</span>
+                <span className="text-gray-600">{analysisResult.analysisData?.productAnalysis?.productCount || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span>High Quality Images:</span>
-                <span className={analysisResult.productAnalysis.highQualityImages ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.productAnalysis.highQualityImages ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.productAnalysis?.highQualityImages ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.productAnalysis?.highQualityImages ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Detailed Descriptions:</span>
-                <span className="text-gray-600">{analysisResult.productAnalysis.detailedDescriptions}%</span>
+                <span className="text-gray-600">{analysisResult.analysisData?.productAnalysis?.detailedDescriptions || 0}%</span>
               </div>
               <div className="flex justify-between">
                 <span>Structured Titles:</span>
-                <span className={analysisResult.productAnalysis.structuredTitles ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.productAnalysis.structuredTitles ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.productAnalysis?.structuredTitles ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.productAnalysis?.structuredTitles ? '✓' : '✗'}
                 </span>
               </div>
             </div>
@@ -315,26 +315,26 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Meta Titles:</span>
-                <span className={analysisResult.seoAnalysis.metaTitlesPresent ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.seoAnalysis.metaTitlesPresent ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.seoAnalysis?.metaTitlesPresent ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.seoAnalysis?.metaTitlesPresent ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Keywords:</span>
-                <span className={analysisResult.seoAnalysis.keywordOptimization ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.seoAnalysis.keywordOptimization ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.seoAnalysis?.keywordOptimization ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.seoAnalysis?.keywordOptimization ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Categories:</span>
-                <span className={analysisResult.seoAnalysis.categoriesUsed ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.seoAnalysis.categoriesUsed ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.seoAnalysis?.categoriesUsed ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.seoAnalysis?.categoriesUsed ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Clean URLs:</span>
-                <span className={analysisResult.seoAnalysis.cleanUrls ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.seoAnalysis.cleanUrls ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.seoAnalysis?.cleanUrls ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.seoAnalysis?.cleanUrls ? '✓' : '✗'}
                 </span>
               </div>
             </div>
@@ -354,25 +354,25 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Return Policy:</span>
-                <span className={analysisResult.trustAnalysis.returnPolicy ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.trustAnalysis.returnPolicy ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.trustAnalysis?.returnPolicy ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.trustAnalysis?.returnPolicy ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>About Page:</span>
-                <span className={analysisResult.trustAnalysis.aboutPage ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.trustAnalysis.aboutPage ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.trustAnalysis?.aboutPage ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.trustAnalysis?.aboutPage ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Contact Info:</span>
-                <span className={analysisResult.trustAnalysis.contactInfo ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.trustAnalysis.contactInfo ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.trustAnalysis?.contactInfo ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.trustAnalysis?.contactInfo ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Social Proof:</span>
-                <span className="text-gray-600">{analysisResult.trustAnalysis.socialProof}★</span>
+                <span className="text-gray-600">{analysisResult.analysisData?.trustAnalysis?.socialProof || 0}★</span>
               </div>
             </div>
           </div>
@@ -391,17 +391,17 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Competitive:</span>
-                <span className={analysisResult.pricingAnalysis.competitive ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.pricingAnalysis.competitive ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.pricingAnalysis?.competitive ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.pricingAnalysis?.competitive ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Price Range:</span>
-                <span className="text-gray-600 capitalize">{analysisResult.pricingAnalysis.priceRange}</span>
+                <span className="text-gray-600 capitalize">{analysisResult.analysisData?.pricingAnalysis?.priceRange || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Value Perception:</span>
-                <span className="text-gray-600 capitalize">{analysisResult.pricingAnalysis.valuePerception}</span>
+                <span className="text-gray-600 capitalize">{analysisResult.analysisData?.pricingAnalysis?.valuePerception || 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -420,26 +420,26 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Clear CTAs:</span>
-                <span className={analysisResult.conversionAnalysis.clearCtas ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.conversionAnalysis.clearCtas ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.conversionAnalysis?.clearCtas ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.conversionAnalysis?.clearCtas ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Reviews Displayed:</span>
-                <span className={analysisResult.conversionAnalysis.reviewsDisplayed ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.conversionAnalysis.reviewsDisplayed ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.conversionAnalysis?.reviewsDisplayed ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.conversionAnalysis?.reviewsDisplayed ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Promotions:</span>
-                <span className={analysisResult.conversionAnalysis.promotions ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.conversionAnalysis.promotions ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.conversionAnalysis?.promotions ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.conversionAnalysis?.promotions ? '✓' : '✗'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Support Options:</span>
-                <span className={analysisResult.conversionAnalysis.supportOptions ? 'text-green-600' : 'text-red-600'}>
-                  {analysisResult.conversionAnalysis.supportOptions ? '✓' : '✗'}
+                <span className={analysisResult.analysisData?.conversionAnalysis?.supportOptions ? 'text-green-600' : 'text-red-600'}>
+                  {analysisResult.analysisData?.conversionAnalysis?.supportOptions ? '✓' : '✗'}
                 </span>
               </div>
             </div>
@@ -494,27 +494,27 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Store Size:</span>
-                  <span className="font-medium capitalize">{analysisResult.storeRecap.storeSize}</span>
+                  <span className="font-medium capitalize">{analysisResult.analysisData?.storeRecap?.storeSize || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Est. Products:</span>
-                  <span className="font-medium">{analysisResult.storeRecap.estimatedProducts}</span>
+                  <span className="font-medium">{analysisResult.analysisData?.storeRecap?.estimatedProducts || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Business Model:</span>
-                  <span className="font-medium">{analysisResult.storeRecap.businessModel}</span>
+                  <span className="font-medium">{analysisResult.analysisData?.storeRecap?.businessModel || 'N/A'}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h4 className="font-semibold text-gray-900 mb-4">Target Audience</h4>
-              <p className="text-gray-600">{analysisResult.storeRecap.targetAudience}</p>
+              <p className="text-gray-600">{analysisResult.analysisData?.storeRecap?.targetAudience || 'N/A'}</p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h4 className="font-semibold text-gray-900 mb-4">Competitive Advantage</h4>
-              <p className="text-gray-600">{analysisResult.storeRecap.competitiveAdvantage}</p>
+              <p className="text-gray-600">{analysisResult.analysisData?.storeRecap?.competitiveAdvantage || 'N/A'}</p>
             </div>
           </div>
 
@@ -526,7 +526,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
                 Main Product Categories
               </h4>
               <div className="space-y-4">
-                {analysisResult.storeRecap.mainCategories.map((category, index) => (
+                {(analysisResult.analysisData?.storeRecap?.mainCategories || []).map((category, index) => (
                   <div key={index} className="border-l-4 border-blue-500 pl-4">
                     <div className="flex justify-between items-start mb-2">
                       <h5 className="font-medium text-gray-900">{category.name}</h5>
