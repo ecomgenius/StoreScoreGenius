@@ -63,6 +63,8 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
   });
 
   const handleAnalyze = () => {
+    console.log('Analyze button clicked', { activeTab, storeUrl, ebayUsername });
+    
     if (activeTab === 'shopify') {
       if (!storeUrl.trim()) {
         toast({
@@ -95,12 +97,17 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
       }
     }
 
+    console.log('Starting analysis...');
     onAnalysisStart();
-    analyzeStoreMutation.mutate({
+    
+    const analysisData = {
       storeUrl: activeTab === 'shopify' ? storeUrl : undefined,
       ebayUsername: activeTab === 'ebay' ? ebayUsername : undefined,
       storeType: activeTab,
-    });
+    };
+    
+    console.log('Mutation data:', analysisData);
+    analyzeStoreMutation.mutate(analysisData);
   };
 
   return (
