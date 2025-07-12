@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Search, Zap, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import NewResultsSection from '@/components/NewResultsSection';
 
@@ -17,6 +18,38 @@ export default function Dashboard() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch user's analysis count
+  const { data: analysisCount = 0 } = useQuery({
+    queryKey: ['/api/analyses', 'count'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/analyses?limit=1000');
+      const analyses = await response.json();
+      return analyses.length;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch user credits
+  const { data: userCredits } = useQuery({
+    queryKey: ['/api/credits'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/credits');
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Fetch user stores count
+  const { data: userStores = [] } = useQuery({
+    queryKey: ['/api/stores'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/stores');
+      return response.json();
+    },
+    enabled: !!user,
+  });
 
   const analyzeMutation = useMutation({
     mutationFn: async (data: { storeUrl?: string; ebayUsername?: string; storeType: string }) => {
@@ -27,6 +60,13 @@ export default function Dashboard() {
       console.log("✅ Dashboard received analysis result:", data);
       setAnalysisResult(data);
       setIsAnalyzing(false);
+      
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/analyses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
+      
       toast({
         title: "Analysis Complete",
         description: "Your store analysis is ready!",
@@ -121,7 +161,7 @@ export default function Dashboard() {
               <Zap className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">25</div>
+              <div className="text-2xl font-bold">{userCredits?.credits ?? user?.credits ?? 0}</div>
               <p className="text-xs text-muted-foreground">
                 Each analysis costs 1 credit
               </p>
@@ -133,9 +173,9 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{analysisCount}</div>
               <p className="text-xs text-muted-foreground">
-                This month
+                Total analyses
               </p>
             </CardContent>
           </Card>
@@ -145,7 +185,7 @@ export default function Dashboard() {
               <Shield className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{userStores.length}</div>
               <p className="text-xs text-muted-foreground">
                 Ready for optimization
               </p>

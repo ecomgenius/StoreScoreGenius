@@ -23,38 +23,63 @@ The application follows a full-stack architecture with a clear separation betwee
 ### Backend Architecture
 - **Runtime**: Node.js with TypeScript
 - **Framework**: Express.js for REST API endpoints
-- **Database ORM**: Drizzle ORM with PostgreSQL support
+- **Database**: PostgreSQL with Neon serverless hosting
+- **Database ORM**: Drizzle ORM with full schema management
 - **Schema Validation**: Zod for runtime type checking
 - **AI Integration**: OpenAI GPT-4o for store analysis
-- **Data Storage**: In-memory storage for development (easily replaceable with PostgreSQL)
+- **Authentication**: Session-based authentication with secure middleware
+- **Payment Processing**: Stripe integration for credit purchases
+- **Data Storage**: PostgreSQL database with comprehensive user and analysis management
 
 ## Key Components
 
 ### Core Application Components
-1. **HeroSection**: Main landing interface with store input forms
-2. **LoadingSection**: Animated loading state during analysis
-3. **ResultsSection**: Comprehensive display of analysis results with scores and suggestions
-4. **CTASection**: Call-to-action for premium features
-5. **Header/Footer**: Navigation and branding elements
+1. **HeroSection**: Main landing interface with store input forms for guest users
+2. **Dashboard**: Authenticated user interface with real-time credit tracking and analysis management
+3. **NewResultsSection**: Comprehensive display of analysis results with detailed scoring and actionable suggestions
+4. **AuthModal**: User registration and login with secure authentication
+5. **DashboardLayout**: Authenticated user navigation with sidebar and user management
+6. **Past Analysis**: Complete history of user analyses with detailed tracking
+7. **User Stores**: Store management interface for saving and connecting multiple stores
+8. **Settings**: User profile and subscription management
 
 ### API Layer
-- **Store Analysis Endpoint** (`/api/analyze-store`): Main service for analyzing Shopify and eBay stores
+- **Authentication Endpoints**: `/api/auth/*` for registration, login, logout, and user management
+- **Store Analysis Endpoint** (`/api/analyze-store`): Main service for analyzing Shopify and eBay stores with credit deduction
+- **User Store Management**: `/api/stores/*` for connecting and managing multiple user stores
+- **Credit Management**: `/api/credits/*` for tracking usage and purchasing additional credits
+- **Analysis History**: `/api/analyses/*` for retrieving past analysis results
+- **Payment Integration**: `/api/payments/*` and `/api/webhooks/stripe` for Stripe payment processing
 - **Store Analyzer Services**: Specialized services for scraping and analyzing different store types
-- **OpenAI Integration**: AI-powered analysis with structured output
+- **OpenAI Integration**: AI-powered analysis with structured output and comprehensive scoring
 
 ### Database Schema
 - **Store Analyses Table**: Stores analysis results with scores, suggestions, and metadata
+- **Users Table**: Complete user management with authentication, credits, and subscription tracking
+- **User Stores Table**: Manages connected user stores for easy re-analysis
+- **Credit Transactions Table**: Tracks all credit purchases, usage, and refunds
+- **User Sessions Table**: Secure session management for authentication
 - **Support for Multiple Store Types**: Flexible schema accommodating both Shopify URLs and eBay usernames
 
 ## Data Flow
 
-1. **User Input**: User provides store URL (Shopify) or username (eBay) via the frontend form
-2. **Request Validation**: Zod schemas validate input data and ensure proper store type requirements
-3. **Store Scraping**: Backend fetches store content using HTTP requests with appropriate headers
-4. **Content Processing**: HTML content is cleaned and prepared for AI analysis
-5. **AI Analysis**: OpenAI API processes store content and returns structured scoring and recommendations
-6. **Data Storage**: Analysis results are stored in the database for future reference
-7. **Response Delivery**: Frontend receives comprehensive analysis results and displays them to the user
+### Authenticated User Analysis
+1. **User Authentication**: Session-based authentication validates user identity and permissions
+2. **Credit Verification**: System checks available user credits before proceeding with analysis
+3. **User Input**: User provides store URL (Shopify) or username (eBay) via the dashboard interface
+4. **Request Validation**: Zod schemas validate input data and ensure proper store type requirements
+5. **Store Scraping**: Backend fetches store content using HTTP requests with appropriate headers
+6. **Content Processing**: HTML content is cleaned and prepared for AI analysis
+7. **AI Analysis**: OpenAI API processes store content and returns structured scoring and recommendations
+8. **Credit Deduction**: System deducts 1 credit from user account and logs the transaction
+9. **Data Storage**: Analysis results are stored with user association for future reference
+10. **Response Delivery**: Frontend receives analysis results and updates dashboard statistics
+
+### Guest User Analysis (Freemium)
+1. **User Input**: Guest provides store details via the landing page interface
+2. **Limited Analysis**: System performs basic analysis without credit requirements
+3. **Data Storage**: Results stored without user association for recent analyses display
+4. **CTA Integration**: Results include prompts to register for full features and detailed insights
 
 ## External Dependencies
 
@@ -93,8 +118,16 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Build Scripts**: Separate development and production build processes
 - **Database Migrations**: Drizzle Kit handles schema changes and migrations
 
+### Recent Changes (July 12, 2025)
+- **Fixed Critical Authentication Bug**: Resolved database connection issues causing empty responses for authenticated users
+- **Implemented Real-time Dashboard**: Added dynamic credit tracking, analysis counting, and store management
+- **Completed SaaS Functionality**: Full user account system with credit deduction and transaction logging
+- **Enhanced User Experience**: Dashboard now shows live statistics with automatic refresh after analyses
+
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled
-- **Database Connection Pooling**: PostgreSQL with connection management
+- **Database Connection Pooling**: PostgreSQL with Neon serverless architecture
 - **CDN-Ready**: Static assets can be served via CDN for global distribution
 - **API Rate Limiting**: Ready for rate limiting implementation on AI endpoints
+- **Credit System**: Scalable payment processing with Stripe integration
+- **Session Management**: Efficient session handling with automatic cleanup

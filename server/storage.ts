@@ -63,9 +63,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStoreAnalysis(analysisData: Omit<InsertStoreAnalysis, 'id'>): Promise<StoreAnalysis> {
-    console.log("🔍 About to insert analysis data:", JSON.stringify(analysisData, null, 2));
     const result = await db.insert(storeAnalyses).values(analysisData).returning();
-    console.log("✅ Database returned result:", JSON.stringify(result[0], null, 2));
     return result[0];
   }
 

@@ -264,9 +264,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("Analysis completed successfully");
-      console.log("User info:", req.user ? `User ID: ${req.user.id}` : "Guest user");
-      console.log("Stored analysis:", storedAnalysis);
-      console.log("Sending response:", JSON.stringify(storedAnalysis, null, 2));
       res.json(storedAnalysis);
       
     } catch (error) {
