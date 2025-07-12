@@ -72,6 +72,7 @@ export const storeAnalyses = pgTable("store_analyses", {
   summary: text("summary").notNull(),
   storeRecap: jsonb("store_recap").$type<any>().notNull(),
   creditsUsed: integer("credits_used").default(1).notNull(),
+  contentHash: text("content_hash"), // Hash of store content for change detection
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {

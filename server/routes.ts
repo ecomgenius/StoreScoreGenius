@@ -251,6 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary: result.summary,
         storeRecap: result.storeRecap,
         creditsUsed: req.user ? 1 : 0,
+        contentHash: (result as any).contentHash || null
       });
 
       // Deduct credits for authenticated users

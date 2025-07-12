@@ -1,9 +1,12 @@
 import { analyzeStoreWithAI, type StoreAnalysisData } from './openai';
 import type { StoreAnalysisResult } from '@shared/schema';
 import { captureStoreScreenshot } from './screenshotService';
+import { createStoreFingerprint, hasStoreChanged, createEbayFingerprint } from './storeChangeDetector';
 
-export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalysisResult> {
+export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalysisResult & { contentHash: string }> {
   try {
+    console.log(`Starting analysis for store: ${storeUrl}`);
+    
     // Multiple strategies to fetch store content
     let html = '';
     let fetchSuccess = false;
@@ -97,11 +100,28 @@ Please provide realistic scoring based on Shopify best practices and common opti
 
       console.log(`📷 [Fallback] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
 
+      // Create content hash for fallback case
+      const fallbackFingerprint = createStoreFingerprint(analysisData.storeContent, storeUrl);
       return {
         ...analysis,
-        screenshot: screenshotData
+        screenshot: screenshotData,
+        contentHash: fallbackFingerprint.contentHash
       };
     }
+    
+    // Now that we have successfully fetched HTML content, check for changes
+    const fingerprint = createStoreFingerprint(html, storeUrl);
+    const changeResult = await hasStoreChanged(storeUrl, fingerprint.contentHash);
+    
+    if (!changeResult.hasChanged && changeResult.lastAnalysis) {
+      console.log(`Store unchanged since last analysis. Returning cached results.`);
+      return {
+        ...changeResult.lastAnalysis.analysisData,
+        contentHash: fingerprint.contentHash
+      };
+    }
+    
+    console.log(`Store has changed or no previous analysis found. Running new analysis.`);
     
     // Extract meaningful content from HTML
     const contentMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
@@ -135,7 +155,8 @@ Please provide realistic scoring based on Shopify best practices and common opti
 
     return {
       ...analysis,
-      screenshot: screenshotData
+      screenshot: screenshotData,
+      contentHash: fingerprint.contentHash
     };
   } catch (error) {
     console.error("Shopify store analysis failed:", error);
@@ -158,9 +179,12 @@ Please provide realistic scoring based on Shopify best practices and common opti
 
     console.log(`📷 [Error] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
 
+    // Create content hash for error fallback case
+    const errorFingerprint = createStoreFingerprint(analysisData.storeContent, storeUrl);
     return {
       ...analysis,
-      screenshot: screenshotData
+      screenshot: screenshotData,
+      contentHash: errorFingerprint.contentHash
     };
   }
 }
