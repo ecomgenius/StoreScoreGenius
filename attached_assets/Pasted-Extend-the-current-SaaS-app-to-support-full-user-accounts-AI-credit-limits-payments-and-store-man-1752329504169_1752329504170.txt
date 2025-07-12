@@ -1,0 +1,91 @@
+Extend the current SaaS app to support full user accounts, AI credit limits, payments, and store management features.
+
+Here are the features and requirements to implement:
+
+🔐 User Authentication & Database
+Set up a PostgreSQL or MongoDB database to store users, stores, analysis history, credit usage, and subscriptions.
+
+Implement registration & login (email + password) with session handling (JWT or cookies).
+
+Allow users to save their scanned stores and see their history.
+
+Each user can add multiple stores (eBay or Shopify) to be scanned later without retyping.
+
+💳 Stripe Integration (with Free Trial & Subscription)
+After registration, users are prompted to enter their credit card via Stripe Checkout.
+
+Provide a 14-day free trial. Card is required upfront.
+
+After the trial, charge $49/month via Stripe recurring subscription.
+
+If the payment fails or subscription is canceled, revoke access to premium features.
+
+Protect important results:
+
+Blur or redact key data for users who are not subscribed.
+
+Show a CTA: “Unlock full insights with your free trial — no charge for 14 days.”
+
+🧠 AI Credit System
+Give each new user 25 free AI credits (1 credit = 1 analysis or AI suggestion task).
+
+After that, allow users to purchase additional credits via Stripe (e.g., $9 for 50 credits, $19 for 150, $39 for 500).
+
+Deduct credits on each AI operation (e.g., store scan, AI product suggestion, AI design fix).
+
+Store current credit count in the user database.
+
+🛍️ Shopify Integration (Post-Login)
+Let users connect their Shopify store via OAuth.
+
+Once connected, AI should not only analyze but also offer real-time suggestions and improvements, such as:
+
+Edit store layout or theme settings
+
+Suggest & add new trending products
+
+Help manage product titles, pricing, descriptions
+
+Improve page speed and SEO using admin API
+
+👑 Admin Panel
+Create a secure /admin panel, accessible only to admin users (via role-based access).
+
+Admin panel features:
+
+View user list and email
+
+See Stripe subscriptions and status
+
+Total revenue and MRR
+
+See store scan logs and usage
+
+Adjust prices (subscription + credits)
+
+Change free trial duration and credit limits
+
+📦 Other Suggestions
+Enable dark mode toggle
+
+Add email notifications after each analysis (SendGrid or similar)
+
+Create API endpoints to retrieve user stores, run scans, get usage stats
+
+Set up rate limiting for guest users to prevent abuse
+
+Include privacy policy & terms of service links during signup
+
+Tech Stack suggestion:
+
+Frontend: Next.js with Tailwind
+
+Backend: Node.js + Express or tRPC
+
+DB: PostgreSQL or MongoDB
+
+Auth: Clerk, NextAuth, or custom JWT
+
+Payments: Stripe
+
+Hosting: Replit or Vercel

@@ -1,46 +1,212 @@
-import { pgTable, text, serial, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, jsonb, timestamp, boolean, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Users table
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").unique().notNull(),
+  passwordHash: text("password_hash").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  aiCredits: integer("ai_credits").default(25).notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  subscriptionStatus: text("subscription_status").$type<'trial' | 'active' | 'canceled' | 'past_due' | 'incomplete'>().default('trial'),
+  subscriptionId: text("subscription_id"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    emailIdx: index("email_idx").on(table.email),
+    stripeCustomerIdx: index("stripe_customer_idx").on(table.stripeCustomerId),
+  };
+});
+
+// User stores table
+export const userStores = pgTable("user_stores", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  storeUrl: text("store_url"),
+  storeType: text("store_type").$type<'shopify' | 'ebay'>().notNull(),
+  ebayUsername: text("ebay_username"),
+  shopifyAccessToken: text("shopify_access_token"),
+  isConnected: boolean("is_connected").default(false).notNull(),
+  lastAnalyzedAt: timestamp("last_analyzed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("user_stores_user_id_idx").on(table.userId),
+  };
+});
+
+// Store analyses table (updated with user reference)
 export const storeAnalyses = pgTable("store_analyses", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  userStoreId: integer("user_store_id").references(() => userStores.id),
   storeUrl: text("store_url"),
+  storeType: text("store_type").$type<'shopify' | 'ebay'>().notNull(),
   ebayUsername: text("ebay_username"),
-  storeType: text("store_type").notNull(), // 'shopify' or 'ebay'
   overallScore: integer("overall_score").notNull(),
+  strengths: jsonb("strengths").$type<string[]>().notNull(),
+  warnings: jsonb("warnings").$type<string[]>().notNull(),
+  critical: jsonb("critical").$type<string[]>().notNull(),
   designScore: integer("design_score").notNull(),
-  catalogScore: integer("catalog_score").notNull(),
+  productScore: integer("product_score").notNull(),
+  seoScore: integer("seo_score").notNull(),
   trustScore: integer("trust_score").notNull(),
-  performanceScore: integer("performance_score").notNull(),
-  suggestions: jsonb("suggestions").notNull(),
-  analysisData: jsonb("analysis_data"),
+  pricingScore: integer("pricing_score").notNull(),
+  conversionScore: integer("conversion_score").notNull(),
+  analysisData: jsonb("analysis_data").$type<any>().notNull(),
+  suggestions: jsonb("suggestions").$type<Array<{
+    title: string;
+    description: string;
+    impact: string;
+    category: string;
+    priority: string;
+  }>>().notNull(),
+  summary: text("summary").notNull(),
+  storeRecap: jsonb("store_recap").$type<any>().notNull(),
+  creditsUsed: integer("credits_used").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("store_analyses_user_id_idx").on(table.userId),
+    userStoreIdIdx: index("store_analyses_user_store_id_idx").on(table.userStoreId),
+  };
+});
+
+// Credit transactions table
+export const creditTransactions = pgTable("credit_transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type").$type<'purchase' | 'usage' | 'refund' | 'bonus'>().notNull(),
+  amount: integer("amount").notNull(), // positive for purchase/bonus, negative for usage
+  description: text("description").notNull(),
+  stripePaymentId: text("stripe_payment_id"),
+  relatedAnalysisId: integer("related_analysis_id").references(() => storeAnalyses.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("credit_transactions_user_id_idx").on(table.userId),
+  };
+});
+
+// User sessions table
+export const userSessions = pgTable("user_sessions", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("user_sessions_user_id_idx").on(table.userId),
+    expiresAtIdx: index("user_sessions_expires_at_idx").on(table.expiresAt),
+  };
+});
+
+// Schema validation
+export const insertUserSchema = createInsertSchema(users).pick({
+  email: true,
+  passwordHash: true,
+  firstName: true,
+  lastName: true,
+});
+
+export const insertUserStoreSchema = createInsertSchema(userStores).pick({
+  userId: true,
+  name: true,
+  storeUrl: true,
+  storeType: true,
+  ebayUsername: true,
 });
 
 export const insertStoreAnalysisSchema = createInsertSchema(storeAnalyses).pick({
+  userId: true,
+  userStoreId: true,
   storeUrl: true,
-  ebayUsername: true,
   storeType: true,
+  ebayUsername: true,
+  overallScore: true,
+  strengths: true,
+  warnings: true,
+  critical: true,
+  designScore: true,
+  productScore: true,
+  seoScore: true,
+  trustScore: true,
+  pricingScore: true,
+  conversionScore: true,
+  analysisData: true,
+  suggestions: true,
+  summary: true,
+  storeRecap: true,
+  creditsUsed: true,
 });
 
 export const analyzeStoreRequestSchema = z.object({
-  storeUrl: z.string().url().optional(),
-  ebayUsername: z.string().min(1).optional(),
+  storeUrl: z.string().optional(),
   storeType: z.enum(['shopify', 'ebay']),
-}).refine(
-  (data) => {
-    if (data.storeType === 'shopify' && !data.storeUrl) return false;
-    if (data.storeType === 'ebay' && !data.ebayUsername) return false;
-    return true;
-  },
-  {
-    message: "Store URL is required for Shopify stores, eBay username is required for eBay stores",
+  ebayUsername: z.string().optional(),
+  userStoreId: z.number().optional(),
+}).refine((data) => {
+  if (data.storeType === 'shopify' && !data.storeUrl) {
+    return false;
   }
-);
+  if (data.storeType === 'ebay' && !data.ebayUsername) {
+    return false;
+  }
+  return true;
+}, {
+  message: "storeUrl is required for Shopify stores, ebayUsername is required for eBay stores"
+});
 
+export const registerUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+});
+
+export const loginUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export const createUserStoreSchema = z.object({
+  name: z.string().min(1),
+  storeUrl: z.string().optional(),
+  storeType: z.enum(['shopify', 'ebay']),
+  ebayUsername: z.string().optional(),
+}).refine((data) => {
+  if (data.storeType === 'shopify' && !data.storeUrl) {
+    return false;
+  }
+  if (data.storeType === 'ebay' && !data.ebayUsername) {
+    return false;
+  }
+  return true;
+}, {
+  message: "storeUrl is required for Shopify stores, ebayUsername is required for eBay stores"
+});
+
+// Type exports
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUserStore = z.infer<typeof insertUserStoreSchema>;
 export type InsertStoreAnalysis = z.infer<typeof insertStoreAnalysisSchema>;
 export type StoreAnalysis = typeof storeAnalyses.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type UserStore = typeof userStores.$inferSelect;
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
+export type UserSession = typeof userSessions.$inferSelect;
 export type AnalyzeStoreRequest = z.infer<typeof analyzeStoreRequestSchema>;
+export type RegisterUserRequest = z.infer<typeof registerUserSchema>;
+export type LoginUserRequest = z.infer<typeof loginUserSchema>;
+export type CreateUserStoreRequest = z.infer<typeof createUserStoreSchema>;
 
 export interface StoreAnalysisResult {
   // Overall scoring section

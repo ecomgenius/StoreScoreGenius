@@ -2,10 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMutation } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, ChartLine } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { ShoppingBag, ChartLine, CreditCard, Info, Zap } from "lucide-react";
+import AuthModal from "./AuthModal";
 
 interface HeroSectionProps {
   onAnalysisStart: () => void;
@@ -17,14 +21,24 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
   const [activeTab, setActiveTab] = useState<'shopify' | 'ebay'>('shopify');
   const [storeUrl, setStoreUrl] = useState('');
   const [ebayUsername, setEbayUsername] = useState('');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
   const analyzeStoreMutation = useMutation({
     mutationFn: async (data: { storeUrl?: string; ebayUsername?: string; storeType: 'shopify' | 'ebay' }) => {
-      const response = await apiRequest('POST', '/api/analyze-store', data);
-      return response.json();
+      const response = await apiRequest('/api/analyze-store', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return response;
     },
     onSuccess: (result) => {
+      // Invalidate credits if user is authenticated
+      if (isAuthenticated) {
+        queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
+      }
       onAnalysisComplete(result);
     },
     onError: (error: any) => {
@@ -32,6 +46,17 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
       if (onAnalysisError) {
         onAnalysisError();
       }
+      
+      // Handle specific error cases
+      if (error.status === 402) {
+        toast({
+          title: "Insufficient Credits",
+          description: "You need more AI credits to run this analysis. Please purchase credits to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Analysis Failed",
         description: error.message || "Failed to analyze store. Please try again.",
@@ -176,6 +201,11 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
           )}
         </div>
       </div>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </section>
   );
 }
