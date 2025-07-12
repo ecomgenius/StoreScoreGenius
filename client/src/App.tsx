@@ -5,11 +5,22 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import Dashboard from "@/pages/dashboard";
+import PastAnalysis from "@/pages/past-analysis";
+import AnalysisDetail from "@/pages/analysis-detail";
+import UserStores from "@/pages/user-stores";
+import Settings from "@/pages/settings";
+import { AuthProvider } from "@/hooks/useAuth";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/dashboard/analysis" component={PastAnalysis} />
+      <Route path="/dashboard/analysis/:id" component={AnalysisDetail} />
+      <Route path="/dashboard/stores" component={UserStores} />
+      <Route path="/dashboard/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -19,8 +30,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <AuthProvider>
+          <Toaster />
+          <Router />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
