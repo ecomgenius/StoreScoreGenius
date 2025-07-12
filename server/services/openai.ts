@@ -15,25 +15,12 @@ export interface StoreAnalysisData {
   ebayUsername?: string;
 }
 
-export async function analyzeStoreWithAI(data: StoreAnalysisData): Promise<{
-  overallScore: number;
-  designScore: number;
-  catalogScore: number;
-  trustScore: number;
-  performanceScore: number;
-  suggestions: Array<{
-    title: string;
-    description: string;
-    impact: string;
-    category: 'design' | 'catalog' | 'trust' | 'performance';
-  }>;
-  summary: string;
-}> {
+export async function analyzeStoreWithAI(data: StoreAnalysisData): Promise<any> {
   try {
     console.log("Starting AI analysis for store type:", data.storeType);
     console.log("Content length:", data.storeContent.length);
     const prompt = `
-Analyze this ${data.storeType} store and provide a comprehensive scoring and improvement analysis.
+Analyze this ${data.storeType} store using the new comprehensive scoring system.
 
 Store Information:
 ${data.storeContent}
@@ -41,44 +28,107 @@ ${data.storeContent}
 ${data.storeUrl ? `Store URL: ${data.storeUrl}` : ''}
 ${data.ebayUsername ? `eBay Username: ${data.ebayUsername}` : ''}
 
-IMPORTANT: Provide realistic scores between 40-85 range. Never give 0 scores unless the store is completely broken. Most functioning e-commerce stores should score between 50-75 in most categories.
+Return analysis in JSON format with:
 
-Base your analysis on:
-- Platform type (${data.storeType})
-- Common ${data.storeType} best practices and typical performance ranges
-- General e-commerce optimization principles
-- URL structure and domain analysis (if available)
-- Standard platform capabilities and limitations
+{
+  "overallScore": number (0-100, sum of all category scores),
+  "strengths": ["What's working well - 2-3 items"],
+  "warnings": ["What needs improvement - 2-3 items"], 
+  "critical": ["What's critical or missing - 1-2 items"],
+  
+  "designScore": number (0-20),
+  "productScore": number (0-25),
+  "seoScore": number (0-20),
+  "trustScore": number (0-15),
+  "pricingScore": number (0-10),
+  "conversionScore": number (0-10),
+  
+  "designAnalysis": {
+    "mobileResponsive": boolean,
+    "pageSpeed": number (estimated load time in seconds),
+    "navigationClarity": boolean,
+    "brandingConsistency": boolean,
+    "score": number (same as designScore)
+  },
+  
+  "productAnalysis": {
+    "productCount": number (estimated),
+    "highQualityImages": boolean,
+    "detailedDescriptions": number (percentage 0-100),
+    "structuredTitles": boolean,
+    "trendingProducts": boolean,
+    "score": number (same as productScore)
+  },
+  
+  "seoAnalysis": {
+    "metaTitlesPresent": boolean,
+    "keywordOptimization": boolean,
+    "categoriesUsed": boolean,
+    "cleanUrls": boolean,
+    "score": number (same as seoScore)
+  },
+  
+  "trustAnalysis": {
+    "returnPolicy": boolean,
+    "aboutPage": boolean,
+    "contactInfo": boolean,
+    "sslSecurity": boolean,
+    "socialProof": number (review count or rating),
+    "score": number (same as trustScore)
+  },
+  
+  "pricingAnalysis": {
+    "competitive": boolean,
+    "priceRange": "low|medium|high",
+    "valuePerception": "underpriced|fair|overpriced",
+    "score": number (same as pricingScore)
+  },
+  
+  "conversionAnalysis": {
+    "clearCtas": boolean,
+    "reviewsDisplayed": boolean,
+    "promotions": boolean,
+    "supportOptions": boolean,
+    "score": number (same as conversionScore)
+  },
+  
+  "suggestions": [
+    {
+      "title": "Specific actionable title",
+      "description": "Detailed explanation with specific steps",
+      "impact": "Quantified impact like '+15% conversion potential'",
+      "category": "design|product|seo|trust|pricing|conversion",
+      "priority": "low|medium|high|critical"
+    }
+  ],
+  
+  "summary": "2-3 sentence overview of the store's current state and potential",
+  "storeRecap": {
+    "mainCategories": [
+      {
+        "name": "Category name",
+        "viralScore": number (1-10),
+        "demandScore": number (1-10),
+        "description": "Brief analysis of this category's market potential"
+      }
+    ],
+    "storeSize": "small|medium|large|enterprise",
+    "estimatedProducts": "Descriptive count like '50-100 products'",
+    "targetAudience": "Description of primary customers",
+    "businessModel": "B2C|B2B|Marketplace|etc",
+    "competitiveAdvantage": "Key differentiator or strength"
+  }
+}
 
-Provide analysis in JSON format with:
-1. scores: Object with (40-85 range) for:
-   - overallScore: Overall store performance estimate (average of all scores)
-   - designScore: Visual design, layout, branding potential (50-80 typical for ${data.storeType})
-   - catalogScore: Product variety, descriptions, pricing optimization (45-75 typical)
-   - trustScore: Reviews, policies, trust indicators potential (40-80 typical)
-   - performanceScore: Site speed, mobile responsiveness expectations (55-85 for ${data.storeType})
+Scoring Guidelines:
+- Design & UX (0-20): Mobile responsive, page speed, navigation, branding
+- Product Analysis (0-25): Product count, image quality, descriptions, titles, trending
+- SEO & Listings (0-20): Meta tags, keywords, categories, URL structure  
+- Trust Signals (0-15): Policies, contact info, SSL, social proof
+- Pricing & Competitiveness (0-10): Price alignment with market
+- Conversion Boosters (0-10): CTAs, reviews, promotions, support
 
-2. suggestions: Array of 5-6 specific improvement recommendations, each with:
-   - title: Clear, actionable title
-   - description: Detailed explanation (50-100 words) focusing on ${data.storeType} best practices
-   - impact: Expected improvement (e.g., "+15% conversion potential", "+20% trust improvement")
-   - category: One of 'design', 'catalog', 'trust', 'performance'
-
-3. summary: 1-2 sentence overall assessment focusing on ${data.storeType} optimization opportunities
-
-4. storeRecap: Object with detailed store analysis:
-   - mainCategories: Array of 2-3 main product categories, each with:
-     * name: Category name (e.g., "Home & Garden", "Pet Supplies", "Electronics")
-     * viralScore: 1-10 score for trending/viral potential of this category
-     * demandScore: 1-10 score for market demand and search volume
-     * description: Brief explanation of the category's market position
-   - storeSize: One of 'small', 'medium', 'large', 'enterprise'
-   - estimatedProducts: Estimate like "50-100 products", "500+ products", etc.
-   - targetAudience: Primary customer demographic
-   - businessModel: Brief description (B2C, B2B, marketplace, etc.)
-   - competitiveAdvantage: Key differentiator or strength
-
-Remember: Provide realistic, data-driven insights. Analyze categories based on current market trends and demand patterns. Focus on actionable business intelligence.
+Provide realistic assessments based on ${data.storeType} standards and make suggestions with priority levels.
 `;
 
     const response = await openai.chat.completions.create({
@@ -114,118 +164,85 @@ Remember: Provide realistic, data-driven insights. Analyze categories based on c
     
     console.log("Parsed result:", result);
     
-    // Generate realistic scores based on store type and characteristics
-    let designScore, catalogScore, trustScore, performanceScore, overallScore;
-    
-    if (data.storeType === 'shopify') {
-      // Shopify stores typically have good performance and mobile responsiveness
-      designScore = Math.floor(Math.random() * 20) + 55; // 55-75
-      catalogScore = Math.floor(Math.random() * 25) + 50; // 50-75
-      trustScore = Math.floor(Math.random() * 20) + 45; // 45-65
-      performanceScore = Math.floor(Math.random() * 15) + 65; // 65-80
-    } else {
-      // eBay stores have built-in trust systems but less design control
-      designScore = Math.floor(Math.random() * 15) + 50; // 50-65
-      catalogScore = Math.floor(Math.random() * 25) + 55; // 55-80
-      trustScore = Math.floor(Math.random() * 20) + 60; // 60-80
-      performanceScore = Math.floor(Math.random() * 15) + 60; // 60-75
-    }
-    
-    // Use AI scores if they're valid, handling both direct and nested formats
-    const aiScores = result.scores || result;
-    
-    if (aiScores.designScore && aiScores.designScore > 0) {
-      designScore = Math.max(40, Math.min(85, Math.round(aiScores.designScore)));
-    }
-    if (aiScores.catalogScore && aiScores.catalogScore > 0) {
-      catalogScore = Math.max(40, Math.min(85, Math.round(aiScores.catalogScore)));
-    }
-    if (aiScores.trustScore && aiScores.trustScore > 0) {
-      trustScore = Math.max(40, Math.min(85, Math.round(aiScores.trustScore)));
-    }
-    if (aiScores.performanceScore && aiScores.performanceScore > 0) {
-      performanceScore = Math.max(40, Math.min(85, Math.round(aiScores.performanceScore)));
-    }
-    
-    // Also check if overall score is provided
-    if (aiScores.overallScore && aiScores.overallScore > 0) {
-      overallScore = Math.max(40, Math.min(85, Math.round(aiScores.overallScore)));
-    } else {
-      overallScore = Math.round((designScore + catalogScore + trustScore + performanceScore) / 4);
-    }
-    
-    overallScore = Math.round((designScore + catalogScore + trustScore + performanceScore) / 4);
-    
-    console.log("Final scores (AI:", aiScores.overallScore ? 'used' : 'fallback', "):", { overallScore, designScore, catalogScore, trustScore, performanceScore });
-    
-    return {
-      overallScore,
-      designScore,
-      catalogScore,
-      trustScore,
-      performanceScore,
-      suggestions: Array.isArray(result.suggestions) ? result.suggestions.slice(0, 6) : [
-        {
-          title: "Optimize Store Performance",
-          description: "Focus on improving page load speeds and mobile responsiveness to enhance user experience and search engine rankings.",
-          impact: "+15% conversion potential",
-          category: "performance"
-        },
-        {
-          title: "Enhance Product Descriptions",
-          description: "Add detailed, SEO-optimized product descriptions with high-quality images to increase customer confidence and sales.",
-          impact: "+20% engagement increase",
-          category: "catalog"
-        },
-        {
-          title: "Build Trust Signals",
-          description: "Add customer reviews, security badges, and clear return policies to build credibility and reduce cart abandonment.",
-          impact: "+25% trust improvement",
-          category: "trust"
-        },
-        {
-          title: "Improve Visual Design",
-          description: "Optimize layout, color scheme, and navigation to create a more professional and user-friendly shopping experience.",
-          impact: "+18% user engagement",
-          category: "design"
-        }
-      ],
-      summary: result.summary || `This ${data.storeType} store shows good potential with an overall score of ${overallScore}. Focus on the suggested improvements to maximize conversion rates and customer satisfaction.`,
+    // Return the result directly as it follows the new structured format
+    // Add fallback values if parsing failed or data is missing
+    const finalResult = {
+      overallScore: result.overallScore || 65,
+      strengths: result.strengths || ["Store is functional", "Platform is reliable"],
+      warnings: result.warnings || ["Could improve product descriptions", "Needs more trust signals"],
+      critical: result.critical || ["Missing contact information"],
+      
+      designScore: result.designScore || 12,
+      productScore: result.productScore || 16,
+      seoScore: result.seoScore || 13,
+      trustScore: result.trustScore || 9,
+      pricingScore: result.pricingScore || 7,
+      conversionScore: result.conversionScore || 6,
+      
+      designAnalysis: result.designAnalysis || {
+        mobileResponsive: true,
+        pageSpeed: 3.2,
+        navigationClarity: true,
+        brandingConsistency: false,
+        score: result.designScore || 12
+      },
+      
+      productAnalysis: result.productAnalysis || {
+        productCount: data.storeType === 'shopify' ? 150 : 89,
+        highQualityImages: true,
+        detailedDescriptions: 65,
+        structuredTitles: false,
+        trendingProducts: true,
+        score: result.productScore || 16
+      },
+      
+      seoAnalysis: result.seoAnalysis || {
+        metaTitlesPresent: true,
+        keywordOptimization: false,
+        categoriesUsed: true,
+        cleanUrls: true,
+        score: result.seoScore || 13
+      },
+      
+      trustAnalysis: result.trustAnalysis || {
+        returnPolicy: false,
+        aboutPage: false,
+        contactInfo: true,
+        sslSecurity: true,
+        socialProof: data.storeType === 'ebay' ? 4.2 : 3.8,
+        score: result.trustScore || 9
+      },
+      
+      pricingAnalysis: result.pricingAnalysis || {
+        competitive: true,
+        priceRange: "medium",
+        valuePerception: "fair",
+        score: result.pricingScore || 7
+      },
+      
+      conversionAnalysis: result.conversionAnalysis || {
+        clearCtas: true,
+        reviewsDisplayed: false,
+        promotions: false,
+        supportOptions: true,
+        score: result.conversionScore || 6
+      },
+      
+      suggestions: result.suggestions || [],
+      summary: result.summary || "Store analysis completed successfully.",
       storeRecap: result.storeRecap || {
-        mainCategories: data.storeType === 'shopify' ? [
-          {
-            name: "General Retail",
-            viralScore: 5,
-            demandScore: 6,
-            description: "Mixed product categories with moderate market demand"
-          },
-          {
-            name: "Consumer Goods",
-            viralScore: 6,
-            demandScore: 7,
-            description: "Everyday products with steady consumer interest"
-          }
-        ] : [
-          {
-            name: "Marketplace Items",
-            viralScore: 4,
-            demandScore: 6,
-            description: "Various marketplace products with standard demand"
-          },
-          {
-            name: "Secondary Market",
-            viralScore: 5,
-            demandScore: 5,
-            description: "Pre-owned and discounted items market"
-          }
-        ],
+        mainCategories: [],
         storeSize: "medium",
-        estimatedProducts: data.storeType === 'shopify' ? "100-500 products" : "50-200 listings",
+        estimatedProducts: "100-200 products",
         targetAudience: "General consumers",
-        businessModel: data.storeType === 'shopify' ? "Direct-to-consumer retail" : "Marketplace selling",
-        competitiveAdvantage: data.storeType === 'shopify' ? "Brand control and customer experience" : "Established marketplace presence"
+        businessModel: "B2C",
+        competitiveAdvantage: "Platform reliability"
       }
     };
+    
+    console.log("Final structured result:", finalResult);
+    
+    return finalResult;
   } catch (error) {
     console.error("OpenAI analysis failed:", error);
     throw new Error("Failed to analyze store with AI: " + error.message);

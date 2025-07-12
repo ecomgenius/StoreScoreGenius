@@ -1,0 +1,117 @@
+Update the current app to return a structured and visually clear analysis result after scanning a Shopify or eBay store.
+
+The output should include a visual score dashboard and detailed recommendations, divided into the following sections:
+
+1. Overall Score Section (Top of the Page)
+
+Calculate and return a total score from 0 to 100 based on weighted subcategories (below).
+
+Display visually (progress bar or number inside a circle).
+
+Also display 3 labels:
+
+✅ What's working well
+
+⚠️ What needs improvement
+
+❌ What's critical or missing
+
+Example:
+
+json
+Copy
+Edit
+{
+  "overall_score": 74,
+  "strengths": ["Nice branding", "Mobile optimized", "Competitive pricing"],
+  "warnings": ["Weak SEO in product titles", "Few reviews"],
+  "critical": ["No return policy", "No About page"]
+}
+2. Design & UX (20 points)
+
+Is the store mobile responsive?
+
+Average page speed (seconds)
+
+Navigation clarity (is there a menu? is it logical?)
+
+Branding: Logo + color consistency
+
+Score: 0–20
+
+3. Product Analysis (25 points)
+
+Number of products
+
+Are the images high-quality (≥1000px)?
+
+% of products with detailed descriptions (>300 chars)
+
+Are titles descriptive and structured (Brand + Type + Keyword)?
+
+Are products trending (based on AI keyword and trend check)?
+
+Score: 0–25
+
+4. SEO & Listings (20 points)
+
+Meta titles and descriptions present?
+
+Presence of keywords in titles/descriptions
+
+Use of collections/categories
+
+Clean URL structure
+
+Score: 0–20
+
+5. Trust Signals (15 points)
+
+Return policy page
+
+About Us page
+
+Contact info (email or phone)
+
+SSL and security badge presence
+
+Social proof (number of reviews / stars if available)
+
+Score: 0–15
+
+6. Pricing & Competitiveness (10 points)
+
+Are the prices aligned with similar products on marketplaces?
+
+Too cheap (perceived low value) or overpriced?
+
+Score: 0–10
+
+7. Conversion Boosters (10 points)
+
+Presence of CTAs ("Buy Now", "Add to Cart")
+
+Reviews displayed?
+
+Promotions or scarcity indicators
+
+Chat widget or support options
+
+Score: 0–10
+
+3. Suggestions Section (AI-generated Recommendations)
+After scoring, show suggestions like:
+
+“Improve product titles with clearer keywords”
+
+“Add trust badges to increase conversion”
+
+“Consider lowering the price of product X to match competition”
+
+4. CTA Section – Upsell to Full Version
+After the free analysis, include a call to action:
+
+"Register now to apply AI suggestions automatically by connecting your Shopify or eBay store."
+
+Include a sign-up button and Shopify/eBay auth integration placeholder.
+

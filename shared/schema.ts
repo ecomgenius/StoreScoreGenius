@@ -43,19 +43,83 @@ export type StoreAnalysis = typeof storeAnalyses.$inferSelect;
 export type AnalyzeStoreRequest = z.infer<typeof analyzeStoreRequestSchema>;
 
 export interface StoreAnalysisResult {
-  overallScore: number;
-  designScore: number;
-  catalogScore: number;
-  trustScore: number;
-  performanceScore: number;
+  // Overall scoring section
+  overallScore: number; // 0-100
+  strengths: string[];
+  warnings: string[];
+  critical: string[];
+  
+  // Detailed category scores
+  designScore: number; // 0-20 points
+  productScore: number; // 0-25 points  
+  seoScore: number; // 0-20 points
+  trustScore: number; // 0-15 points
+  pricingScore: number; // 0-10 points
+  conversionScore: number; // 0-10 points
+  
+  // Detailed analysis per category
+  designAnalysis: {
+    mobileResponsive: boolean;
+    pageSpeed: number; // seconds
+    navigationClarity: boolean;
+    brandingConsistency: boolean;
+    score: number;
+  };
+  
+  productAnalysis: {
+    productCount: number;
+    highQualityImages: boolean;
+    detailedDescriptions: number; // percentage
+    structuredTitles: boolean;
+    trendingProducts: boolean;
+    score: number;
+  };
+  
+  seoAnalysis: {
+    metaTitlesPresent: boolean;
+    keywordOptimization: boolean;
+    categoriesUsed: boolean;
+    cleanUrls: boolean;
+    score: number;
+  };
+  
+  trustAnalysis: {
+    returnPolicy: boolean;
+    aboutPage: boolean;
+    contactInfo: boolean;
+    sslSecurity: boolean;
+    socialProof: number; // review count or rating
+    score: number;
+  };
+  
+  pricingAnalysis: {
+    competitive: boolean;
+    priceRange: 'low' | 'medium' | 'high';
+    valuePerception: 'underpriced' | 'fair' | 'overpriced';
+    score: number;
+  };
+  
+  conversionAnalysis: {
+    clearCtas: boolean;
+    reviewsDisplayed: boolean;
+    promotions: boolean;
+    supportOptions: boolean;
+    score: number;
+  };
+  
+  // AI-generated suggestions
   suggestions: Array<{
     title: string;
     description: string;
     impact: string;
-    category: 'design' | 'catalog' | 'trust' | 'performance';
+    category: 'design' | 'product' | 'seo' | 'trust' | 'pricing' | 'conversion';
+    priority: 'low' | 'medium' | 'high' | 'critical';
   }>;
+  
   summary: string;
   screenshot?: string; // Base64 encoded screenshot
+  
+  // Store intelligence recap
   storeRecap: {
     mainCategories: Array<{
       name: string;

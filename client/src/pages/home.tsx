@@ -2,8 +2,8 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import LoadingSection from "@/components/LoadingSection";
-import ResultsSection from "@/components/ResultsSection";
-import CTASection from "@/components/CTASection";
+import NewResultsSection from "@/components/NewResultsSection";
+// import CTASection from "@/components/CTASection"; // CTA is now built into NewResultsSection
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -47,10 +47,7 @@ export default function Home() {
       {currentView === 'loading' && <LoadingSection />}
       
       {currentView === 'results' && analysisResult && (
-        <>
-          <ResultsSection analysisResult={analysisResult} />
-          <CTASection />
-        </>
+        <NewResultsSection analysisResult={analysisResult} />
       )}
       
       <Footer />
