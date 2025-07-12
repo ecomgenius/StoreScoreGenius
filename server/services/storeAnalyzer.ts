@@ -95,6 +95,8 @@ Please provide realistic scoring based on Shopify best practices and common opti
       const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
       const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
 
+      console.log(`📷 [Fallback] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
+
       return {
         ...analysis,
         screenshot: screenshotData
@@ -129,6 +131,8 @@ Please provide realistic scoring based on Shopify best practices and common opti
     const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
     const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
 
+    console.log(`📷 [Success] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
+
     return {
       ...analysis,
       screenshot: screenshotData
@@ -151,6 +155,8 @@ Please provide realistic scoring based on Shopify best practices and common opti
 
     const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
     const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+    console.log(`📷 [Error] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
 
     return {
       ...analysis,

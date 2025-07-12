@@ -94,6 +94,8 @@ export async function captureStoreScreenshot(url: string): Promise<string | null
     
     // Fallback to placeholder screenshot
     console.log('🔄 Generating placeholder screenshot...');
-    return generatePlaceholderScreenshot(url);
+    const placeholderScreenshot = generatePlaceholderScreenshot(url);
+    console.log(`✅ Placeholder screenshot generated! Size: ${Math.round(placeholderScreenshot.length / 1024)}KB`);
+    return placeholderScreenshot;
   }
 }
