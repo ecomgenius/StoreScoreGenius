@@ -10,6 +10,14 @@ import {
 } from "@shared/schema";
 import { analyzeShopifyStore, analyzeEbayStore } from "./services/storeAnalyzer";
 import { authenticateUser, requireAuth, requireAdmin, checkCredits, checkSubscription } from "./middleware/auth";
+import { 
+  generateShopifyAuthUrl, 
+  exchangeCodeForToken, 
+  getShopInfo, 
+  getStoreProducts, 
+  createShopifyAnalysisContent 
+} from "./services/shopifyIntegration";
+import { analyzeStoreWithAI } from "./services/openai";
 import Stripe from "stripe";
 
 // Initialize Stripe if key is available
@@ -433,6 +441,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching recent analyses:", error);
       res.status(500).json({ error: "Failed to fetch recent analyses" });
+    }
+  });
+
+  // ================ SHOPIFY INTEGRATION ROUTES ================
+  
+  // Initiate Shopify OAuth
+  app.post("/api/shopify/connect", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { shopDomain, userStoreId } = req.body;
+      
+      if (!shopDomain) {
+        return res.status(400).json({ error: "Shop domain is required" });
+      }
+      
+      // Validate shop domain format
+      const domain = shopDomain.replace('https://', '').replace('http://', '');
+      if (!domain.includes('.myshopify.com') && !domain.includes('.')) {
+        return res.status(400).json({ error: "Invalid shop domain format" });
+      }
+      
+      // Generate OAuth URL
+      const { authUrl, state } = generateShopifyAuthUrl(domain, req.user!.id);
+      
+      // Store the userStoreId in the state if provided (for updating existing store)
+      const stateWithStore = userStoreId ? `${state}:${userStoreId}` : state;
+      
+      res.json({ authUrl: authUrl.replace(state, stateWithStore) });
+    } catch (error) {
+      console.error("Error initiating Shopify OAuth:", error);
+      res.status(500).json({ error: "Failed to initiate Shopify connection" });
+    }
+  });
+  
+  // Shopify OAuth callback
+  app.get("/api/shopify/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, state, shop } = req.query;
+      
+      if (!code || !state || !shop) {
+        return res.status(400).send("Missing required parameters");
+      }
+      
+      // Parse state to get userId and optionally userStoreId
+      const stateParts = (state as string).split(':');
+      const userId = parseInt(stateParts[1]);
+      const userStoreId = stateParts[2] ? parseInt(stateParts[2]) : null;
+      
+      if (!userId) {
+        return res.status(400).send("Invalid state parameter");
+      }
+      
+      // Exchange code for access token
+      const { access_token, scope } = await exchangeCodeForToken(
+        shop as string, 
+        code as string, 
+        state as string
+      );
+      
+      // Get shop information
+      const shopInfo = await getShopInfo(shop as string, access_token);
+      
+      if (userStoreId) {
+        // Update existing store
+        await storage.updateUserStore(userStoreId, {
+          shopifyAccessToken: access_token,
+          shopifyDomain: shop as string,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date(),
+          name: shopInfo.name,
+          storeUrl: `https://${shopInfo.domain}`
+        });
+      } else {
+        // Create new store
+        await storage.createUserStore({
+          userId,
+          name: shopInfo.name,
+          storeUrl: `https://${shopInfo.domain}`,
+          storeType: 'shopify',
+          shopifyAccessToken: access_token,
+          shopifyDomain: shop as string,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date()
+        });
+      }
+      
+      // Redirect to dashboard with success message
+      res.redirect(`/dashboard/stores?connected=true&shop=${encodeURIComponent(shopInfo.name)}`);
+    } catch (error) {
+      console.error("Error in Shopify OAuth callback:", error);
+      res.redirect('/dashboard/stores?error=connection_failed');
+    }
+  });
+  
+  // Trigger automatic analysis for connected Shopify store
+  app.post("/api/shopify/analyze/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const storeId = parseInt(req.params.storeId);
+      const store = await storage.getUserStore(storeId);
+      
+      if (!store || store.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+      
+      if (!store.isConnected || !store.shopifyAccessToken) {
+        return res.status(400).json({ error: "Store not connected to Shopify" });
+      }
+      
+      // Check user credits
+      const userCredits = await storage.getUserCredits(req.user!.id);
+      if (userCredits < 1) {
+        return res.status(402).json({ 
+          error: 'Insufficient credits', 
+          creditsRequired: 1,
+          creditsAvailable: userCredits
+        });
+      }
+      
+      // Get store products for comprehensive analysis
+      const products = await getStoreProducts(
+        store.shopifyDomain!, 
+        store.shopifyAccessToken, 
+        100
+      );
+      
+      // Get shop info
+      const shopInfo = await getShopInfo(
+        store.shopifyDomain!, 
+        store.shopifyAccessToken
+      );
+      
+      // Create analysis content from Shopify data
+      const analysisContent = createShopifyAnalysisContent(shopInfo, products);
+      
+      // Run AI analysis with real Shopify data
+      const analysisData = {
+        storeContent: analysisContent,
+        storeType: 'shopify' as const,
+        storeUrl: store.storeUrl!
+      };
+      
+      const result = await analyzeStoreWithAI(analysisData);
+      
+      // Store the analysis
+      const storedAnalysis = await storage.createStoreAnalysis({
+        userId: req.user!.id,
+        userStoreId: store.id,
+        storeUrl: store.storeUrl,
+        storeType: 'shopify',
+        overallScore: result.overallScore,
+        strengths: result.strengths,
+        warnings: result.warnings,
+        critical: result.critical,
+        designScore: result.designScore,
+        productScore: result.productScore,
+        seoScore: result.seoScore,
+        trustScore: result.trustScore,
+        pricingScore: result.pricingScore,
+        conversionScore: result.conversionScore,
+        analysisData: result,
+        suggestions: result.suggestions,
+        summary: result.summary,
+        storeRecap: result.storeRecap,
+        creditsUsed: 1,
+        contentHash: null // Shopify API data changes frequently
+      });
+      
+      // Deduct credits
+      await storage.deductCredits(req.user!.id, 1, "Shopify store analysis", storedAnalysis.id);
+      
+      // Update store last analyzed timestamp
+      await storage.updateUserStore(store.id, { lastAnalyzedAt: new Date() });
+      
+      res.json(storedAnalysis);
+    } catch (error) {
+      console.error("Error analyzing Shopify store:", error);
+      res.status(500).json({ error: "Failed to analyze store" });
     }
   });
 
