@@ -455,8 +455,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Shop domain is required" });
       }
       
-      // Validate shop domain format
-      const domain = shopDomain.replace('https://', '').replace('http://', '');
+      // Validate and clean shop domain format
+      let domain = shopDomain.replace('https://', '').replace('http://', '');
+      // Remove trailing slash if present
+      domain = domain.replace(/\/$/, '');
+      
       if (!domain.includes('.myshopify.com') && !domain.includes('.')) {
         return res.status(400).json({ error: "Invalid shop domain format" });
       }
