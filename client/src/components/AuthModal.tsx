@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -38,54 +37,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     password: "",
   });
 
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { login, register } = useAuth();
 
-  const registerMutation = useMutation({
-    mutationFn: async (data: RegisterData) => {
-      const response = await apiRequest("POST", "/api/auth/register", data);
-      return await response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Registration successful!",
-        description: "Welcome to StoreScore! You have 25 free AI credits to get started.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Registration failed",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const loginMutation = useMutation({
-    mutationFn: async (data: LoginData) => {
-      const response = await apiRequest("POST", "/api/auth/login", data);
-      return await response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Login successful!",
-        description: "Welcome back to StoreScore",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Login failed",
-        description: error.message || "Please check your credentials",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerData.email || !registerData.password || !registerData.firstName || !registerData.lastName) {
       toast({
@@ -94,10 +50,27 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       });
       return;
     }
-    registerMutation.mutate(registerData);
+    
+    setIsLoading(true);
+    try {
+      await register(registerData.email, registerData.password, `${registerData.firstName} ${registerData.lastName}`);
+      toast({
+        title: "Registration successful!",
+        description: "Welcome to StoreScore! You have 25 free AI credits to get started.",
+      });
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginData.email || !loginData.password) {
       toast({
@@ -106,7 +79,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       });
       return;
     }
-    loginMutation.mutate(loginData);
+    
+    setIsLoading(true);
+    try {
+      await login(loginData.email, loginData.password);
+      toast({
+        title: "Login successful!",
+        description: "Welcome back to StoreScore",
+      });
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -180,9 +170,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={registerMutation.isPending}
+                disabled={isLoading}
               >
-                {registerMutation.isPending ? "Creating Account..." : "Create Account"}
+                {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
               
               <p className="text-sm text-muted-foreground text-center">
@@ -220,9 +210,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={loginMutation.isPending}
+                disabled={isLoading}
               >
-                {loginMutation.isPending ? "Signing In..." : "Sign In"}
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
           </TabsContent>
