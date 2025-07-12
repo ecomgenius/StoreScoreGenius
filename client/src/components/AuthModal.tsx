@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,6 +114,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Get Started with StoreScore</DialogTitle>
+          <DialogDescription>
+            Sign up for a free account to get 25 AI credits and start analyzing your stores, or sign in to your existing account.
+          </DialogDescription>
         </DialogHeader>
         
         <Tabs defaultValue="register" className="w-full">
