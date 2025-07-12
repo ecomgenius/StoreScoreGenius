@@ -61,14 +61,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             const isActive = location === item.href;
             return (
               <Link key={item.name} href={item.href}>
-                <a className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-2 transition-colors ${
+                <div className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-2 transition-colors cursor-pointer ${
                   isActive 
                     ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600' 
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}>
                   <Icon className="mr-3 h-5 w-5" />
                   {item.name}
-                </a>
+                </div>
               </Link>
             );
           })}

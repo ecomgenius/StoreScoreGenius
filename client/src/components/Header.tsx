@@ -40,15 +40,22 @@ export default function Header() {
                 {/* Credits Badge */}
                 <Badge variant="secondary" className="flex items-center space-x-1">
                   <CreditCard className="h-3 w-3" />
-                  <span>{user?.aiCredits} credits</span>
+                  <span>{user?.credits || 0} credits</span>
                 </Badge>
+
+                {/* Dashboard Link */}
+                <Link href="/dashboard">
+                  <Button variant="outline" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
 
                 {/* User Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="flex items-center space-x-2">
                       <User className="h-4 w-4" />
-                      <span className="hidden sm:inline">{user?.firstName}</span>
+                      <span className="hidden sm:inline">{user?.email?.split('@')[0]}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -59,23 +66,29 @@ export default function Header() {
                       {user?.email}
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                      <Store className="mr-2 h-4 w-4" />
-                      My Stores
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Analysis History
-                    </DropdownMenuItem>
+                    <Link href="/dashboard/stores">
+                      <DropdownMenuItem>
+                        <Store className="mr-2 h-4 w-4" />
+                        My Stores
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/dashboard/analysis">
+                      <DropdownMenuItem>
+                        <TrendingUp className="mr-2 h-4 w-4" />
+                        Analysis History
+                      </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuItem>
                       <CreditCard className="mr-2 h-4 w-4" />
                       Buy Credits
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </DropdownMenuItem>
+                    <Link href="/dashboard/settings">
+                      <DropdownMenuItem>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuItem onClick={logout} disabled={isLoggingOut}>
                       <LogOut className="mr-2 h-4 w-4" />
                       {isLoggingOut ? "Signing out..." : "Sign out"}

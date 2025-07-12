@@ -14,12 +14,12 @@ export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      setLocation('/dashboard');
-    }
-  }, [isAuthenticated, isLoading, setLocation]);
+  // Optional: Redirect authenticated users to dashboard (commented out to keep landing page accessible)
+  // useEffect(() => {
+  //   if (!isLoading && isAuthenticated) {
+  //     setLocation('/dashboard');
+  //   }
+  // }, [isAuthenticated, isLoading, setLocation]);
 
   const handleAnalysisStart = () => {
     setCurrentView('loading');
