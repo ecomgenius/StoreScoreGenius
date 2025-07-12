@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Palette, Package, Shield, Gauge, Lightbulb, ArrowUp, Smartphone, Star, Tag } from "lucide-react";
+import { Palette, Package, Shield, Gauge, Lightbulb, ArrowUp, Star, Tag } from "lucide-react";
 
 interface ResultsSectionProps {
   analysisResult: {
@@ -180,30 +180,7 @@ export default function ResultsSection({ analysisResult }: ResultsSectionProps) 
           </div>
         </div>
 
-        {/* Store Screenshot */}
-        {analysisResult.screenshot && (
-          <div className="mb-16">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <Smartphone className="text-primary mr-3" />
-              Store Preview
-            </h3>
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-md mx-auto border-2 border-gray-100">
-              <div className="p-4">
-                <img 
-                  src={`data:image/svg+xml;base64,${analysisResult.screenshot}`}
-                  alt="Store Screenshot Preview"
-                  className="w-full h-auto max-h-80 object-contain rounded-lg"
-                  style={{ display: 'block', margin: '0 auto' }}
-                  onError={(e) => {
-                    console.error('Screenshot failed to load:', e);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  onLoad={() => console.log('Screenshot loaded successfully')}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Store Recap */}
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8">
