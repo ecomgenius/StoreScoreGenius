@@ -23,6 +23,8 @@ export default function Dashboard() {
       return apiRequest('POST', '/api/analyze-store', data);
     },
     onSuccess: (data) => {
+      console.log("Analysis result received:", data);
+      console.log("Analysis data structure:", JSON.stringify(data, null, 2));
       setAnalysisResult(data);
       setIsAnalyzing(false);
       toast({
@@ -222,10 +224,7 @@ export default function Dashboard() {
         {/* Analysis Results */}
         {analysisResult && (
           <div className="mt-8">
-            <NewResultsSection analysisResult={{
-              ...analysisResult,
-              ...analysisResult.analysisData
-            }} />
+            <NewResultsSection analysisResult={analysisResult.analysisData || analysisResult} />
           </div>
         )}
       </div>
