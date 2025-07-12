@@ -1,146 +1,103 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Store, Settings, Trash2, Link as LinkIcon, RefreshCw, ExternalLink, Zap, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
+import { Store, Plus, Settings, Trash2, Zap, ExternalLink, LinkIcon, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 export default function UserStores() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isShopifyDialogOpen, setIsShopifyDialogOpen] = useState(false);
   const [shopifyDomain, setShopifyDomain] = useState('');
-  const [accessToken, setAccessToken] = useState('');
-  const [showInstructions, setShowInstructions] = useState(false);
+
   const [newStore, setNewStore] = useState({
     name: '',
     storeUrl: '',
     storeType: 'shopify',
-    description: ''
+    description: '',
   });
-  const { toast } = useToast();
+
   const queryClient = useQueryClient();
-  
-  // Check for connection status in URL params
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const connected = urlParams.get('connected');
-    const shopName = urlParams.get('shop');
-    const error = urlParams.get('error');
-    const message = urlParams.get('message');
-    
-    if (connected && shopName) {
-      toast({
-        title: "Store Connected!",
-        description: `${decodeURIComponent(shopName)} has been successfully connected to your account.`,
-      });
-      window.history.replaceState({}, '', '/dashboard/stores');
-    } else if (error) {
-      let errorDescription = "Failed to connect your Shopify store. Please try again.";
-      
-      if (message) {
-        errorDescription = decodeURIComponent(message);
-      } else if (error === 'oauth_failed') {
-        errorDescription = "OAuth authentication failed. Please ensure your store allows apps and try again.";
-      } else if (error === 'shop_info_failed') {
-        errorDescription = "Connected to Shopify but couldn't access store information. Check your store permissions.";
-      }
-      
-      toast({
-        title: "Connection Failed",
-        description: errorDescription,
-        variant: "destructive",
-      });
-      window.history.replaceState({}, '', '/dashboard/stores');
-    }
-  }, [toast]);
 
   const { data: stores = [], isLoading } = useQuery({
     queryKey: ['/api/stores'],
   });
 
   const createStoreMutation = useMutation({
-    mutationFn: (storeData: any) => apiRequest('POST', '/api/stores', storeData),
+    mutationFn: (storeData: typeof newStore) => apiRequest('POST', '/api/stores', storeData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
       setIsAddDialogOpen(false);
       setNewStore({ name: '', storeUrl: '', storeType: 'shopify', description: '' });
       toast({
         title: "Store Added",
-        description: "Your store has been successfully added to your dashboard.",
+        description: "Your store has been successfully added to your account.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to add store. Please try again.",
+        description: error.message || "Failed to add store",
         variant: "destructive",
       });
     },
   });
 
   const deleteStoreMutation = useMutation({
-    mutationFn: (storeId: number) => apiRequest('DELETE', `/api/stores/${storeId}`, {}),
+    mutationFn: (storeId: number) => apiRequest('DELETE', `/api/stores/${storeId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
       toast({
-        title: "Store Removed",
-        description: "Your store has been removed from your dashboard.",
+        title: "Store Deleted",
+        description: "The store has been removed from your account.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to remove store. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const connectShopifyMutation = useMutation({
-    mutationFn: (data: { shopDomain: string; accessToken: string; storeName?: string; userStoreId?: number }) => 
-      apiRequest('POST', '/api/shopify/connect-token', data),
-    onSuccess: (data: { shopInfo: any }) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
-      setIsShopifyDialogOpen(false);
-      setShopifyDomain('');
-      setAccessToken('');
-      setShowInstructions(false);
-      toast({
-        title: "Store Connected!",
-        description: `${data.shopInfo.name} has been successfully connected to your account.`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Connection Failed",
-        description: error.message || "Failed to connect Shopify store. Please check your access token and try again.",
+        description: error.message || "Failed to delete store",
         variant: "destructive",
       });
     },
   });
 
   const analyzeStoreMutation = useMutation({
-    mutationFn: (storeId: number) => apiRequest('POST', `/api/shopify/analyze/${storeId}`, {}),
-    onSuccess: () => {
+    mutationFn: (storeId: number) => apiRequest('POST', `/api/shopify/analyze/${storeId}`),
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analyses'] });
       toast({
         title: "Analysis Complete!",
-        description: "Your store analysis has been completed. Check the past analyses page for results.",
+        description: `Store analysis completed with score: ${data.overallScore}/100`,
       });
     },
     onError: (error: any) => {
       toast({
         title: "Analysis Failed",
-        description: error.message || "Failed to analyze store. Please try again.",
+        description: error.message || "Failed to analyze store",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const connectShopifyMutation = useMutation({
+    mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
+      apiRequest('POST', '/api/shopify/connect', data),
+    onSuccess: (data: { authUrl: string }) => {
+      // Redirect to Shopify OAuth page
+      window.location.href = data.authUrl;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to initiate Shopify connection.",
         variant: "destructive",
       });
     },
@@ -150,7 +107,7 @@ export default function UserStores() {
     if (!newStore.name || !newStore.storeUrl) {
       toast({
         title: "Missing Information",
-        description: "Please provide both store name and URL.",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
@@ -158,13 +115,25 @@ export default function UserStores() {
     createStoreMutation.mutate(newStore);
   };
 
+  const handleAnalyzeStore = (storeId: number) => {
+    analyzeStoreMutation.mutate(storeId);
+  };
+
+  const handleReconnectStore = (storeId: number) => {
+    const store = stores.find((s: any) => s.id === storeId);
+    if (store && store.shopifyDomain) {
+      setShopifyDomain(store.shopifyDomain);
+      setIsShopifyDialogOpen(true);
+    }
+  };
+
   const handleDeleteStore = (storeId: number) => {
-    if (confirm('Are you sure you want to remove this store?')) {
+    if (confirm('Are you sure you want to delete this store?')) {
       deleteStoreMutation.mutate(storeId);
     }
   };
 
-  const handleGetInstructions = () => {
+  const handleConnectShopify = () => {
     if (!shopifyDomain) {
       toast({
         title: "Missing Domain",
@@ -173,50 +142,32 @@ export default function UserStores() {
       });
       return;
     }
-    setShowInstructions(true);
+    connectShopifyMutation.mutate({ shopDomain: shopifyDomain });
   };
 
-  const handleConnectShopify = () => {
-    if (!shopifyDomain || !accessToken) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter both your store domain and access token.",
-        variant: "destructive",
-      });
-      return;
+  const getStoreTypeColor = (storeType: string) => {
+    switch (storeType) {
+      case 'shopify':
+        return 'bg-green-100 text-green-800';
+      case 'ebay':
+        return 'bg-blue-100 text-blue-800';
+      case 'amazon':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
-    connectShopifyMutation.mutate({ 
-      shopDomain: shopifyDomain,
-      accessToken: accessToken 
-    });
-  };
-
-  const handleReconnectStore = (storeId: number) => {
-    const store = stores.find((s: any) => s.id === storeId);
-    if (store?.storeUrl) {
-      const domain = store.storeUrl.replace('https://', '').replace('http://', '');
-      connectShopifyMutation.mutate({ shopDomain: domain, userStoreId: storeId });
-    }
-  };
-
-  const handleAnalyzeStore = (storeId: number) => {
-    analyzeStoreMutation.mutate(storeId);
-  };
-
-  const getStoreTypeColor = (type: string) => {
-    return type === 'shopify' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
   };
 
   const getConnectionStatusIcon = (status: string) => {
     switch (status) {
       case 'connected':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-3 w-3" />;
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Clock className="h-3 w-3" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-3 w-3" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-400" />;
+        return null;
     }
   };
 
@@ -265,164 +216,14 @@ export default function UserStores() {
               </p>
             </div>
             <div className="flex space-x-3">
-              <Dialog open={isShopifyDialogOpen} onOpenChange={setIsShopifyDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Store className="mr-2 h-4 w-4" />
-                    Connect Shopify
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Connect Your Shopify Store</DialogTitle>
-                    <CardDescription>
-                      Connect your Shopify store using a custom app for secure API access and real-time analysis.
-                    </CardDescription>
-                  </DialogHeader>
-                  <div className="space-y-6">
-                    <div>
-                      <Label htmlFor="shopifyDomain">Shopify Store Domain</Label>
-                      <Input
-                        id="shopifyDomain"
-                        value={shopifyDomain}
-                        onChange={(e) => setShopifyDomain(e.target.value)}
-                        placeholder="i10jxn-aa.myshopify.com"
-                        className="mt-1"
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Enter your store's .myshopify.com domain or custom domain
-                      </p>
-                    </div>
-
-                    {!showInstructions ? (
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsShopifyDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button onClick={handleGetInstructions}>
-                          Next: Get Setup Instructions
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <h4 className="font-semibold text-blue-900 mb-3">Setup Instructions</h4>
-                          <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
-                            <li>Go to your Shopify Admin → <strong>Settings</strong> → <strong>Apps and sales channels</strong></li>
-                            <li>Click <strong>"Develop apps for your store"</strong></li>
-                            <li>If prompted, click <strong>"Allow custom app development"</strong></li>
-                            <li>Click <strong>"Create an app"</strong> and give it a name like "StoreScore Analytics"</li>
-                            <li>Go to <strong>"Configuration"</strong> → <strong>"Admin API integration"</strong></li>
-                            <li>Select these scopes: <code>read_products</code>, <code>read_orders</code>, <code>read_themes</code></li>
-                            <li>Click <strong>"Save"</strong> then go to <strong>"API credentials"</strong></li>
-                            <li>Click <strong>"Install app"</strong> then copy the <strong>"Admin API access token"</strong></li>
-                          </ol>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="accessToken">Admin API Access Token</Label>
-                          <Input
-                            id="accessToken"
-                            type="password"
-                            value={accessToken}
-                            onChange={(e) => setAccessToken(e.target.value)}
-                            placeholder="shpat_..."
-                            className="mt-1"
-                          />
-                          <p className="text-sm text-gray-500 mt-1">
-                            Paste the Admin API access token from your custom app
-                          </p>
-                        </div>
-
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setShowInstructions(false);
-                              setAccessToken('');
-                            }}
-                          >
-                            Back
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setIsShopifyDialogOpen(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleConnectShopify}
-                            disabled={connectShopifyMutation.isPending || !accessToken}
-                          >
-                            {connectShopifyMutation.isPending ? 'Connecting...' : 'Connect Store'}
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Manual Store
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Store</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Store Name</Label>
-                      <Input
-                        id="name"
-                        value={newStore.name}
-                        onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
-                        placeholder="My Awesome Store"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="storeUrl">Store URL</Label>
-                      <Input
-                        id="storeUrl"
-                        value={newStore.storeUrl}
-                        onChange={(e) => setNewStore({ ...newStore, storeUrl: e.target.value })}
-                        placeholder="https://mystore.myshopify.com"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description (Optional)</Label>
-                      <Textarea
-                        id="description"
-                        value={newStore.description}
-                        onChange={(e) => setNewStore({ ...newStore, description: e.target.value })}
-                        placeholder="Brief description of your store..."
-                        rows={3}
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsAddDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleAddStore}
-                        disabled={createStoreMutation.isPending}
-                      >
-                        {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setIsShopifyDialogOpen(true)}>
+                <Store className="mr-2 h-4 w-4" />
+                Connect Shopify
+              </Button>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Manual Store
+              </Button>
             </div>
           </div>
         </div>
@@ -436,109 +237,14 @@ export default function UserStores() {
                 Connect your first store to start receiving AI-powered optimizations and insights.
               </p>
               <div className="flex space-x-3 justify-center">
-                <Dialog open={isShopifyDialogOpen} onOpenChange={setIsShopifyDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Store className="mr-2 h-4 w-4" />
-                      Connect Shopify Store
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Connect Your First Shopify Store</DialogTitle>
-                      <CardDescription>
-                        Connect your Shopify store for automatic analysis and AI-powered optimizations.
-                      </CardDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="shopifyDomain">Shopify Store Domain</Label>
-                        <Input
-                          id="shopifyDomain"
-                          value={shopifyDomain}
-                          onChange={(e) => setShopifyDomain(e.target.value)}
-                          placeholder="mystore.myshopify.com"
-                          className="mt-1"
-                        />
-                        <p className="text-sm text-gray-500 mt-1">
-                          Enter your store's .myshopify.com domain or custom domain
-                        </p>
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsShopifyDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleConnectShopify}
-                          disabled={connectShopifyMutation.isPending}
-                        >
-                          {connectShopifyMutation.isPending ? 'Connecting...' : 'Connect to Shopify'}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Manual Store
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Your First Store</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="name">Store Name</Label>
-                        <Input
-                          id="name"
-                          value={newStore.name}
-                          onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
-                          placeholder="My Awesome Store"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="storeUrl">Store URL</Label>
-                        <Input
-                          id="storeUrl"
-                          value={newStore.storeUrl}
-                          onChange={(e) => setNewStore({ ...newStore, storeUrl: e.target.value })}
-                          placeholder="https://mystore.myshopify.com"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="description">Description (Optional)</Label>
-                        <Textarea
-                          id="description"
-                          value={newStore.description}
-                          onChange={(e) => setNewStore({ ...newStore, description: e.target.value })}
-                          placeholder="Brief description of your store..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsAddDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleAddStore}
-                          disabled={createStoreMutation.isPending}
-                        >
-                          {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button onClick={() => setIsShopifyDialogOpen(true)}>
+                  <Store className="mr-2 h-4 w-4" />
+                  Connect Shopify Store
+                </Button>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Manual Store
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -632,52 +338,99 @@ export default function UserStores() {
           </div>
         )}
 
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Store Optimization Features</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <RefreshCw className="mr-2 h-5 w-5" />
-                  AI-Powered Analysis
-                  <Badge variant="default" className="ml-2 bg-green-100 text-green-800">Active</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Get comprehensive AI analysis of your connected Shopify stores.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• Detailed performance scoring (Design, Products, SEO, Trust)</li>
-                  <li>• AI-powered improvement suggestions</li>
-                  <li>• Store intelligence and competitor analysis</li>
-                  <li>• Real-time data from Shopify API</li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Store className="mr-2 h-5 w-5" />
-                  Shopify Direct Integration
-                  <Badge variant="default" className="ml-2 bg-green-100 text-green-800">Active</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Connect directly to your Shopify store with OAuth authentication.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• Secure OAuth connection to Shopify</li>
-                  <li>• Real-time product and store data access</li>
-                  <li>• Automatic analysis scheduling</li>
-                  <li>• Advanced store intelligence insights</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {/* Shopify Connection Dialog */}
+        <Dialog open={isShopifyDialogOpen} onOpenChange={setIsShopifyDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Connect Your Shopify Store</DialogTitle>
+              <CardDescription>
+                Enter your Shopify store domain and you'll be redirected to authorize the connection.
+              </CardDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="shopifyDomain">Shopify Store Domain</Label>
+                <Input
+                  id="shopifyDomain"
+                  value={shopifyDomain}
+                  onChange={(e) => setShopifyDomain(e.target.value)}
+                  placeholder="i10jxn-aa.myshopify.com"
+                  className="mt-1"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Enter your store's .myshopify.com domain or custom domain
+                </p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsShopifyDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConnectShopify}
+                  disabled={connectShopifyMutation.isPending}
+                >
+                  {connectShopifyMutation.isPending ? 'Connecting...' : 'Connect to Shopify'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Store Dialog */}
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Store</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Store Name</Label>
+                <Input
+                  id="name"
+                  value={newStore.name}
+                  onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
+                  placeholder="My Awesome Store"
+                />
+              </div>
+              <div>
+                <Label htmlFor="storeUrl">Store URL</Label>
+                <Input
+                  id="storeUrl"
+                  value={newStore.storeUrl}
+                  onChange={(e) => setNewStore({ ...newStore, storeUrl: e.target.value })}
+                  placeholder="https://mystore.myshopify.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Textarea
+                  id="description"
+                  value={newStore.description}
+                  onChange={(e) => setNewStore({ ...newStore, description: e.target.value })}
+                  placeholder="Brief description of your store..."
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddStore}
+                  disabled={createStoreMutation.isPending}
+                >
+                  {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
