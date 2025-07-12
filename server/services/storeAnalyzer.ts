@@ -54,6 +54,21 @@ export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalys
     if (!fetchSuccess || !html) {
       console.log("Direct fetch failed, creating analysis based on URL and domain");
       
+      // Check for existing analysis using URL-based fingerprint for fallback scenarios
+      const urlBasedContent = `FALLBACK_ANALYSIS:${storeUrl}`;
+      const fallbackFingerprint = createStoreFingerprint(urlBasedContent, storeUrl);
+      const changeResult = await hasStoreChanged(storeUrl, fallbackFingerprint.contentHash);
+      
+      if (!changeResult.hasChanged && changeResult.lastAnalysis) {
+        console.log(`Store URL unchanged since last analysis. Returning cached fallback results.`);
+        return {
+          ...changeResult.lastAnalysis.analysisData,
+          contentHash: fallbackFingerprint.contentHash
+        };
+      }
+      
+      console.log(`No previous fallback analysis found for URL. Running new analysis.`);
+      
       // Extract domain information for better analysis
       const url = new URL(storeUrl);
       const domain = url.hostname;
@@ -100,8 +115,6 @@ Please provide realistic scoring based on Shopify best practices and common opti
 
       console.log(`📷 [Fallback] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
 
-      // Create content hash for fallback case
-      const fallbackFingerprint = createStoreFingerprint(analysisData.storeContent, storeUrl);
       return {
         ...analysis,
         screenshot: screenshotData,
@@ -161,7 +174,19 @@ Please provide realistic scoring based on Shopify best practices and common opti
   } catch (error) {
     console.error("Shopify store analysis failed:", error);
     
-    // Fallback: Create analysis based on URL only
+    // Fallback: Create analysis based on URL only with change detection
+    const errorContent = `ERROR_FALLBACK_ANALYSIS:${storeUrl}`;
+    const errorFingerprint = createStoreFingerprint(errorContent, storeUrl);
+    const errorChangeResult = await hasStoreChanged(storeUrl, errorFingerprint.contentHash);
+    
+    if (!errorChangeResult.hasChanged && errorChangeResult.lastAnalysis) {
+      console.log(`Store URL unchanged since last error analysis. Returning cached error results.`);
+      return {
+        ...errorChangeResult.lastAnalysis.analysisData,
+        contentHash: errorFingerprint.contentHash
+      };
+    }
+    
     const analysisData: StoreAnalysisData = {
       storeContent: `Store URL: ${storeUrl}. This is a Shopify store that requires analysis based on URL structure and common e-commerce patterns due to access restrictions.`,
       storeType: 'shopify',
@@ -179,8 +204,6 @@ Please provide realistic scoring based on Shopify best practices and common opti
 
     console.log(`📷 [Error] Screenshot data: ${screenshotData ? 'EXISTS (' + Math.round(screenshotData.length / 1024) + 'KB)' : 'NULL'}`);
 
-    // Create content hash for error fallback case
-    const errorFingerprint = createStoreFingerprint(analysisData.storeContent, storeUrl);
     return {
       ...analysis,
       screenshot: screenshotData,
