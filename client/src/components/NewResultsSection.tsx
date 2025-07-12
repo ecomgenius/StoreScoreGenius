@@ -114,9 +114,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [animatedScore, setAnimatedScore] = useState(0);
 
-  console.log("NewResultsSection received data:", analysisResult);
-  console.log("Analysis strengths:", analysisResult.strengths);
-  console.log("Design analysis:", analysisResult.designAnalysis);
+  // console.log("NewResultsSection received data:", analysisResult);
 
   useEffect(() => {
     const timer = setTimeout(() => {

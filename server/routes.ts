@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ================ STORE ANALYSIS ROUTES ================
   
   // Store analysis endpoint - Allow guests but give better features to authenticated users
-  app.post("/api/analyze-store", async (req: Request, res: Response) => {
+  app.post("/api/analyze-store", authenticateUser, async (req: Request, res: Response) => {
     try {
       console.log("Analysis request received:", req.body);
       
@@ -264,6 +264,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("Analysis completed successfully");
+      console.log("User info:", req.user ? `User ID: ${req.user.id}` : "Guest user");
+      console.log("Stored analysis:", storedAnalysis);
+      console.log("Sending response:", JSON.stringify(storedAnalysis, null, 2));
       res.json(storedAnalysis);
       
     } catch (error) {

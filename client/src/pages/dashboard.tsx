@@ -23,8 +23,7 @@ export default function Dashboard() {
       return apiRequest('POST', '/api/analyze-store', data);
     },
     onSuccess: (data) => {
-      console.log("Analysis result received:", data);
-      console.log("Analysis data structure:", JSON.stringify(data, null, 2));
+      console.log("✅ Dashboard received analysis result:", data);
       setAnalysisResult(data);
       setIsAnalyzing(false);
       toast({
