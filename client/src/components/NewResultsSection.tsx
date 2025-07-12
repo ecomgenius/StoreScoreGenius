@@ -187,7 +187,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
               <h3 className="text-lg font-semibold text-gray-900">What's Working Well</h3>
             </div>
             <ul className="space-y-2">
-              {analysisResult.strengths.map((strength, index) => (
+              {(analysisResult.strengths || []).map((strength, index) => (
                 <li key={index} className="text-sm text-gray-600 flex items-start">
                   <span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
                   {strength}
@@ -203,7 +203,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
               <h3 className="text-lg font-semibold text-gray-900">Needs Improvement</h3>
             </div>
             <ul className="space-y-2">
-              {analysisResult.warnings.map((warning, index) => (
+              {(analysisResult.warnings || []).map((warning, index) => (
                 <li key={index} className="text-sm text-gray-600 flex items-start">
                   <span className="w-2 h-2 bg-yellow-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
                   {warning}
@@ -219,7 +219,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
               <h3 className="text-lg font-semibold text-gray-900">Critical Issues</h3>
             </div>
             <ul className="space-y-2">
-              {analysisResult.critical.map((critical, index) => (
+              {(analysisResult.critical || []).map((critical, index) => (
                 <li key={index} className="text-sm text-gray-600 flex items-start">
                   <span className="w-2 h-2 bg-red-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
                   {critical}
@@ -484,7 +484,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {analysisResult.suggestions.map((suggestion, index) => (
+          {(analysisResult.suggestions || []).map((suggestion, index) => (
             <div key={index} className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center">
@@ -515,7 +515,7 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
               <TrendingUp className="w-12 h-12 text-purple-600 mx-auto mb-3" />
               <h4 className="text-lg font-bold text-gray-900 mb-2">See All Recommendations</h4>
               <p className="text-gray-600 text-sm mb-4">
-                Get {analysisResult.suggestions.length - 1}+ more personalized AI recommendations.
+                Get {(analysisResult.suggestions?.length || 1) - 1}+ more personalized AI recommendations.
               </p>
               <Button 
                 onClick={() => setIsAuthModalOpen(true)}
