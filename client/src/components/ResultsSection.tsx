@@ -15,6 +15,20 @@ interface ResultsSectionProps {
       category: 'design' | 'catalog' | 'trust' | 'performance';
     }>;
     summary: string;
+    screenshot?: string;
+    storeRecap: {
+      mainCategories: Array<{
+        name: string;
+        viralScore: number;
+        demandScore: number;
+        description: string;
+      }>;
+      storeSize: 'small' | 'medium' | 'large' | 'enterprise';
+      estimatedProducts: string;
+      targetAudience: string;
+      businessModel: string;
+      competitiveAdvantage: string;
+    };
   };
 }
 
@@ -163,6 +177,92 @@ export default function ResultsSection({ analysisResult }: ResultsSectionProps) 
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Store Screenshot */}
+        {analysisResult.screenshot && (
+          <div className="mb-16">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <Smartphone className="text-primary mr-3" />
+              Store Preview
+            </h3>
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-md mx-auto">
+              <img 
+                src={`data:image/jpeg;base64,${analysisResult.screenshot}`}
+                alt="Store Screenshot"
+                className="w-full h-auto"
+                style={{ maxHeight: '400px', objectFit: 'contain' }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Store Recap */}
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <Star className="text-accent mr-3" />
+            Store Intelligence Recap
+          </h3>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Store Info */}
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-4">Store Overview</h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Store Size:</span>
+                    <span className="font-medium capitalize">{analysisResult.storeRecap.storeSize}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Est. Products:</span>
+                    <span className="font-medium">{analysisResult.storeRecap.estimatedProducts}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Target Audience:</span>
+                    <span className="font-medium">{analysisResult.storeRecap.targetAudience}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Business Model:</span>
+                    <span className="font-medium">{analysisResult.storeRecap.businessModel}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-3">Competitive Advantage</h4>
+                <p className="text-gray-600">{analysisResult.storeRecap.competitiveAdvantage}</p>
+              </div>
+            </div>
+
+            {/* Product Categories */}
+            <div>
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                  <Tag className="mr-2" />
+                  Main Product Categories
+                </h4>
+                <div className="space-y-4">
+                  {analysisResult.storeRecap.mainCategories.map((category, index) => (
+                    <div key={index} className="border-l-4 border-primary pl-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h5 className="font-medium text-gray-900">{category.name}</h5>
+                        <div className="flex space-x-2">
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                            Viral: {category.viralScore}/10
+                          </span>
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                            Demand: {category.demandScore}/10
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600">{category.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

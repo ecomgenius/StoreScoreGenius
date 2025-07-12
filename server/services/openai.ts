@@ -51,7 +51,7 @@ Base your analysis on:
 - Standard platform capabilities and limitations
 
 Provide analysis in JSON format with:
-1. Scores (40-85 range) for:
+1. scores: Object with (40-85 range) for:
    - overallScore: Overall store performance estimate (average of all scores)
    - designScore: Visual design, layout, branding potential (50-80 typical for ${data.storeType})
    - catalogScore: Product variety, descriptions, pricing optimization (45-75 typical)
@@ -66,7 +66,19 @@ Provide analysis in JSON format with:
 
 3. summary: 1-2 sentence overall assessment focusing on ${data.storeType} optimization opportunities
 
-Remember: Every functioning e-commerce store has some strengths. Provide constructive, realistic analysis that acknowledges both strengths and improvement areas. Focus on platform-specific optimizations.
+4. storeRecap: Object with detailed store analysis:
+   - mainCategories: Array of 2-3 main product categories, each with:
+     * name: Category name (e.g., "Home & Garden", "Pet Supplies", "Electronics")
+     * viralScore: 1-10 score for trending/viral potential of this category
+     * demandScore: 1-10 score for market demand and search volume
+     * description: Brief explanation of the category's market position
+   - storeSize: One of 'small', 'medium', 'large', 'enterprise'
+   - estimatedProducts: Estimate like "50-100 products", "500+ products", etc.
+   - targetAudience: Primary customer demographic
+   - businessModel: Brief description (B2C, B2B, marketplace, etc.)
+   - competitiveAdvantage: Key differentiator or strength
+
+Remember: Provide realistic, data-driven insights. Analyze categories based on current market trends and demand patterns. Focus on actionable business intelligence.
 `;
 
     const response = await openai.chat.completions.create({
@@ -178,7 +190,41 @@ Remember: Every functioning e-commerce store has some strengths. Provide constru
           category: "design"
         }
       ],
-      summary: result.summary || `This ${data.storeType} store shows good potential with an overall score of ${overallScore}. Focus on the suggested improvements to maximize conversion rates and customer satisfaction.`
+      summary: result.summary || `This ${data.storeType} store shows good potential with an overall score of ${overallScore}. Focus on the suggested improvements to maximize conversion rates and customer satisfaction.`,
+      storeRecap: result.storeRecap || {
+        mainCategories: data.storeType === 'shopify' ? [
+          {
+            name: "General Retail",
+            viralScore: 5,
+            demandScore: 6,
+            description: "Mixed product categories with moderate market demand"
+          },
+          {
+            name: "Consumer Goods",
+            viralScore: 6,
+            demandScore: 7,
+            description: "Everyday products with steady consumer interest"
+          }
+        ] : [
+          {
+            name: "Marketplace Items",
+            viralScore: 4,
+            demandScore: 6,
+            description: "Various marketplace products with standard demand"
+          },
+          {
+            name: "Secondary Market",
+            viralScore: 5,
+            demandScore: 5,
+            description: "Pre-owned and discounted items market"
+          }
+        ],
+        storeSize: "medium",
+        estimatedProducts: data.storeType === 'shopify' ? "100-500 products" : "50-200 listings",
+        targetAudience: "General consumers",
+        businessModel: data.storeType === 'shopify' ? "Direct-to-consumer retail" : "Marketplace selling",
+        competitiveAdvantage: data.storeType === 'shopify' ? "Brand control and customer experience" : "Established marketplace presence"
+      }
     };
   } catch (error) {
     console.error("OpenAI analysis failed:", error);

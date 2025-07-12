@@ -55,4 +55,18 @@ export interface StoreAnalysisResult {
     category: 'design' | 'catalog' | 'trust' | 'performance';
   }>;
   summary: string;
+  screenshot?: string; // Base64 encoded screenshot
+  storeRecap: {
+    mainCategories: Array<{
+      name: string;
+      viralScore: number; // 1-10 scale
+      demandScore: number; // 1-10 scale
+      description: string;
+    }>;
+    storeSize: 'small' | 'medium' | 'large' | 'enterprise';
+    estimatedProducts: string;
+    targetAudience: string;
+    businessModel: string;
+    competitiveAdvantage: string;
+  };
 }

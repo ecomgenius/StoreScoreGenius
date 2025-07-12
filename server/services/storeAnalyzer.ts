@@ -1,5 +1,6 @@
 import { analyzeStoreWithAI, type StoreAnalysisData } from './openai';
 import type { StoreAnalysisResult } from '@shared/schema';
+import { captureStoreScreenshot } from './screenshotService';
 
 export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalysisResult> {
   try {
@@ -84,7 +85,20 @@ Please provide realistic scoring based on Shopify best practices and common opti
         storeType: 'shopify',
         storeUrl
       };
-      return await analyzeStoreWithAI(analysisData);
+      
+      // Capture screenshot in parallel with AI analysis for fallback case  
+      const [analysisResult, screenshot] = await Promise.allSettled([
+        analyzeStoreWithAI(analysisData),
+        captureStoreScreenshot(storeUrl)
+      ]);
+
+      const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
+      const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+      return {
+        ...analysis,
+        screenshot: screenshotData
+      };
     }
     
     // Extract meaningful content from HTML
@@ -106,7 +120,19 @@ Please provide realistic scoring based on Shopify best practices and common opti
       storeUrl
     };
 
-    return await analyzeStoreWithAI(analysisData);
+    // Capture screenshot in parallel with AI analysis
+    const [analysisResult, screenshot] = await Promise.allSettled([
+      analyzeStoreWithAI(analysisData),
+      captureStoreScreenshot(storeUrl)
+    ]);
+
+    const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
+    const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+    return {
+      ...analysis,
+      screenshot: screenshotData
+    };
   } catch (error) {
     console.error("Shopify store analysis failed:", error);
     
@@ -117,7 +143,19 @@ Please provide realistic scoring based on Shopify best practices and common opti
       storeUrl
     };
     
-    return await analyzeStoreWithAI(analysisData);
+    // Try screenshot capture even if content fetch failed
+    const [analysisResult, screenshot] = await Promise.allSettled([
+      analyzeStoreWithAI(analysisData),
+      captureStoreScreenshot(storeUrl)
+    ]);
+
+    const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
+    const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+    return {
+      ...analysis,
+      screenshot: screenshotData
+    };
   }
 }
 
@@ -203,7 +241,20 @@ Please provide realistic scoring based on eBay marketplace best practices and co
         storeType: 'ebay',
         ebayUsername: username
       };
-      return await analyzeStoreWithAI(analysisData);
+      
+      // Capture screenshot in parallel with AI analysis for eBay fallback
+      const [analysisResult, screenshot] = await Promise.allSettled([
+        analyzeStoreWithAI(analysisData),
+        captureStoreScreenshot(storeUrl)
+      ]);
+
+      const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
+      const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+      return {
+        ...analysis,
+        screenshot: screenshotData
+      };
     }
     
     // Extract meaningful content from HTML
@@ -225,7 +276,19 @@ Please provide realistic scoring based on eBay marketplace best practices and co
       ebayUsername: username
     };
 
-    return await analyzeStoreWithAI(analysisData);
+    // Capture screenshot in parallel with AI analysis for eBay success case
+    const [analysisResult, screenshot] = await Promise.allSettled([
+      analyzeStoreWithAI(analysisData),
+      captureStoreScreenshot(storeUrl)
+    ]);
+
+    const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
+    const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+    return {
+      ...analysis,
+      screenshot: screenshotData
+    };
   } catch (error) {
     console.error("eBay store analysis failed:", error);
     
@@ -236,6 +299,18 @@ Please provide realistic scoring based on eBay marketplace best practices and co
       ebayUsername: username
     };
     
-    return await analyzeStoreWithAI(analysisData);
+    // Try screenshot capture even if content fetch failed for eBay error case
+    const [analysisResult, screenshot] = await Promise.allSettled([
+      analyzeStoreWithAI(analysisData),
+      captureStoreScreenshot(`https://www.ebay.com/sch/i.html?_nkw=&_armrs=1&_ipg=&_from=&_ssn=${username}`)
+    ]);
+
+    const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : await analyzeStoreWithAI(analysisData);
+    const screenshotData = screenshot.status === 'fulfilled' ? screenshot.value : null;
+
+    return {
+      ...analysis,
+      screenshot: screenshotData
+    };
   }
 }
