@@ -43,10 +43,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
-      return await apiRequest("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/auth/register", data);
+      return await response.json();
     },
     onSuccess: () => {
       toast({
@@ -67,10 +65,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginData) => {
-      return await apiRequest("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/auth/login", data);
+      return await response.json();
     },
     onSuccess: () => {
       toast({

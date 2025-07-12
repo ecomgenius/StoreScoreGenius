@@ -28,11 +28,8 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
 
   const analyzeStoreMutation = useMutation({
     mutationFn: async (data: { storeUrl?: string; ebayUsername?: string; storeType: 'shopify' | 'ebay' }) => {
-      const response = await apiRequest('/api/analyze-store', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      return response;
+      const response = await apiRequest('POST', '/api/analyze-store', data);
+      return await response.json();
     },
     onSuccess: (result) => {
       // Invalidate credits if user is authenticated

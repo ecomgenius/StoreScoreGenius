@@ -20,10 +20,11 @@ export function useAuth() {
     queryKey: ['/api/auth/me'],
     queryFn: async () => {
       try {
-        const response = await apiRequest('/api/auth/me');
-        return response.user as User;
+        const response = await apiRequest('GET', '/api/auth/me');
+        const data = await response.json();
+        return data.user as User;
       } catch (error: any) {
-        if (error.status === 401) {
+        if (error.message?.includes('401')) {
           return null; // User not authenticated
         }
         throw error;
@@ -34,9 +35,7 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/auth/logout', {
-        method: 'POST',
-      });
+      return await apiRequest('POST', '/api/auth/logout');
     },
     onSuccess: () => {
       queryClient.setQueryData(['/api/auth/me'], null);
@@ -68,14 +67,16 @@ export function useCredits() {
   const { data: creditsData, isLoading, error } = useQuery({
     queryKey: ['/api/credits'],
     queryFn: async () => {
-      return await apiRequest('/api/credits');
+      const response = await apiRequest('GET', '/api/credits');
+      return await response.json();
     },
   });
 
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
     queryKey: ['/api/credits/transactions'],
     queryFn: async () => {
-      return await apiRequest('/api/credits/transactions');
+      const response = await apiRequest('GET', '/api/credits/transactions');
+      return await response.json();
     },
   });
 
@@ -94,16 +95,15 @@ export function useUserStores() {
   const { data: stores, isLoading, error } = useQuery({
     queryKey: ['/api/stores'],
     queryFn: async () => {
-      return await apiRequest('/api/stores');
+      const response = await apiRequest('GET', '/api/stores');
+      return await response.json();
     },
   });
 
   const createStoreMutation = useMutation({
     mutationFn: async (storeData: any) => {
-      return await apiRequest('/api/stores', {
-        method: 'POST',
-        body: JSON.stringify(storeData),
-      });
+      const response = await apiRequest('POST', '/api/stores', storeData);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
@@ -112,10 +112,8 @@ export function useUserStores() {
 
   const updateStoreMutation = useMutation({
     mutationFn: async ({ id, ...data }: any) => {
-      return await apiRequest(`/api/stores/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest('PUT', `/api/stores/${id}`, data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
@@ -124,9 +122,8 @@ export function useUserStores() {
 
   const deleteStoreMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/stores/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await apiRequest('DELETE', `/api/stores/${id}`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
@@ -150,7 +147,8 @@ export function useUserAnalyses() {
   const { data: analyses, isLoading, error } = useQuery({
     queryKey: ['/api/analyses'],
     queryFn: async () => {
-      return await apiRequest('/api/analyses');
+      const response = await apiRequest('GET', '/api/analyses');
+      return await response.json();
     },
   });
 
