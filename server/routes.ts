@@ -2,6 +2,7 @@ import express, { type Request, type Response, type Express } from "express";
 import { createServer, type Server } from "http";
 import cookieParser from "cookie-parser";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   analyzeStoreRequestSchema, 
   registerUserSchema, 
@@ -20,115 +21,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add cookie parser middleware
   app.use(cookieParser());
   
-  // Add authentication middleware to all routes
-  app.use(authenticateUser);
+  // Setup Replit Auth
+  await setupAuth(app);
 
   // ================ AUTHENTICATION ROUTES ================
   
-  // User registration
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
+  // Get current user with Replit Auth - handle both authenticated and unauthenticated requests
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const validatedData = registerUserSchema.parse(req.body);
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
-        return res.status(409).json({ error: "User already exists" });
+      // Check if user is authenticated without throwing error
+      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+        return res.status(401).json({ message: "Not authenticated" });
       }
-
-      // Create user
-      const user = await storage.createUser({
-        email: validatedData.email,
-        passwordHash: validatedData.password, // Will be hashed in storage
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-      });
-
-      // Create session
-      const session = await storage.createSession(user.id);
-
-      // Set session cookie
-      res.cookie('sessionId', session.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        sameSite: 'lax'
-      });
-
-      // Return user data without password
-      const { passwordHash, ...userWithoutPassword } = user;
-      res.status(201).json({ user: userWithoutPassword, session: session.id });
       
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(400).json({ 
-        error: "Registration failed", 
-        details: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
-  });
-
-  // User login
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
-    try {
-      const validatedData = loginUserSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       
-      const user = await storage.validateUserCredentials(validatedData.email, validatedData.password);
       if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(404).json({ message: "User not found" });
       }
-
-      // Create session
-      const session = await storage.createSession(user.id);
-
-      // Set session cookie
-      res.cookie('sessionId', session.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        sameSite: 'lax'
-      });
-
-      // Return user data without password
-      const { passwordHash, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword, session: session.id });
       
+      res.json(user);
     } catch (error) {
-      console.error("Login error:", error);
-      res.status(400).json({ 
-        error: "Login failed", 
-        details: error instanceof Error ? error.message : "Unknown error" 
-      });
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
-  // User logout
-  app.post("/api/auth/logout", requireAuth, async (req: Request, res: Response) => {
+  // Legacy auth route compatibility
+  app.get("/api/auth/me", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const sessionId = req.cookies?.sessionId;
-      if (sessionId) {
-        await storage.deleteSession(sessionId);
-        res.clearCookie('sessionId');
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
       }
-      res.json({ message: "Logged out successfully" });
-    } catch (error) {
-      console.error("Logout error:", error);
-      res.status(500).json({ error: "Logout failed" });
-    }
-  });
 
-  // Get current user
-  app.get("/api/auth/me", requireAuth, async (req: Request, res: Response) => {
-    const { passwordHash, ...userWithoutPassword } = req.user!;
-    res.json({ user: userWithoutPassword });
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isAdmin: user.isAdmin,
+          aiCredits: user.aiCredits,
+          subscriptionStatus: user.subscriptionStatus,
+        }
+      });
+    } catch (error: any) {
+      console.error("Get user error:", error);
+      res.status(500).json({ error: "Failed to fetch user data" });
+    }
   });
 
   // ================ USER STORES ROUTES ================
   
   // Get user stores
-  app.get("/api/stores", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/stores", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const stores = await storage.getUserStores(req.user!.id);
+      const userId = req.user.claims.sub;
+      const stores = await storage.getUserStores(userId);
       res.json(stores);
     } catch (error) {
       console.error("Error fetching user stores:", error);
@@ -137,12 +89,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create user store
-  app.post("/api/stores", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/stores", isAuthenticated, async (req: any, res: Response) => {
     try {
       const validatedData = createUserStoreSchema.parse(req.body);
+      const userId = req.user.claims.sub;
       
       const store = await storage.createUserStore({
-        userId: req.user!.id,
+        userId: userId,
         name: validatedData.name,
         storeUrl: validatedData.storeUrl,
         storeType: validatedData.storeType,
@@ -160,12 +113,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user store
-  app.put("/api/stores/:id", requireAuth, async (req: Request, res: Response) => {
+  app.put("/api/stores/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
       const store = await storage.getUserStore(id);
       
-      if (!store || store.userId !== req.user!.id) {
+      if (!store || store.userId !== userId) {
         return res.status(404).json({ error: "Store not found" });
       }
 
@@ -180,12 +134,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete user store
-  app.delete("/api/stores/:id", requireAuth, async (req: Request, res: Response) => {
+  app.delete("/api/stores/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
       const store = await storage.getUserStore(id);
       
-      if (!store || store.userId !== req.user!.id) {
+      if (!store || store.userId !== userId) {
         return res.status(404).json({ error: "Store not found" });
       }
 

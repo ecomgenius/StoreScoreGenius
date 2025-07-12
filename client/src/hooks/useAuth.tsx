@@ -1,97 +1,33 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiRequest } from '@/lib/queryClient';
+import { useQuery } from "@tanstack/react-query";
 
-export interface User {
-  id: number;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  isAdmin: boolean;
-  credits: number;
-  subscriptionStatus: 'trial' | 'active' | 'canceled' | 'past_due' | 'incomplete';
-  trialEndsAt: string | null;
-  createdAt: string;
-}
+export function useAuth() {
+  const { data: user, isLoading, error } = useQuery({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const response = await fetch('/api/auth/user', {
+        credentials: 'include'
+      });
+      
+      if (response.status === 401) {
+        // User is not authenticated, return null instead of throwing
+        return null;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+  });
 
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
-  logout: () => Promise<void>;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const response = await apiRequest('GET', '/api/auth/me');
-      const userData = await response.json();
-      setUser(userData.user);
-    } catch (error) {
-      // Not authenticated, which is fine
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    const response = await apiRequest('POST', '/api/auth/login', { email, password });
-    const userData = await response.json();
-    setUser(userData.user);
-  };
-
-  const register = async (email: string, password: string, name?: string) => {
-    const [firstName, lastName] = (name || '').split(' ');
-    const response = await apiRequest('POST', '/api/auth/register', { 
-      email, 
-      password, 
-      firstName: firstName || 'User',
-      lastName: lastName || 'Name'
-    });
-    const userData = await response.json();
-    setUser(userData.user);
-  };
-
-  const logout = async () => {
-    try {
-      await apiRequest('POST', '/api/auth/logout', {});
-    } finally {
-      setUser(null);
-    }
-  };
-
-  const value = {
+  return {
     user,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
     isLoading,
+    isAuthenticated: !!user,
   };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+}

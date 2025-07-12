@@ -123,6 +123,9 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Implemented Real-time Dashboard**: Added dynamic credit tracking, analysis counting, and store management
 - **Completed SaaS Functionality**: Full user account system with credit deduction and transaction logging
 - **Enhanced User Experience**: Dashboard now shows live statistics with automatic refresh after analyses
+- **Migrated to Replit Auth**: Replaced custom authentication with Replit's OpenID Connect for better security and user experience
+- **Updated Database Schema**: Modified users table to support Replit Auth with profile images and removed password fields
+- **Simplified Frontend Auth**: Updated useAuth hook to work with Replit's authentication flow
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled

@@ -2,32 +2,38 @@ import { pgTable, text, serial, integer, jsonb, timestamp, boolean, varchar, ind
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// Users table for Replit Auth
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  email: text("email").unique().notNull(),
-  passwordHash: text("password_hash").notNull(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
+  id: varchar("id").primaryKey().notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
   isAdmin: boolean("is_admin").default(false).notNull(),
   aiCredits: integer("ai_credits").default(25).notNull(),
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionStatus: text("subscription_status").$type<'trial' | 'active' | 'canceled' | 'past_due' | 'incomplete'>().default('trial'),
   subscriptionId: text("subscription_id"),
   trialEndsAt: timestamp("trial_ends_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => {
-  return {
-    emailIdx: index("email_idx").on(table.email),
-    stripeCustomerIdx: index("stripe_customer_idx").on(table.stripeCustomerId),
-  };
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // User stores table
 export const userStores = pgTable("user_stores", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   storeUrl: text("store_url"),
   storeType: text("store_type").$type<'shopify' | 'ebay'>().notNull(),
@@ -46,7 +52,7 @@ export const userStores = pgTable("user_stores", {
 // Store analyses table (updated with user reference)
 export const storeAnalyses = pgTable("store_analyses", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  userId: varchar("user_id").references(() => users.id),
   userStoreId: integer("user_store_id").references(() => userStores.id),
   storeUrl: text("store_url"),
   storeType: text("store_type").$type<'shopify' | 'ebay'>().notNull(),
@@ -84,7 +90,7 @@ export const storeAnalyses = pgTable("store_analyses", {
 // Credit transactions table
 export const creditTransactions = pgTable("credit_transactions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   type: text("type").$type<'purchase' | 'usage' | 'refund' | 'bonus'>().notNull(),
   amount: integer("amount").notNull(), // positive for purchase/bonus, negative for usage
   description: text("description").notNull(),
@@ -113,9 +119,17 @@ export const userSessions = pgTable("user_sessions", {
 // Schema validation
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
-  passwordHash: true,
   firstName: true,
   lastName: true,
+  profileImageUrl: true,
+});
+
+export const upsertUserSchema = createInsertSchema(users).pick({
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  profileImageUrl: true,
 });
 
 export const insertUserStoreSchema = createInsertSchema(userStores).pick({
@@ -197,6 +211,7 @@ export const createUserStoreSchema = z.object({
 
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type InsertUserStore = z.infer<typeof insertUserStoreSchema>;
 export type InsertStoreAnalysis = z.infer<typeof insertStoreAnalysisSchema>;
 export type StoreAnalysis = typeof storeAnalyses.$inferSelect;

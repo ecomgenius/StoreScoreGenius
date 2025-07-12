@@ -1,15 +1,12 @@
-import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, User, Settings, LogOut, CreditCard, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import AuthModal from "./AuthModal";
 
 export default function Header() {
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, isAuthenticated, logout, isLoggingOut } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -89,9 +86,9 @@ export default function Header() {
                         Settings
                       </DropdownMenuItem>
                     </Link>
-                    <DropdownMenuItem onClick={logout} disabled={isLoggingOut}>
+                    <DropdownMenuItem onClick={() => window.location.href = '/api/logout'}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      {isLoggingOut ? "Signing out..." : "Sign out"}
+                      Sign out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -99,17 +96,11 @@ export default function Header() {
             ) : (
               <>
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsAuthModalOpen(true)}
-                >
-                  Sign In
-                </Button>
-                <Button 
                   size="sm"
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => window.location.href = '/api/login'}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  Get Started
+                  Login with Replit
                 </Button>
               </>
             )}
@@ -117,10 +108,7 @@ export default function Header() {
         </div>
       </div>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-      />
+      {/* Replit Auth handles authentication flow */}
     </header>
   );
 }

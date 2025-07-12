@@ -8,6 +8,7 @@ import {
   type InsertStoreAnalysis,
   type User,
   type InsertUser,
+  type UpsertUser,
   type UserStore,
   type InsertUserStore,
   type CreditTransaction,
@@ -27,9 +28,12 @@ export interface IStorage {
   getRecentAnalyses(limit?: number): Promise<StoreAnalysis[]>;
   getUserAnalyses(userId: number, limit?: number): Promise<StoreAnalysis[]>;
   
-  // User management methods
-  createUser(userData: Omit<InsertUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<User>;
+  // User management methods (Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  // Legacy methods for compatibility
   getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(userData: Omit<InsertUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   validateUserCredentials(email: string, password: string): Promise<User | null>;
@@ -80,7 +84,28 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  // User management methods
+  // Replit Auth user methods
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Legacy user management methods
   async createUser(userData: Omit<InsertUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
     const hashedPassword = await bcrypt.hash(userData.passwordHash, 12);
     const userToInsert = {
