@@ -234,35 +234,22 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
       <div className="bg-white rounded-2xl p-8 shadow-lg relative">
         <h3 className="text-2xl font-bold text-gray-900 mb-8">Detailed Analysis</h3>
         
-        {/* Blur overlay for non-authenticated users */}
+        {/* Partial blur overlay for non-authenticated users */}
         {!isAuthenticated && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
-            <div className="text-center p-8 bg-white rounded-xl shadow-lg border max-w-md mx-4">
-              <Lock className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-              <h4 className="text-xl font-bold text-gray-900 mb-2">Unlock Full Analysis</h4>
-              <p className="text-gray-600 mb-4">
-                Sign up for free to see detailed insights, category breakdowns, and AI-powered recommendations for your store.
+          <div className="absolute inset-x-0 bottom-0 top-32 bg-gradient-to-t from-white via-white/95 to-transparent rounded-b-2xl flex items-end justify-center z-10 pb-8">
+            <div className="text-center p-6 bg-white rounded-xl shadow-lg border max-w-sm mx-4">
+              <Lock className="w-12 h-12 text-blue-600 mx-auto mb-3" />
+              <h4 className="text-lg font-bold text-gray-900 mb-2">See Full Details</h4>
+              <p className="text-gray-600 text-sm mb-4">
+                Sign up free to unlock all category metrics and detailed breakdowns.
               </p>
-              <div className="space-y-2 mb-6">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Eye className="w-4 h-4 mr-2 text-green-600" />
-                  Complete 6-category analysis
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <TrendingUp className="w-4 h-4 mr-2 text-green-600" />
-                  AI-powered recommendations
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Award className="w-4 h-4 mr-2 text-green-600" />
-                  Store intelligence insights
-                </div>
-              </div>
               <Button 
                 onClick={() => setIsAuthModalOpen(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Sign Up Free - See Full Analysis
+                Unlock Details
               </Button>
             </div>
           </div>
@@ -496,25 +483,6 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
           AI-Powered Recommendations
         </h3>
         
-        {/* Blur overlay for AI suggestions */}
-        {!isAuthenticated && (
-          <div className="absolute inset-0 bg-purple-50/90 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
-            <div className="text-center p-6 bg-white rounded-xl shadow-lg border max-w-sm mx-4">
-              <TrendingUp className="w-12 h-12 text-purple-600 mx-auto mb-3" />
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Premium Insights</h4>
-              <p className="text-gray-600 text-sm mb-4">
-                Get personalized AI recommendations to boost your store performance.
-              </p>
-              <Button 
-                onClick={() => setIsAuthModalOpen(true)}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                size="sm"
-              >
-                Unlock Recommendations
-              </Button>
-            </div>
-          </div>
-        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {analysisResult.suggestions.map((suggestion, index) => (
             <div key={index} className="bg-white rounded-xl p-6 shadow-sm">
@@ -539,6 +507,27 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
             </div>
           ))}
         </div>
+        
+        {/* Partial blur overlay for AI suggestions - shows first suggestion, blurs the rest */}
+        {!isAuthenticated && (
+          <div className="absolute inset-x-0 bottom-0 top-40 bg-gradient-to-t from-purple-50 via-purple-50/95 to-transparent rounded-b-2xl flex items-end justify-center z-10 pb-8">
+            <div className="text-center p-6 bg-white rounded-xl shadow-lg border max-w-sm mx-4">
+              <TrendingUp className="w-12 h-12 text-purple-600 mx-auto mb-3" />
+              <h4 className="text-lg font-bold text-gray-900 mb-2">See All Recommendations</h4>
+              <p className="text-gray-600 text-sm mb-4">
+                Get {analysisResult.suggestions.length - 1}+ more personalized AI recommendations.
+              </p>
+              <Button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Unlock All Recommendations
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Store Recap */}
@@ -548,21 +537,22 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
           Store Intelligence Recap
         </h3>
         
-        {/* Blur overlay for store recap */}
+        {/* Partial blur overlay for store recap - shows basic overview, blurs detailed insights */}
         {!isAuthenticated && (
-          <div className="absolute inset-0 bg-gray-100/90 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+          <div className="absolute inset-x-0 bottom-0 top-52 bg-gradient-to-t from-gray-100 via-gray-100/95 to-transparent rounded-b-2xl flex items-end justify-center z-10 pb-8">
             <div className="text-center p-6 bg-white rounded-xl shadow-lg border max-w-sm mx-4">
               <Award className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Business Intelligence</h4>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Complete Intelligence Report</h4>
               <p className="text-gray-600 text-sm mb-4">
-                Discover your store's competitive advantage and market positioning.
+                Unlock detailed competitive analysis, market positioning, and product category insights.
               </p>
               <Button 
                 onClick={() => setIsAuthModalOpen(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
               >
-                View Full Report
+                <UserPlus className="w-4 h-4 mr-2" />
+                View Full Intelligence Report
               </Button>
             </div>
           </div>
