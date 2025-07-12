@@ -187,13 +187,15 @@ export default function ResultsSection({ analysisResult }: ResultsSectionProps) 
               <Smartphone className="text-primary mr-3" />
               Store Preview
             </h3>
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-md mx-auto">
-              <img 
-                src={`data:image/svg+xml;base64,${analysisResult.screenshot}`}
-                alt="Store Screenshot"
-                className="w-full h-auto"
-                style={{ maxHeight: '400px', objectFit: 'contain' }}
-              />
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-md mx-auto border-2 border-gray-100">
+              <div className="p-4">
+                <div 
+                  className="w-full h-80 bg-gray-50 rounded-lg flex items-center justify-center"
+                  dangerouslySetInnerHTML={{ 
+                    __html: atob(analysisResult.screenshot || '') 
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
