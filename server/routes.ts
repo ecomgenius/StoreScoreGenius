@@ -467,7 +467,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store the userStoreId in the state if provided (for updating existing store)
       const stateWithStore = userStoreId ? `${state}:${userStoreId}` : state;
       
-      res.json({ authUrl: authUrl.replace(state, stateWithStore) });
+      const finalAuthUrl = authUrl.replace(state, stateWithStore);
+      
+      console.log('Debug - OAuth URL generation:', {
+        shopDomain: domain,
+        userId: req.user!.id,
+        authUrl: finalAuthUrl,
+        redirectUri: process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
+          : 'http://localhost:5000/api/shopify/callback'
+      });
+      
+      res.json({ authUrl: finalAuthUrl });
     } catch (error) {
       console.error("Error initiating Shopify OAuth:", error);
       res.status(500).json({ error: "Failed to initiate Shopify connection" });
@@ -477,9 +488,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Shopify OAuth callback
   app.get("/api/shopify/callback", async (req: Request, res: Response) => {
     try {
+      console.log('Debug - Shopify callback received:', req.query);
       const { code, state, shop } = req.query;
       
       if (!code || !state || !shop) {
+        console.log('Debug - Missing parameters:', { code: !!code, state: !!state, shop: !!shop });
         return res.status(400).send("Missing required parameters");
       }
       
