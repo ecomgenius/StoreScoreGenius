@@ -2,8 +2,11 @@ import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key" 
+  apiKey: process.env.OPENAI_API_KEY
 });
+
+// Add logging to verify API key
+console.log("OpenAI API Key configured:", process.env.OPENAI_API_KEY ? "Yes" : "No");
 
 export interface StoreAnalysisData {
   storeContent: string;
@@ -27,29 +30,40 @@ export async function analyzeStoreWithAI(data: StoreAnalysisData): Promise<{
   summary: string;
 }> {
   try {
+    console.log("Starting AI analysis for store type:", data.storeType);
+    console.log("Content length:", data.storeContent.length);
     const prompt = `
 Analyze this ${data.storeType} store and provide a comprehensive scoring and improvement analysis.
 
-Store Content:
+Store Information:
 ${data.storeContent}
+
+${data.storeUrl ? `Store URL: ${data.storeUrl}` : ''}
+${data.ebayUsername ? `eBay Username: ${data.ebayUsername}` : ''}
+
+Even if detailed content is not available, provide realistic analysis based on:
+- Platform type (${data.storeType})
+- Common ${data.storeType} best practices
+- General e-commerce optimization principles
+- URL structure analysis (if available)
 
 Provide analysis in JSON format with:
 1. Scores (0-100) for:
-   - overallScore: Overall store performance
-   - designScore: Visual design, layout, branding
-   - catalogScore: Product variety, descriptions, pricing
-   - trustScore: Reviews, policies, trust indicators
-   - performanceScore: Site speed, mobile responsiveness
+   - overallScore: Overall store performance estimate
+   - designScore: Visual design, layout, branding potential
+   - catalogScore: Product variety, descriptions, pricing optimization
+   - trustScore: Reviews, policies, trust indicators potential
+   - performanceScore: Site speed, mobile responsiveness expectations
 
-2. suggestions: Array of 4-6 specific improvement recommendations, each with:
+2. suggestions: Array of 5-6 specific improvement recommendations, each with:
    - title: Clear, actionable title
-   - description: Detailed explanation (50-100 words)
-   - impact: Expected improvement (e.g., "+15% conversion potential")
+   - description: Detailed explanation (50-100 words) focusing on ${data.storeType} best practices
+   - impact: Expected improvement (e.g., "+15% conversion potential", "+20% trust improvement")
    - category: One of 'design', 'catalog', 'trust', 'performance'
 
-3. summary: 1-2 sentence overall assessment
+3. summary: 1-2 sentence overall assessment focusing on ${data.storeType} optimization opportunities
 
-Focus on actionable insights that can drive sales and improve user experience. Be specific and data-driven in your recommendations.
+Provide realistic, actionable insights for ${data.storeType} stores that can drive sales and improve user experience. Focus on platform-specific optimizations and common improvement areas.
 `;
 
     const response = await openai.chat.completions.create({

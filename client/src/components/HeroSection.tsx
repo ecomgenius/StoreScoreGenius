@@ -10,9 +10,10 @@ import { ShoppingBag, ChartLine } from "lucide-react";
 interface HeroSectionProps {
   onAnalysisStart: () => void;
   onAnalysisComplete: (result: any) => void;
+  onAnalysisError?: () => void;
 }
 
-export default function HeroSection({ onAnalysisStart, onAnalysisComplete }: HeroSectionProps) {
+export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAnalysisError }: HeroSectionProps) {
   const [activeTab, setActiveTab] = useState<'shopify' | 'ebay'>('shopify');
   const [storeUrl, setStoreUrl] = useState('');
   const [ebayUsername, setEbayUsername] = useState('');
@@ -27,6 +28,10 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete }: Her
       onAnalysisComplete(result);
     },
     onError: (error: any) => {
+      // Reset to hero view when error occurs
+      if (onAnalysisError) {
+        onAnalysisError();
+      }
       toast({
         title: "Analysis Failed",
         description: error.message || "Failed to analyze store. Please try again.",

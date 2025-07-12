@@ -27,6 +27,11 @@ export default function Home() {
     }, 100);
   };
 
+  const handleAnalysisError = () => {
+    setCurrentView('hero');
+    setAnalysisResult(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -35,6 +40,7 @@ export default function Home() {
         <HeroSection 
           onAnalysisStart={handleAnalysisStart}
           onAnalysisComplete={handleAnalysisComplete}
+          onAnalysisError={handleAnalysisError}
         />
       )}
       

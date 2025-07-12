@@ -8,19 +8,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analyze store endpoint
   app.post("/api/analyze-store", async (req, res) => {
     try {
+      console.log("Analysis request received:", req.body);
       const requestData = analyzeStoreRequestSchema.parse(req.body);
+      console.log("Request validated:", requestData);
       
       let analysisResult;
       
       if (requestData.storeType === 'shopify' && requestData.storeUrl) {
+        console.log("Starting Shopify analysis for:", requestData.storeUrl);
         analysisResult = await analyzeShopifyStore(requestData.storeUrl);
       } else if (requestData.storeType === 'ebay' && requestData.ebayUsername) {
+        console.log("Starting eBay analysis for:", requestData.ebayUsername);
         analysisResult = await analyzeEbayStore(requestData.ebayUsername);
       } else {
         return res.status(400).json({ 
           message: "Invalid request: Store URL required for Shopify, username required for eBay" 
         });
       }
+      
+      console.log("Analysis completed successfully");
 
       // Store the analysis result
       const storeAnalysis = await storage.createStoreAnalysis({
