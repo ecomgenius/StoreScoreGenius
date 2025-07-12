@@ -1,5 +1,3 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
 import { 
   storeAnalyses, 
   users,
@@ -18,15 +16,9 @@ import {
 import { eq, desc, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { db } from "./db";
 
-// Initialize database connection
-const dbUrl = process.env.DATABASE_URL;
-let db: ReturnType<typeof drizzle> | null = null;
-
-if (dbUrl) {
-  const sql = neon(dbUrl);
-  db = drizzle(sql);
-}
+// Use the centralized database connection
 
 export interface IStorage {
   // Store analysis methods
@@ -63,27 +55,28 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  private db = db!;
 
   // Store analysis methods
   async getStoreAnalysis(id: number): Promise<StoreAnalysis | undefined> {
-    const result = await this.db.select().from(storeAnalyses).where(eq(storeAnalyses.id, id));
+    const result = await db.select().from(storeAnalyses).where(eq(storeAnalyses.id, id));
     return result[0];
   }
 
   async createStoreAnalysis(analysisData: Omit<InsertStoreAnalysis, 'id'>): Promise<StoreAnalysis> {
-    const result = await this.db.insert(storeAnalyses).values(analysisData).returning();
+    console.log("🔍 About to insert analysis data:", JSON.stringify(analysisData, null, 2));
+    const result = await db.insert(storeAnalyses).values(analysisData).returning();
+    console.log("✅ Database returned result:", JSON.stringify(result[0], null, 2));
     return result[0];
   }
 
   async getRecentAnalyses(limit: number = 10): Promise<StoreAnalysis[]> {
-    return await this.db.select().from(storeAnalyses)
+    return await db.select().from(storeAnalyses)
       .orderBy(desc(storeAnalyses.createdAt))
       .limit(limit);
   }
 
   async getUserAnalyses(userId: number, limit: number = 20): Promise<StoreAnalysis[]> {
-    return await this.db.select().from(storeAnalyses)
+    return await db.select().from(storeAnalyses)
       .where(eq(storeAnalyses.userId, userId))
       .orderBy(desc(storeAnalyses.createdAt))
       .limit(limit);
@@ -98,22 +91,22 @@ export class DatabaseStorage implements IStorage {
       trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
     };
     
-    const result = await this.db.insert(users).values(userToInsert).returning();
+    const result = await db.insert(users).values(userToInsert).returning();
     return result[0];
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.email, email));
+    const result = await db.select().from(users).where(eq(users.email, email));
     return result[0];
   }
 
   async getUserById(id: number): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.id, id));
+    const result = await db.select().from(users).where(eq(users.id, id));
     return result[0];
   }
 
   async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
-    const result = await this.db.update(users)
+    const result = await db.update(users)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
@@ -130,23 +123,23 @@ export class DatabaseStorage implements IStorage {
 
   // User stores methods
   async createUserStore(storeData: Omit<InsertUserStore, 'id' | 'createdAt' | 'updatedAt'>): Promise<UserStore> {
-    const result = await this.db.insert(userStores).values(storeData).returning();
+    const result = await db.insert(userStores).values(storeData).returning();
     return result[0];
   }
 
   async getUserStores(userId: number): Promise<UserStore[]> {
-    return await this.db.select().from(userStores)
+    return await db.select().from(userStores)
       .where(eq(userStores.userId, userId))
       .orderBy(desc(userStores.createdAt));
   }
 
   async getUserStore(id: number): Promise<UserStore | undefined> {
-    const result = await this.db.select().from(userStores).where(eq(userStores.id, id));
+    const result = await db.select().from(userStores).where(eq(userStores.id, id));
     return result[0];
   }
 
   async updateUserStore(id: number, updates: Partial<UserStore>): Promise<UserStore | undefined> {
-    const result = await this.db.update(userStores)
+    const result = await db.update(userStores)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(userStores.id, id))
       .returning();
@@ -154,7 +147,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserStore(id: number): Promise<boolean> {
-    const result = await this.db.delete(userStores).where(eq(userStores.id, id));
+    const result = await db.delete(userStores).where(eq(userStores.id, id));
     return result.rowCount > 0;
   }
 
@@ -172,7 +165,7 @@ export class DatabaseStorage implements IStorage {
     await this.updateUser(userId, { aiCredits: user.aiCredits - amount });
 
     // Record transaction
-    await this.db.insert(creditTransactions).values({
+    await db.insert(creditTransactions).values({
       userId,
       type: 'usage',
       amount: -amount,
@@ -191,7 +184,7 @@ export class DatabaseStorage implements IStorage {
     await this.updateUser(userId, { aiCredits: user.aiCredits + amount });
 
     // Record transaction
-    await this.db.insert(creditTransactions).values({
+    await db.insert(creditTransactions).values({
       userId,
       type: 'purchase',
       amount,
@@ -203,7 +196,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCreditTransactions(userId: number, limit: number = 50): Promise<CreditTransaction[]> {
-    return await this.db.select().from(creditTransactions)
+    return await db.select().from(creditTransactions)
       .where(eq(creditTransactions.userId, userId))
       .orderBy(desc(creditTransactions.createdAt))
       .limit(limit);
@@ -220,12 +213,12 @@ export class DatabaseStorage implements IStorage {
       expiresAt,
     };
 
-    const result = await this.db.insert(userSessions).values(session).returning();
+    const result = await db.insert(userSessions).values(session).returning();
     return result[0];
   }
 
   async getSession(sessionId: string): Promise<UserSession | undefined> {
-    const result = await this.db.select().from(userSessions)
+    const result = await db.select().from(userSessions)
       .where(and(
         eq(userSessions.id, sessionId),
         gt(userSessions.expiresAt, new Date())
@@ -234,12 +227,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteSession(sessionId: string): Promise<boolean> {
-    const result = await this.db.delete(userSessions).where(eq(userSessions.id, sessionId));
+    const result = await db.delete(userSessions).where(eq(userSessions.id, sessionId));
     return result.rowCount > 0;
   }
 
   async cleanExpiredSessions(): Promise<void> {
-    await this.db.delete(userSessions)
+    await db.delete(userSessions)
       .where(gt(new Date(), userSessions.expiresAt));
   }
 }
