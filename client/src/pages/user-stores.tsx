@@ -16,6 +16,8 @@ export default function UserStores() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isShopifyDialogOpen, setIsShopifyDialogOpen] = useState(false);
   const [shopifyDomain, setShopifyDomain] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [showInstructions, setShowInstructions] = useState(false);
   const [newStore, setNewStore] = useState({
     name: '',
     storeUrl: '',
@@ -102,15 +104,23 @@ export default function UserStores() {
   });
 
   const connectShopifyMutation = useMutation({
-    mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
-      apiRequest('POST', '/api/shopify/connect', data),
-    onSuccess: (data: { authUrl: string }) => {
-      window.location.href = data.authUrl;
+    mutationFn: (data: { shopDomain: string; accessToken: string; storeName?: string; userStoreId?: number }) => 
+      apiRequest('POST', '/api/shopify/connect-token', data),
+    onSuccess: (data: { shopInfo: any }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
+      setIsShopifyDialogOpen(false);
+      setShopifyDomain('');
+      setAccessToken('');
+      setShowInstructions(false);
+      toast({
+        title: "Store Connected!",
+        description: `${data.shopInfo.name} has been successfully connected to your account.`,
+      });
     },
     onError: (error: any) => {
       toast({
-        title: "Connection Error",
-        description: error.message || "Failed to initiate Shopify connection.",
+        title: "Connection Failed",
+        description: error.message || "Failed to connect Shopify store. Please check your access token and try again.",
         variant: "destructive",
       });
     },
@@ -154,7 +164,7 @@ export default function UserStores() {
     }
   };
 
-  const handleConnectShopify = () => {
+  const handleGetInstructions = () => {
     if (!shopifyDomain) {
       toast({
         title: "Missing Domain",
@@ -163,7 +173,22 @@ export default function UserStores() {
       });
       return;
     }
-    connectShopifyMutation.mutate({ shopDomain: shopifyDomain });
+    setShowInstructions(true);
+  };
+
+  const handleConnectShopify = () => {
+    if (!shopifyDomain || !accessToken) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both your store domain and access token.",
+        variant: "destructive",
+      });
+      return;
+    }
+    connectShopifyMutation.mutate({ 
+      shopDomain: shopifyDomain,
+      accessToken: accessToken 
+    });
   };
 
   const handleReconnectStore = (storeId: number) => {
@@ -247,41 +272,96 @@ export default function UserStores() {
                     Connect Shopify
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Connect Shopify Store</DialogTitle>
+                    <DialogTitle>Connect Your Shopify Store</DialogTitle>
                     <CardDescription>
-                      Connect your Shopify store for automatic analysis and AI-powered optimizations.
+                      Connect your Shopify store using a custom app for secure API access and real-time analysis.
                     </CardDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div>
                       <Label htmlFor="shopifyDomain">Shopify Store Domain</Label>
                       <Input
                         id="shopifyDomain"
                         value={shopifyDomain}
                         onChange={(e) => setShopifyDomain(e.target.value)}
-                        placeholder="mystore.myshopify.com"
+                        placeholder="i10jxn-aa.myshopify.com"
                         className="mt-1"
                       />
                       <p className="text-sm text-gray-500 mt-1">
                         Enter your store's .myshopify.com domain or custom domain
                       </p>
                     </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsShopifyDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleConnectShopify}
-                        disabled={connectShopifyMutation.isPending}
-                      >
-                        {connectShopifyMutation.isPending ? 'Connecting...' : 'Connect to Shopify'}
-                      </Button>
-                    </div>
+
+                    {!showInstructions ? (
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsShopifyDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button onClick={handleGetInstructions}>
+                          Next: Get Setup Instructions
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h4 className="font-semibold text-blue-900 mb-3">Setup Instructions</h4>
+                          <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                            <li>Go to your Shopify Admin → <strong>Settings</strong> → <strong>Apps and sales channels</strong></li>
+                            <li>Click <strong>"Develop apps for your store"</strong></li>
+                            <li>If prompted, click <strong>"Allow custom app development"</strong></li>
+                            <li>Click <strong>"Create an app"</strong> and give it a name like "StoreScore Analytics"</li>
+                            <li>Go to <strong>"Configuration"</strong> → <strong>"Admin API integration"</strong></li>
+                            <li>Select these scopes: <code>read_products</code>, <code>read_orders</code>, <code>read_themes</code></li>
+                            <li>Click <strong>"Save"</strong> then go to <strong>"API credentials"</strong></li>
+                            <li>Click <strong>"Install app"</strong> then copy the <strong>"Admin API access token"</strong></li>
+                          </ol>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="accessToken">Admin API Access Token</Label>
+                          <Input
+                            id="accessToken"
+                            type="password"
+                            value={accessToken}
+                            onChange={(e) => setAccessToken(e.target.value)}
+                            placeholder="shpat_..."
+                            className="mt-1"
+                          />
+                          <p className="text-sm text-gray-500 mt-1">
+                            Paste the Admin API access token from your custom app
+                          </p>
+                        </div>
+
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setShowInstructions(false);
+                              setAccessToken('');
+                            }}
+                          >
+                            Back
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsShopifyDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleConnectShopify}
+                            disabled={connectShopifyMutation.isPending || !accessToken}
+                          >
+                            {connectShopifyMutation.isPending ? 'Connecting...' : 'Connect Store'}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>

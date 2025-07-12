@@ -446,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================ SHOPIFY INTEGRATION ROUTES ================
   
-  // Initiate Shopify OAuth
+  // Initiate Shopify connection (Custom App approach)
   app.post("/api/shopify/connect", requireAuth, async (req: Request, res: Response) => {
     try {
       const { shopDomain, userStoreId } = req.body;
@@ -461,16 +461,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid shop domain format" });
       }
       
-      // Generate OAuth URL
-      const { authUrl, state } = generateShopifyAuthUrl(domain, req.user!.id);
+      // For SaaS applications, we guide users to create custom apps
+      // This is the correct approach for any store to connect
+      const customAppInstructions = {
+        message: "To connect your Shopify store, please create a custom app",
+        instructions: [
+          "Go to your Shopify Admin → Settings → Apps and sales channels",
+          "Click 'Develop apps for your store'",
+          "Click 'Create an app'",
+          "Configure API access with these scopes: read_products, read_orders, read_themes",
+          "Copy the Admin API access token and paste it in the next step"
+        ],
+        requiredScopes: ["read_products", "read_orders", "read_themes", "read_content"],
+        needsManualSetup: true
+      };
       
-      // Store the userStoreId in the state if provided (for updating existing store)
-      const stateWithStore = userStoreId ? `${state}:${userStoreId}` : state;
-      
-      res.json({ authUrl: authUrl.replace(state, stateWithStore) });
+      res.json(customAppInstructions);
     } catch (error) {
-      console.error("Error initiating Shopify OAuth:", error);
-      res.status(500).json({ error: "Failed to initiate Shopify connection" });
+      console.error("Error with Shopify connection:", error);
+      res.status(500).json({ error: "Failed to process Shopify connection" });
     }
   });
   
