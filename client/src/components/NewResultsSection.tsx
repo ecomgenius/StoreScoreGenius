@@ -12,8 +12,14 @@ import {
   Star,
   TrendingUp,
   Users,
-  Award
+  Award,
+  Lock,
+  Eye,
+  UserPlus
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import AuthModal from "./AuthModal";
 
 interface NewResultsSectionProps {
   analysisResult: {
@@ -104,6 +110,8 @@ interface NewResultsSectionProps {
 }
 
 export default function NewResultsSection({ analysisResult }: NewResultsSectionProps) {
+  const { isAuthenticated } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [animatedScore, setAnimatedScore] = useState(0);
 
   useEffect(() => {
@@ -223,8 +231,42 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
       </div>
 
       {/* Detailed Category Scores */}
-      <div className="bg-white rounded-2xl p-8 shadow-lg">
+      <div className="bg-white rounded-2xl p-8 shadow-lg relative">
         <h3 className="text-2xl font-bold text-gray-900 mb-8">Detailed Analysis</h3>
+        
+        {/* Blur overlay for non-authenticated users */}
+        {!isAuthenticated && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+            <div className="text-center p-8 bg-white rounded-xl shadow-lg border max-w-md mx-4">
+              <Lock className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Unlock Full Analysis</h4>
+              <p className="text-gray-600 mb-4">
+                Sign up for free to see detailed insights, category breakdowns, and AI-powered recommendations for your store.
+              </p>
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Eye className="w-4 h-4 mr-2 text-green-600" />
+                  Complete 6-category analysis
+                </div>
+                <div className="flex items-center text-sm text-gray-600">
+                  <TrendingUp className="w-4 h-4 mr-2 text-green-600" />
+                  AI-powered recommendations
+                </div>
+                <div className="flex items-center text-sm text-gray-600">
+                  <Award className="w-4 h-4 mr-2 text-green-600" />
+                  Store intelligence insights
+                </div>
+              </div>
+              <Button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Sign Up Free - See Full Analysis
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Design & UX */}
@@ -448,11 +490,31 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
       </div>
 
       {/* AI Suggestions */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-8">
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-8 relative">
         <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
           <TrendingUp className="text-purple-600 mr-3" />
           AI-Powered Recommendations
         </h3>
+        
+        {/* Blur overlay for AI suggestions */}
+        {!isAuthenticated && (
+          <div className="absolute inset-0 bg-purple-50/90 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+            <div className="text-center p-6 bg-white rounded-xl shadow-lg border max-w-sm mx-4">
+              <TrendingUp className="w-12 h-12 text-purple-600 mx-auto mb-3" />
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Premium Insights</h4>
+              <p className="text-gray-600 text-sm mb-4">
+                Get personalized AI recommendations to boost your store performance.
+              </p>
+              <Button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+              >
+                Unlock Recommendations
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {analysisResult.suggestions.map((suggestion, index) => (
             <div key={index} className="bg-white rounded-xl p-6 shadow-sm">
@@ -480,11 +542,31 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
       </div>
 
       {/* Store Recap */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8 relative">
         <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
           <Award className="text-blue-600 mr-3" />
           Store Intelligence Recap
         </h3>
+        
+        {/* Blur overlay for store recap */}
+        {!isAuthenticated && (
+          <div className="absolute inset-0 bg-gray-100/90 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+            <div className="text-center p-6 bg-white rounded-xl shadow-lg border max-w-sm mx-4">
+              <Award className="w-12 h-12 text-blue-600 mx-auto mb-3" />
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Business Intelligence</h4>
+              <p className="text-gray-600 text-sm mb-4">
+                Discover your store's competitive advantage and market positioning.
+              </p>
+              <Button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+              >
+                View Full Report
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Store Overview */}
@@ -556,12 +638,18 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
           Get real-time optimization recommendations and track your improvements.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="bg-white text-indigo-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors">
-            Connect Shopify Store
-          </button>
-          <button className="bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold hover:bg-purple-800 transition-colors">
-            Connect eBay Store
-          </button>
+          <Button 
+            onClick={() => !isAuthenticated ? setIsAuthModalOpen(true) : null}
+            className="bg-white text-indigo-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+          >
+            {isAuthenticated ? 'Connect Shopify Store' : 'Sign Up to Connect Store'}
+          </Button>
+          <Button 
+            onClick={() => !isAuthenticated ? setIsAuthModalOpen(true) : null}
+            className="bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold hover:bg-purple-800 transition-colors"
+          >
+            {isAuthenticated ? 'Connect eBay Store' : 'Get Started Now'}
+          </Button>
         </div>
         <p className="text-indigo-200 text-sm mt-4">
           Free 7-day trial • No credit card required
@@ -573,6 +661,12 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
         <h3 className="text-xl font-semibold text-gray-900 mb-4">Analysis Summary</h3>
         <p className="text-gray-600 max-w-3xl mx-auto">{analysisResult.summary}</p>
       </div>
+      
+      {/* Authentication Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </div>
   );
 }
