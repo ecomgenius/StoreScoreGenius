@@ -218,6 +218,16 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Analysis Results */}
+        {analysisResult && (
+          <div className="mt-8">
+            <NewResultsSection analysisResult={{
+              ...analysisResult,
+              ...analysisResult.analysisData
+            }} />
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
