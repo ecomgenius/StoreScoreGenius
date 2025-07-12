@@ -110,6 +110,13 @@ export async function exchangeCodeForToken(
 ): Promise<ShopifyTokenResponse> {
   const tokenUrl = `https://${shopDomain}/admin/oauth/access_token`;
   
+  console.log('Debug - Token exchange request:', {
+    tokenUrl,
+    client_id: SHOPIFY_API_KEY ? 'Set' : 'Missing',
+    client_secret: SHOPIFY_API_SECRET ? 'Set' : 'Missing',
+    code: code ? 'Present' : 'Missing'
+  });
+
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {

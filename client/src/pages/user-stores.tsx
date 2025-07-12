@@ -31,6 +31,7 @@ export default function UserStores() {
     const connected = urlParams.get('connected');
     const shopName = urlParams.get('shop');
     const error = urlParams.get('error');
+    const message = urlParams.get('message');
     
     if (connected && shopName) {
       toast({
@@ -39,9 +40,19 @@ export default function UserStores() {
       });
       window.history.replaceState({}, '', '/dashboard/stores');
     } else if (error) {
+      let errorDescription = "Failed to connect your Shopify store. Please try again.";
+      
+      if (message) {
+        errorDescription = decodeURIComponent(message);
+      } else if (error === 'oauth_failed') {
+        errorDescription = "OAuth authentication failed. Please ensure your store allows apps and try again.";
+      } else if (error === 'shop_info_failed') {
+        errorDescription = "Connected to Shopify but couldn't access store information. Check your store permissions.";
+      }
+      
       toast({
         title: "Connection Failed",
-        description: "Failed to connect your Shopify store. Please try again.",
+        description: errorDescription,
         variant: "destructive",
       });
       window.history.replaceState({}, '', '/dashboard/stores');

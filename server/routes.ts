@@ -485,22 +485,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse state to get userId and optionally userStoreId
       const stateParts = (state as string).split(':');
-      const userId = parseInt(stateParts[1]);
-      const userStoreId = stateParts[2] ? parseInt(stateParts[2]) : null;
+      const userId = stateParts.length >= 3 ? parseInt(stateParts[2]) : parseInt(stateParts[1]);
+      const userStoreId = stateParts.length >= 4 ? parseInt(stateParts[3]) : null;
       
-      if (!userId) {
+      if (!userId || isNaN(userId)) {
+        console.log('Debug - State parsing:', { state, stateParts, userId, userStoreId });
         return res.status(400).send("Invalid state parameter");
       }
       
       // Exchange code for access token
-      const { access_token, scope } = await exchangeCodeForToken(
-        shop as string, 
-        code as string, 
-        state as string
-      );
+      let access_token, scope;
+      try {
+        const tokenResponse = await exchangeCodeForToken(
+          shop as string, 
+          code as string, 
+          state as string
+        );
+        access_token = tokenResponse.access_token;
+        scope = tokenResponse.scope;
+      } catch (error) {
+        console.error('Token exchange failed:', error);
+        return res.redirect('/dashboard/stores?error=oauth_failed&message=' + encodeURIComponent('Failed to authenticate with Shopify. Please check your store settings and try again.'));
+      }
       
       // Get shop information
-      const shopInfo = await getShopInfo(shop as string, access_token);
+      let shopInfo;
+      try {
+        shopInfo = await getShopInfo(shop as string, access_token);
+      } catch (error) {
+        console.error('Failed to get shop info:', error);
+        return res.redirect('/dashboard/stores?error=shop_info_failed&message=' + encodeURIComponent('Connected to Shopify but failed to get store information.'));
+      }
       
       if (userStoreId) {
         // Update existing store
