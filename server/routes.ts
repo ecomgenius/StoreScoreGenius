@@ -40,7 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         performanceScore: analysisResult.performanceScore,
         suggestions: analysisResult.suggestions,
         analysisData: {
-          summary: analysisResult.summary
+          summary: analysisResult.summary,
+          screenshot: analysisResult.screenshot,
+          storeRecap: analysisResult.storeRecap
         }
       });
 

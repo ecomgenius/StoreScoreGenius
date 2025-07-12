@@ -189,7 +189,9 @@ export default function ResultsSection({ analysisResult }: ResultsSectionProps) 
             </h3>
             <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-md mx-auto">
               <img 
-                src={`data:image/jpeg;base64,${analysisResult.screenshot}`}
+                src={analysisResult.screenshot?.startsWith('<svg') 
+                  ? `data:image/svg+xml;base64,${analysisResult.screenshot}` 
+                  : `data:image/jpeg;base64,${analysisResult.screenshot}`}
                 alt="Store Screenshot"
                 className="w-full h-auto"
                 style={{ maxHeight: '400px', objectFit: 'contain' }}
