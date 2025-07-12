@@ -343,6 +343,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ================ SHOPIFY GDPR WEBHOOK ROUTES ================
+  
+  // Customer data request webhook (GDPR compliance)
+  app.post("/api/webhooks/shopify/customers/data_request", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+    try {
+      const hmacHeader = req.get('X-Shopify-Hmac-Sha256');
+      if (!hmacHeader || !validateWebhookSignature(req.body.toString(), hmacHeader)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const payload = JSON.parse(req.body.toString());
+      console.log('Customer data request received:', payload);
+      
+      // Log the request for compliance purposes
+      // In production, you would implement actual data export logic
+      res.status(200).json({ message: 'Customer data request received' });
+    } catch (error) {
+      console.error('Error processing customer data request:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Customer data deletion webhook (GDPR compliance)
+  app.post("/api/webhooks/shopify/customers/redact", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+    try {
+      const hmacHeader = req.get('X-Shopify-Hmac-Sha256');
+      if (!hmacHeader || !validateWebhookSignature(req.body.toString(), hmacHeader)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const payload = JSON.parse(req.body.toString());
+      console.log('Customer data deletion request received:', payload);
+      
+      // In production, implement logic to delete customer data
+      // For now, just acknowledge the request
+      res.status(200).json({ message: 'Customer data deletion request received' });
+    } catch (error) {
+      console.error('Error processing customer data deletion:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Shop data deletion webhook (GDPR compliance)
+  app.post("/api/webhooks/shopify/shop/redact", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+    try {
+      const hmacHeader = req.get('X-Shopify-Hmac-Sha256');
+      if (!hmacHeader || !validateWebhookSignature(req.body.toString(), hmacHeader)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const payload = JSON.parse(req.body.toString());
+      console.log('Shop data deletion request received:', payload);
+      
+      // In production, implement logic to delete shop-related data
+      // This includes removing store connections and analysis data
+      res.status(200).json({ message: 'Shop data deletion request received' });
+    } catch (error) {
+      console.error('Error processing shop data deletion:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // ================ STRIPE PAYMENT ROUTES ================
   
   // Create payment intent for credit purchase
