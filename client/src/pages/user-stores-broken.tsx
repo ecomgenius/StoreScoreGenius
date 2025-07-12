@@ -37,6 +37,7 @@ export default function UserStores() {
         title: "Store Connected!",
         description: `${decodeURIComponent(shopName)} has been successfully connected to your account.`,
       });
+      // Clean up URL
       window.history.replaceState({}, '', '/dashboard/stores');
     } else if (error) {
       toast({
@@ -44,6 +45,7 @@ export default function UserStores() {
         description: "Failed to connect your Shopify store. Please try again.",
         variant: "destructive",
       });
+      // Clean up URL
       window.history.replaceState({}, '', '/dashboard/stores');
     }
   }, [toast]);
@@ -94,6 +96,7 @@ export default function UserStores() {
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
+      // Redirect to Shopify OAuth
       window.location.href = data.authUrl;
     },
     onError: (error: any) => {
@@ -134,6 +137,7 @@ export default function UserStores() {
       });
       return;
     }
+
     createStoreMutation.mutate(newStore);
   };
 
@@ -152,6 +156,7 @@ export default function UserStores() {
       });
       return;
     }
+    
     connectShopifyMutation.mutate({ shopDomain: shopifyDomain });
   };
 
@@ -333,6 +338,57 @@ export default function UserStores() {
                 </DialogContent>
               </Dialog>
             </div>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Store</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Store Name</Label>
+                    <Input
+                      id="name"
+                      value={newStore.name}
+                      onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
+                      placeholder="My Awesome Store"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="storeUrl">Store URL</Label>
+                    <Input
+                      id="storeUrl"
+                      value={newStore.storeUrl}
+                      onChange={(e) => setNewStore({ ...newStore, storeUrl: e.target.value })}
+                      placeholder="https://mystore.myshopify.com"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Textarea
+                      id="description"
+                      value={newStore.description}
+                      onChange={(e) => setNewStore({ ...newStore, description: e.target.value })}
+                      placeholder="Brief description of your store..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsAddDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddStore}
+                      disabled={createStoreMutation.isPending}
+                    >
+                      {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            </div>
           </div>
         </div>
 
@@ -398,56 +454,56 @@ export default function UserStores() {
                       Add Manual Store
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Your First Store</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="name">Store Name</Label>
-                        <Input
-                          id="name"
-                          value={newStore.name}
-                          onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
-                          placeholder="My Awesome Store"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="storeUrl">Store URL</Label>
-                        <Input
-                          id="storeUrl"
-                          value={newStore.storeUrl}
-                          onChange={(e) => setNewStore({ ...newStore, storeUrl: e.target.value })}
-                          placeholder="https://mystore.myshopify.com"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="description">Description (Optional)</Label>
-                        <Textarea
-                          id="description"
-                          value={newStore.description}
-                          onChange={(e) => setNewStore({ ...newStore, description: e.target.value })}
-                          placeholder="Brief description of your store..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsAddDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleAddStore}
-                          disabled={createStoreMutation.isPending}
-                        >
-                          {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
-                        </Button>
-                      </div>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Your First Store</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="name">Store Name</Label>
+                      <Input
+                        id="name"
+                        value={newStore.name}
+                        onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
+                        placeholder="My Awesome Store"
+                      />
                     </div>
-                  </DialogContent>
-                </Dialog>
+                    <div>
+                      <Label htmlFor="storeUrl">Store URL</Label>
+                      <Input
+                        id="storeUrl"
+                        value={newStore.storeUrl}
+                        onChange={(e) => setNewStore({ ...newStore, storeUrl: e.target.value })}
+                        placeholder="https://mystore.myshopify.com"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description (Optional)</Label>
+                      <Textarea
+                        id="description"
+                        value={newStore.description}
+                        onChange={(e) => setNewStore({ ...newStore, description: e.target.value })}
+                        placeholder="Brief description of your store..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsAddDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddStore}
+                        disabled={createStoreMutation.isPending}
+                      >
+                        {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               </div>
             </CardContent>
           </Card>
@@ -541,6 +597,7 @@ export default function UserStores() {
           </div>
         )}
 
+        {/* Coming Soon Features */}
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Store Optimization Features</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
