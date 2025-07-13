@@ -520,7 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           apiKey: process.env.OPENAI_API_KEY 
         });
 
-        const titlePrompt = `You are an expert e-commerce copywriter. Create a compelling, SEO-optimized product title that will increase sales and conversions.
+        const titlePrompt = `You are an expert e-commerce copywriter specializing in conversion optimization. Create a compelling, SEO-optimized product title using market-proven keywords.
 
 Current product title: "${currentProduct.title}"
 Product type: ${currentProduct.product_type || 'Product'}
@@ -529,12 +529,13 @@ Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
 
 Requirements:
 - Keep it under 60 characters for optimal display
-- Make it more professional and conversion-focused
-- Include power words that drive sales (Premium, Professional, Best, Quality, etc.)
+- Use high-converting market keywords for this product category
+- Include power words that drive sales (Premium, Professional, Best, Quality, Limited, Exclusive, etc.)
 - Optimize for search engines and customer appeal
 - Focus on benefits and value proposition
+- Use psychological triggers that increase click-through rates
 
-Generate ONLY the new optimized title, nothing else:`;
+Generate ONLY the new optimized title without quotes or extra formatting:`;
 
         try {
           const aiResponse = await openaiClient.chat.completions.create({
@@ -544,7 +545,7 @@ Generate ONLY the new optimized title, nothing else:`;
             temperature: 0.7,
           });
           
-          aiSuggestion = aiResponse.choices[0].message.content?.trim() || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+          aiSuggestion = aiResponse.choices[0].message.content?.trim().replace(/^"|"$/g, '') || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         } catch (error) {
           console.error('OpenAI title generation failed:', error);
           aiSuggestion = `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
@@ -552,38 +553,44 @@ Generate ONLY the new optimized title, nothing else:`;
         updateData.title = aiSuggestion;
       } else if (recommendationType === 'description') {
         // Use OpenAI to generate enhanced description
-        const { analyzeStoreWithAI } = await import('./services/openai');
-        const descriptionPrompt = `Create a compelling product description that includes features, benefits, and a call to action:
+        const openai = await import('openai');
+        const openaiClient = new openai.default({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
+
+        const descriptionPrompt = `You are an expert e-commerce copywriter specializing in conversion optimization. Create a compelling product description using market-proven keywords and conversion techniques.
 
 Product: ${currentProduct.title}
-Type: ${currentProduct.product_type || 'Product'}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Unknown'}
 Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
-Current Description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '') || 'No description available'}
+Current Description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '').substring(0, 200) || 'No description available'}
 
-Generate an HTML-formatted product description that would increase conversions and provide value to customers.`;
+Requirements:
+- Use high-converting market keywords for this product category
+- Write 2-3 compelling paragraphs (150-250 words total)
+- Include emotional triggers and benefits-focused language
+- Add urgency or scarcity elements where appropriate
+- Use power words that drive action (Exclusive, Limited, Premium, Professional, etc.)
+- Focus on customer problems this product solves
+- End with a clear call-to-action
+
+Generate ONLY the clean description text without HTML tags, quotes, or extra formatting:`;
 
         try {
-          const aiResponse = await analyzeStoreWithAI({
-            storeContent: descriptionPrompt,
-            storeType: 'shopify'
+          const aiResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            messages: [{ role: "user", content: descriptionPrompt }],
+            max_tokens: 300,
+            temperature: 0.7,
           });
-          aiSuggestion = `<div class="ai-optimized-description">
-            <h3>${currentProduct.title}</h3>
-            <p>${aiResponse.summary || `Experience the exceptional quality of our ${currentProduct.title}.`}</p>
-            <h4>Key Features:</h4>
-            <ul>
-              <li>Premium quality materials</li>
-              <li>Expert craftsmanship</li>
-              <li>Customer satisfaction guaranteed</li>
-              <li>Fast, reliable shipping</li>
-            </ul>
-            <p><strong>Order now and experience the difference quality makes!</strong></p>
-          </div>`;
+          
+          aiSuggestion = aiResponse.choices[0].message.content?.trim().replace(/^"|"$/g, '') || `Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.`;
         } catch (error) {
-          console.error('AI description generation failed:', error);
-          aiSuggestion = `<h3>Premium ${currentProduct.title}</h3><p>Experience exceptional quality with our ${currentProduct.title}.</p>`;
+          console.error('OpenAI description generation failed:', error);
+          aiSuggestion = `Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.`;
         }
-        updateData.body_html = aiSuggestion;
+        updateData.body_html = `<p>${aiSuggestion}</p>`;
       } else if (recommendationType === 'pricing') {
         // Generate optimized pricing with psychological pricing
         const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
@@ -675,20 +682,22 @@ Generate an HTML-formatted product description that would increase conversions a
           apiKey: process.env.OPENAI_API_KEY 
         });
 
-        const titlePrompt = `You are an expert e-commerce copywriter. Create a compelling, SEO-optimized product title that will increase sales and conversions.
+        const titlePrompt = `You are an expert e-commerce copywriter specializing in conversion optimization. Create a compelling, SEO-optimized product title using market-proven keywords.
 
 Current product title: "${currentProduct.title}"
 Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Unknown'}
 Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
 
 Requirements:
 - Keep it under 60 characters for optimal display
-- Make it more professional and conversion-focused
-- Include power words that drive sales (Premium, Professional, Best, Quality, etc.)
+- Use high-converting market keywords for this product category
+- Include power words that drive sales (Premium, Professional, Best, Quality, Limited, Exclusive, etc.)
 - Optimize for search engines and customer appeal
 - Focus on benefits and value proposition
+- Use psychological triggers that increase click-through rates
 
-Generate ONLY the new optimized title, nothing else:`;
+Generate ONLY the new optimized title without quotes or extra formatting:`;
 
         try {
           const aiResponse = await openaiClient.chat.completions.create({
@@ -698,13 +707,50 @@ Generate ONLY the new optimized title, nothing else:`;
             temperature: 0.7,
           });
           
-          suggestion = aiResponse.choices[0].message.content?.trim() || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+          suggestion = aiResponse.choices[0].message.content?.trim().replace(/^"|"$/g, '') || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         } catch (error) {
           console.error('OpenAI title generation failed:', error);
           suggestion = `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         }
       } else if (recommendationType === 'description') {
-        suggestion = `Enhanced product description with compelling features and benefits for ${currentProduct.title}`;
+        // Use OpenAI to generate enhanced description
+        const openai = await import('openai');
+        const openaiClient = new openai.default({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
+
+        const descriptionPrompt = `You are an expert e-commerce copywriter specializing in conversion optimization. Create a compelling product description using market-proven keywords and conversion techniques.
+
+Product: ${currentProduct.title}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Unknown'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+Current Description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '').substring(0, 200) || 'No description available'}
+
+Requirements:
+- Use high-converting market keywords for this product category
+- Write 2-3 compelling paragraphs (150-250 words total)
+- Include emotional triggers and benefits-focused language
+- Add urgency or scarcity elements where appropriate
+- Use power words that drive action (Exclusive, Limited, Premium, Professional, etc.)
+- Focus on customer problems this product solves
+- End with a clear call-to-action
+
+Generate ONLY the clean description text without HTML tags, quotes, or extra formatting:`;
+
+        try {
+          const aiResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            messages: [{ role: "user", content: descriptionPrompt }],
+            max_tokens: 300,
+            temperature: 0.7,
+          });
+          
+          suggestion = aiResponse.choices[0].message.content?.trim().replace(/^"|"$/g, '') || `Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.`;
+        } catch (error) {
+          console.error('OpenAI description generation failed:', error);
+          suggestion = `Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.`;
+        }
       } else if (recommendationType === 'pricing') {
         const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
         suggestion = currentPrice > 10 ? 
