@@ -548,9 +548,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ authUrl: finalAuthUrl });
     } catch (error) {
       console.error("Error initiating Shopify OAuth:", error);
+      const currentRedirectUri = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
+        : 'http://localhost:5000/api/shopify/callback';
+        
       res.status(500).json({ 
         error: "Failed to initiate Shopify connection",
-        details: "This might be due to incorrect Shopify Partner App configuration. Please ensure SHOPIFY_API_KEY and SHOPIFY_API_SECRET are from a Partner App with OAuth enabled."
+        details: `This might be due to incorrect Shopify Partner App configuration. Please ensure:
+1. SHOPIFY_API_KEY and SHOPIFY_API_SECRET are from a Partner App with OAuth enabled
+2. Add this exact redirect URI to your Partner App settings: ${currentRedirectUri}`
       });
     }
   });
