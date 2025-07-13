@@ -1983,16 +1983,35 @@ Provide actionable, specific recommendations that can be implemented.`;
 
   app.post("/api/apply-legal-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
     try {
+      console.log("Legal recommendation apply request:", {
+        body: req.body,
+        user: req.user ? { id: req.user.id, email: req.user.email } : null
+      });
+
       const { storeId, suggestionId, changes } = req.body;
-      const { user } = req;
+      const user = req.user;
+
+      if (!user) {
+        console.error("No user found in request");
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!storeId || !suggestionId || !changes) {
+        console.error("Missing required fields:", { storeId, suggestionId, changes: !!changes });
+        return res.status(400).json({ error: "Missing required fields" });
+      }
 
       const store = await storage.getUserStore(parseInt(storeId));
+      console.log("Found store:", store ? { id: store.id, userId: store.userId } : null);
+      
       if (!store || store.userId !== user.id) {
         return res.status(404).json({ error: "Store not found" });
       }
 
+      console.log("Deducting credits for user:", user.id);
       await storage.deductCredits(user.id, 1, `Legal page optimization applied: ${suggestionId}`);
 
+      console.log("Recording product optimization");
       await storage.recordProductOptimization({
         userId: user.id,
         userStoreId: store.id,
@@ -2003,6 +2022,7 @@ Provide actionable, specific recommendations that can be implemented.`;
         creditsUsed: 1,
       });
 
+      console.log("Legal recommendation applied successfully");
       res.json({ 
         success: true, 
         message: "Legal page optimization has been applied",
@@ -2010,7 +2030,7 @@ Provide actionable, specific recommendations that can be implemented.`;
       });
     } catch (error) {
       console.error("Error applying legal recommendation:", error);
-      res.status(500).json({ error: "Failed to apply legal recommendation" });
+      res.status(500).json({ error: "Failed to apply legal recommendation", details: error.message });
     }
   });
 

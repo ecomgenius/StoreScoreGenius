@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface LegalSuggestion {
   id: string;
@@ -35,6 +36,7 @@ export default function LegalRecommendationsPage() {
   const params = useParams();
   const storeId = params.storeId;
   const { user } = useAuth();
+  const { toast } = useToast();
   const [previewingSuggestion, setPreviewingSuggestion] = useState<LegalSuggestion | null>(null);
 
   const { data: recommendations, isLoading } = useQuery<LegalRecommendations>({
@@ -49,6 +51,7 @@ export default function LegalRecommendationsPage() {
 
   const applyMutation = useMutation({
     mutationFn: async (data: { suggestionId: string; changes: any }) => {
+      console.log('Applying legal recommendation:', data);
       return apiRequest(`/api/apply-legal-recommendation`, {
         method: 'POST',
         body: JSON.stringify({
@@ -58,9 +61,23 @@ export default function LegalRecommendationsPage() {
         })
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Legal recommendation applied successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: [`/api/legal-recommendations/${storeId}`] });
+      toast({
+        title: "Success!",
+        description: "Legal page optimization has been applied successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Legal recommendation application error:', error);
+      const errorMessage = error?.message || error?.error || 'Failed to apply legal recommendation';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   });
 
