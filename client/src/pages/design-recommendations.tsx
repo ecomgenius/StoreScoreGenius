@@ -431,10 +431,15 @@ export default function DesignRecommendations() {
                       {previewingSuggestion.type === 'colors' && (
                         <div className="mt-3">
                           <div className="text-xs text-green-600 mb-2">Improved color scheme:</div>
-                          <div className="flex space-x-2">
-                            <div className="w-8 h-8 bg-blue-600 rounded border"></div>
-                            <div className="w-8 h-8 bg-blue-500 rounded border"></div>
-                            <div className="w-8 h-8 bg-blue-400 rounded border"></div>
+                          <div className="space-y-2">
+                            <div className="flex space-x-2">
+                              <div className="w-8 h-8 bg-blue-600 rounded border shadow-sm"></div>
+                              <div className="w-8 h-8 bg-blue-500 rounded border shadow-sm"></div>
+                              <div className="w-8 h-8 bg-blue-400 rounded border shadow-sm"></div>
+                            </div>
+                            <div className="p-2 border rounded bg-white">
+                              <div className="bg-blue-600 text-white px-3 py-1 rounded text-xs">Add to Cart</div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -442,9 +447,127 @@ export default function DesignRecommendations() {
                       {previewingSuggestion.type === 'fonts' && (
                         <div className="mt-3">
                           <div className="text-xs text-green-600 mb-2">Improved typography:</div>
-                          <div className="space-y-1">
-                            <div className="text-base font-bold font-serif">Enhanced Heading</div>
-                            <div className="text-sm font-sans">Improved body text with better readability</div>
+                          <div className="p-2 border rounded bg-white space-y-1">
+                            <div className="text-base font-bold font-serif">Premium Product Title</div>
+                            <div className="text-sm font-sans text-gray-600">Clear, readable product description text</div>
+                            <div className="text-lg font-semibold text-green-600">$99.99</div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {previewingSuggestion.type === 'layout' && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Improved layout:</div>
+                          <div className="p-2 border rounded bg-white">
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="bg-gray-100 h-8 rounded flex items-center justify-center">Header</div>
+                              <div className="bg-blue-100 h-8 rounded flex items-center justify-center">Product</div>
+                              <div className="bg-green-100 h-8 rounded flex items-center justify-center">CTA</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {previewingSuggestion.type === 'images' && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Improved image layout:</div>
+                          <div className="p-2 border rounded bg-white">
+                            <div className="grid grid-cols-2 gap-1">
+                              <div className="bg-gradient-to-br from-blue-100 to-blue-200 h-12 rounded border flex items-center justify-center text-xs">
+                                HD Image
+                              </div>
+                              <div className="bg-gradient-to-br from-green-100 to-green-200 h-12 rounded border flex items-center justify-center text-xs">
+                                Detail View
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(previewingSuggestion.title.toLowerCase().includes('trust') || 
+                        previewingSuggestion.title.toLowerCase().includes('security') ||
+                        previewingSuggestion.title.toLowerCase().includes('badge') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('security') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('testimonial') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('badge')) && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Trust signals preview:</div>
+                          <div className="p-2 border rounded bg-white space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <div className="w-2 h-1 bg-white rounded"></div>
+                              </div>
+                              <span className="text-xs font-medium">SSL Secured</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 bg-blue-500 rounded flex items-center justify-center">
+                                <div className="w-2 h-1 bg-white rounded"></div>
+                              </div>
+                              <span className="text-xs">PayPal Protected</span>
+                            </div>
+                            <div className="border-t pt-2">
+                              <div className="text-xs text-gray-600">"Great product, fast shipping!" - Sarah M.</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {previewingSuggestion.title.toLowerCase().includes('mobile') && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Mobile optimization:</div>
+                          <div className="w-16 mx-auto">
+                            <div className="bg-black rounded-lg p-1">
+                              <div className="bg-white rounded text-xs p-2 space-y-1">
+                                <div className="bg-gray-100 h-2 rounded"></div>
+                                <div className="bg-blue-100 h-4 rounded"></div>
+                                <div className="bg-green-100 h-3 rounded w-1/2"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(previewingSuggestion.title.toLowerCase().includes('button') ||
+                        previewingSuggestion.title.toLowerCase().includes('cta') ||
+                        previewingSuggestion.title.toLowerCase().includes('conversion') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('button') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('checkout')) && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Conversion elements:</div>
+                          <div className="p-2 border rounded bg-white space-y-2">
+                            <div className="flex space-x-2">
+                              <div className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-md">
+                                Buy Now - 20% Off!
+                              </div>
+                              <div className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-md">
+                                Add to Cart
+                              </div>
+                            </div>
+                            <div className="border-t pt-2">
+                              <div className="text-xs text-red-600 font-medium">🔥 Only 3 left in stock!</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(previewingSuggestion.title.toLowerCase().includes('form') ||
+                        previewingSuggestion.title.toLowerCase().includes('input') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('form') ||
+                        previewingSuggestion.suggestions.recommended.toLowerCase().includes('field')) && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Form improvements:</div>
+                          <div className="p-2 border rounded bg-white space-y-2">
+                            <div className="space-y-1">
+                              <input 
+                                type="text" 
+                                placeholder="Your email address" 
+                                className="w-full px-2 py-1 border rounded text-xs"
+                                disabled
+                              />
+                              <div className="bg-blue-500 text-white px-3 py-1 rounded text-xs text-center">
+                                Get 10% Discount
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
