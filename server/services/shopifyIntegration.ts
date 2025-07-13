@@ -79,7 +79,7 @@ export interface ShopifyStore {
 /**
  * Generate Shopify OAuth authorization URL
  */
-export function generateShopifyAuthUrl(shopDomain: string, userId: number): ShopifyAuthUrl {
+export async function generateShopifyAuthUrl(shopDomain: string, userId: number): Promise<ShopifyAuthUrl> {
   const state = crypto.randomBytes(32).toString('hex');
   const nonce = crypto.randomBytes(16).toString('hex');
   
@@ -90,14 +90,25 @@ export function generateShopifyAuthUrl(shopDomain: string, userId: number): Shop
   // Test with minimal required scopes first
   const minimalScopes = 'read_products';
   
-  const authUrl = `https://${shopDomain}/admin/oauth/authorize?` +
+  // Try different OAuth endpoint formats for development stores
+  const baseUrl = `https://${shopDomain}`;
+  const authUrl = `${baseUrl}/admin/oauth/authorize?` +
     `client_id=${SHOPIFY_API_KEY}&` +
     `scope=${minimalScopes}&` +
     `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
     `state=${stateWithUser}`;
     
   console.log('Debug - Generated OAuth URL:', authUrl);
-  console.log('Debug - Encoded redirect URI:', encodeURIComponent(REDIRECT_URI));
+  console.log('Debug - Base store URL test:', baseUrl);
+  console.log('Debug - API Key format:', SHOPIFY_API_KEY?.length, 'characters');
+  
+  // Test if this is a valid development store
+  try {
+    const storeTest = await fetch(baseUrl, { method: 'HEAD' });
+    console.log('Debug - Store accessibility test:', storeTest.status, storeTest.statusText);
+  } catch (error) {
+    console.log('Debug - Store test error:', error.message);
+  }
 
   return {
     authUrl,

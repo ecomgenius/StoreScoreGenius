@@ -526,25 +526,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid shop domain format" });
       }
       
-      // Test if the store exists by making a basic request
-      try {
-        const testResponse = await fetch(`https://${domain}`, { 
-          method: 'HEAD',
-          timeout: 5000 
-        });
-        if (!testResponse.ok && testResponse.status === 404) {
-          return res.status(400).json({ 
-            error: "Store not found", 
-            details: `The store ${domain} doesn't exist or is not accessible. Please check the store URL.` 
-          });
-        }
-      } catch (error) {
-        console.log('Store accessibility check failed:', error.message);
-        // Continue anyway - the store might exist but block HEAD requests
-      }
+      // For development stores, check if they're properly configured
+      console.log('Debug - Attempting OAuth for development store:', domain);
       
       // Generate OAuth URL for SaaS application
-      const { authUrl, state } = generateShopifyAuthUrl(domain, req.user!.id);
+      const { authUrl, state } = await generateShopifyAuthUrl(domain, req.user!.id);
       
       // Store the userStoreId in the state if provided (for updating existing store)
       const stateWithStore = userStoreId ? `${state}:${userStoreId}` : state;
