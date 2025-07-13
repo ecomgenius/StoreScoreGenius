@@ -317,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get analysis by ID
-  app.get("/api/analysis/:id", async (req: Request, res: Response) => {
+  app.get("/api/analysis/:id", authenticateUser, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       console.log('Debug - Fetching analysis:', id);

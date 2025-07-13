@@ -71,13 +71,19 @@ export default function UserStores() {
   const analyzeStoreMutation = useMutation({
     mutationFn: (storeId: number) => apiRequest('POST', `/api/shopify/analyze/${storeId}`),
     onSuccess: (data: any) => {
+      console.log('Analysis completed successfully, data received:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analyses'] });
       
       // Redirect to analysis page automatically without popup
-      if (data.id) {
+      if (data?.id) {
         console.log('Redirecting to analysis page with ID:', data.id);
-        window.location.href = `/analysis/${data.id}`;
+        // Use setTimeout to ensure the redirect happens after state updates
+        setTimeout(() => {
+          window.location.href = `/analysis/${data.id}`;
+        }, 100);
+      } else {
+        console.error('No analysis ID received in response:', data);
       }
     },
     onError: (error: any) => {
