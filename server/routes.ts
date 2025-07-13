@@ -320,17 +320,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analysis/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      console.log('Debug - Fetching analysis:', id);
       const analysis = await storage.getStoreAnalysis(id);
       
       if (!analysis) {
+        console.log('Debug - Analysis not found in database');
         return res.status(404).json({ error: "Analysis not found" });
       }
 
+      console.log('Debug - Analysis found, checking access:', {
+        analysisUserId: analysis.userId,
+        requestUserId: req.user?.id,
+        hasUser: !!req.user
+      });
+
       // Check if user owns this analysis or if it's a guest analysis
       if (analysis.userId && (!req.user || analysis.userId !== req.user.id)) {
+        console.log('Debug - Access denied');
         return res.status(404).json({ error: "Analysis not found" });
       }
       
+      console.log('Debug - Returning analysis with score:', analysis.overallScore);
       res.json(analysis);
     } catch (error) {
       console.error("Error fetching analysis:", error);

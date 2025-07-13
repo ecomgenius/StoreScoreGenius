@@ -58,7 +58,9 @@ export class DatabaseStorage implements IStorage {
 
   // Store analysis methods
   async getStoreAnalysis(id: number): Promise<StoreAnalysis | undefined> {
+    console.log('Debug - DatabaseStorage.getStoreAnalysis called with id:', id);
     const result = await db.select().from(storeAnalyses).where(eq(storeAnalyses.id, id));
+    console.log('Debug - Query result:', result.length, 'rows found');
     return result[0];
   }
 
@@ -466,4 +468,6 @@ export class MemStorage implements IStorage {
 }
 
 // Use database storage if available, otherwise fallback to memory storage
+console.log('Debug - Storage initialization - db available:', !!db);
 export const storage: IStorage = db ? new DatabaseStorage() : new MemStorage();
+console.log('Debug - Using storage type:', storage.constructor.name);
