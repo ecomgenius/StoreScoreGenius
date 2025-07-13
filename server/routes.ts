@@ -618,7 +618,7 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       let userStoreId: number | null = null;
       
       // Handle installation state (install_timestamp) vs regular OAuth state (hash:userId)
-      if (stateParts[0] === 'install') {
+      if ((state as string).startsWith('install_')) {
         console.log('Debug - Installation flow detected, using session user');
         // For installation flow, we need to get the current user from session
         if (!req.user?.id) {
