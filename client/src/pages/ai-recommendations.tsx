@@ -677,7 +677,7 @@ export default function AIRecommendations() {
                   </div>
                 </div>
                 <div>
-                  <h5 className="font-medium text-sm text-green-600 mb-2">AI SUGGESTED</h5>
+                  <h5 className="font-medium text-sm text-green-600 mb-2">NEW TITLE GENERATED WITH AI</h5>
                   <div className="p-3 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm font-medium">{previewingSuggestion.suggestion}</p>
                   </div>

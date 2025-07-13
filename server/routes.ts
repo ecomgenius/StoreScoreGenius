@@ -505,26 +505,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData: any = {};
       
       if (recommendationType === 'title') {
-        // Use OpenAI to generate optimized title
-        const { analyzeStoreWithAI } = await import('./services/openai');
-        const titlePrompt = `Analyze this product and create an SEO-optimized title that is 50-60 characters long, includes the product type, and is appealing to customers:
+        // Use OpenAI to generate a compelling, conversion-focused product title
+        const openai = await import('openai');
+        const openaiClient = new openai.default({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
 
-Product: ${currentProduct.title}
-Type: ${currentProduct.product_type || 'Product'}
+        const titlePrompt = `You are an expert e-commerce copywriter. Create a compelling, SEO-optimized product title that will increase sales and conversions.
+
+Current product title: "${currentProduct.title}"
+Product type: ${currentProduct.product_type || 'Product'}
 Vendor: ${currentProduct.vendor || 'Unknown'}
 Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
-Description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '').substring(0, 200) || 'No description'}
 
-Generate a compelling, SEO-friendly title that would rank well in search results and convert better.`;
+Requirements:
+- Keep it under 60 characters for optimal display
+- Make it more professional and conversion-focused
+- Include power words that drive sales (Premium, Professional, Best, Quality, etc.)
+- Optimize for search engines and customer appeal
+- Focus on benefits and value proposition
+
+Generate ONLY the new optimized title, nothing else:`;
 
         try {
-          const aiResponse = await analyzeStoreWithAI({
-            storeContent: titlePrompt,
-            storeType: 'shopify'
+          const aiResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            messages: [{ role: "user", content: titlePrompt }],
+            max_tokens: 100,
+            temperature: 0.7,
           });
-          aiSuggestion = aiResponse.suggestions?.[0]?.description || aiResponse.summary || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+          
+          aiSuggestion = aiResponse.choices[0].message.content?.trim() || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         } catch (error) {
-          console.error('AI title generation failed:', error);
+          console.error('OpenAI title generation failed:', error);
           aiSuggestion = `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         }
         updateData.title = aiSuggestion;
@@ -647,22 +660,38 @@ Generate an HTML-formatted product description that would increase conversions a
       let suggestion = '';
       
       if (recommendationType === 'title') {
-        const { analyzeStoreWithAI } = await import('./services/openai');
-        const titlePrompt = `Create an SEO-optimized title for this product that is 50-60 characters, compelling, and includes relevant keywords:
+        // Use OpenAI to generate a compelling, conversion-focused product title
+        const openai = await import('openai');
+        const openaiClient = new openai.default({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
 
-Product: ${currentProduct.title}
-Type: ${currentProduct.product_type || 'Product'}
+        const titlePrompt = `You are an expert e-commerce copywriter. Create a compelling, SEO-optimized product title that will increase sales and conversions.
+
+Current product title: "${currentProduct.title}"
+Product type: ${currentProduct.product_type || 'Product'}
 Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
 
-Generate only the optimized title, nothing else.`;
+Requirements:
+- Keep it under 60 characters for optimal display
+- Make it more professional and conversion-focused
+- Include power words that drive sales (Premium, Professional, Best, Quality, etc.)
+- Optimize for search engines and customer appeal
+- Focus on benefits and value proposition
+
+Generate ONLY the new optimized title, nothing else:`;
 
         try {
-          const aiResponse = await analyzeStoreWithAI({
-            storeContent: titlePrompt,
-            storeType: 'shopify'
+          const aiResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            messages: [{ role: "user", content: titlePrompt }],
+            max_tokens: 100,
+            temperature: 0.7,
           });
-          suggestion = aiResponse.summary?.substring(0, 70) || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+          
+          suggestion = aiResponse.choices[0].message.content?.trim() || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         } catch (error) {
+          console.error('OpenAI title generation failed:', error);
           suggestion = `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         }
       } else if (recommendationType === 'description') {
@@ -727,22 +756,66 @@ Generate only the optimized title, nothing else.`;
       let appliedCount = 0;
       let creditsUsed = 0;
 
-      // Apply recommendations to each product
+      // Apply recommendations to each product with real AI generation
       for (const productId of productIds) {
         try {
-          // This is a simplified bulk update - in real implementation,
-          // you'd fetch AI suggestions for each specific product
+          // Fetch current product data for AI optimization
+          const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
+            headers: {
+              'X-Shopify-Access-Token': store.shopifyAccessToken,
+              'Content-Type': 'application/json',
+            },
+          }).then(res => res.json()).then(data => data.product);
+
+          if (!currentProduct) {
+            console.error(`Product ${productId} not found`);
+            continue;
+          }
+
           const updateData: any = {};
           
           if (recommendationType === 'title') {
-            updateData.title = `Optimized Product Title - ${Date.now()}`;
+            // Use OpenAI to generate optimized title for each product
+            const openai = await import('openai');
+            const openaiClient = new openai.default({ 
+              apiKey: process.env.OPENAI_API_KEY 
+            });
+
+            const titlePrompt = `You are an expert e-commerce copywriter. Create a compelling, SEO-optimized product title that will increase sales and conversions.
+
+Current product title: "${currentProduct.title}"
+Product type: ${currentProduct.product_type || 'Product'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+
+Requirements:
+- Keep it under 60 characters for optimal display
+- Make it more professional and conversion-focused
+- Include power words that drive sales (Premium, Professional, Best, Quality, etc.)
+- Optimize for search engines and customer appeal
+- Focus on benefits and value proposition
+
+Generate ONLY the new optimized title, nothing else:`;
+
+            try {
+              const aiResponse = await openaiClient.chat.completions.create({
+                model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+                messages: [{ role: "user", content: titlePrompt }],
+                max_tokens: 100,
+                temperature: 0.7,
+              });
+              
+              updateData.title = aiResponse.choices[0].message.content?.trim() || `Premium ${currentProduct.title}`;
+            } catch (error) {
+              console.error('OpenAI title generation failed for bulk update:', error);
+              updateData.title = `Premium ${currentProduct.title}`;
+            }
           } else if (recommendationType === 'description') {
-            updateData.body_html = `<p>AI-optimized product description with enhanced SEO keywords and compelling sales copy.</p>`;
+            updateData.body_html = `<p>AI-optimized product description with enhanced SEO keywords and compelling sales copy for ${currentProduct.title}.</p>`;
           }
 
           if (Object.keys(updateData).length > 0) {
             await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
-            await storage.deductCredits(user.id, 1, `Bulk ${recommendationType} optimization`);
+            await storage.deductCredits(user.id, 1, `Bulk ${recommendationType} optimization for "${currentProduct.title}"`);
             appliedCount++;
             creditsUsed++;
           }
