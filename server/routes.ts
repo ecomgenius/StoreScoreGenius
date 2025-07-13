@@ -419,13 +419,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analyses = await storage.getUserAnalyses(user.id, 50);
       const storeAnalysis = analyses.find(a => a.userStoreId === storeId);
 
-      if (!storeAnalysis || !storeAnalysis.result) {
+      if (!storeAnalysis || !storeAnalysis.suggestions) {
         return res.json([]);
       }
 
       // Convert analysis suggestions to recommendations format
-      const result = storeAnalysis.result as any;
-      const recommendations = result.suggestions?.map((suggestion: any, index: number) => ({
+      const recommendations = storeAnalysis.suggestions?.map((suggestion: any, index: number) => ({
         id: `rec-${storeId}-${index}`,
         type: suggestion.category || 'general',
         priority: suggestion.priority || 'medium',
