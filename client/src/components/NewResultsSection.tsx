@@ -114,11 +114,12 @@ export default function NewResultsSection({ analysisResult }: NewResultsSectionP
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [animatedScore, setAnimatedScore] = useState(0);
 
-  // console.log("NewResultsSection received data:", analysisResult);
+  console.log("NewResultsSection received data:", analysisResult);
 
   useEffect(() => {
+    console.log("Setting animated score from:", analysisResult.overallScore);
     const timer = setTimeout(() => {
-      setAnimatedScore(analysisResult.overallScore);
+      setAnimatedScore(analysisResult.overallScore || 0);
     }, 500);
     return () => clearTimeout(timer);
   }, [analysisResult.overallScore]);
