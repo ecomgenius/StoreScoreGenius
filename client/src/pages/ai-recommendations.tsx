@@ -77,7 +77,7 @@ export default function AIRecommendations() {
     queryFn: async () => {
       return await apiRequest('GET', `/api/ai-recommendations/${storeId}`);
     },
-    enabled: !!storeId && products.length > 0,
+    enabled: !!storeId,
   });
 
   // User credits

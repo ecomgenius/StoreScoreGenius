@@ -409,22 +409,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storeId = parseInt(req.params.storeId);
       const { user } = req;
 
+      console.log(`Debug - AI recommendations request for store ${storeId} by user ${user.id}`);
+
       // Get the user's store
       const store = await storage.getUserStore(storeId);
       if (!store || store.userId !== user.id) {
+        console.log(`Debug - Store not found or access denied for store ${storeId}`);
         return res.status(404).json({ error: "Store not found" });
       }
 
       // Get recent analysis for this store
       const analyses = await storage.getUserAnalyses(user.id, 50);
-      const storeAnalysis = analyses.find(a => a.userStoreId === storeId);
+      console.log(`Debug - Found ${analyses.length} analyses for user ${user.id}`);
+      
+      // Try to find analysis by userStoreId first, then fall back to store URL match
+      let storeAnalysis = analyses.find(a => a.userStoreId === storeId);
+      console.log(`Debug - Direct userStoreId match (${storeId}):`, !!storeAnalysis);
+      
+      if (!storeAnalysis && store.storeUrl) {
+        // Fallback: find analysis by matching store URL
+        console.log(`Debug - Looking for store URL: ${store.storeUrl}`);
+        console.log(`Debug - Available analysis URLs:`, analyses.map(a => a.storeUrl));
+        storeAnalysis = analyses.find(a => a.storeUrl === store.storeUrl);
+        console.log(`Debug - Fallback search by URL found:`, !!storeAnalysis);
+        
+        if (!storeAnalysis) {
+          // Try to get the most recent analysis for this user as a last resort
+          storeAnalysis = analyses[0]; // Most recent analysis
+          console.log(`Debug - Using most recent analysis as fallback:`, !!storeAnalysis);
+        }
+      }
+      
+      console.log(`Debug - Store analysis found:`, !!storeAnalysis);
+      
+      if (storeAnalysis) {
+        console.log(`Debug - Analysis has suggestions:`, !!storeAnalysis.suggestions);
+        console.log(`Debug - Suggestions count:`, storeAnalysis.suggestions?.length || 0);
+      }
 
-      if (!storeAnalysis || !storeAnalysis.suggestions) {
+      if (!storeAnalysis || !storeAnalysis.suggestions || storeAnalysis.suggestions.length === 0) {
+        console.log(`Debug - No analysis or suggestions found, returning empty array`);
         return res.json([]);
       }
 
       // Convert analysis suggestions to recommendations format
-      const recommendations = storeAnalysis.suggestions?.map((suggestion: any, index: number) => ({
+      const recommendations = storeAnalysis.suggestions.map((suggestion: any, index: number) => ({
         id: `rec-${storeId}-${index}`,
         type: suggestion.category || 'general',
         priority: suggestion.priority || 'medium',
@@ -433,8 +462,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         impact: suggestion.impact,
         suggestion: suggestion.description,
         affectedProducts: [], // We'll populate this based on store products
-      })) || [];
+      }));
 
+      console.log(`Debug - Returning ${recommendations.length} recommendations`);
       res.json(recommendations);
     } catch (error) {
       console.error("Error fetching AI recommendations:", error);
