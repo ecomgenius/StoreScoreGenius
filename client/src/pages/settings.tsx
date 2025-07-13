@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Settings, User, CreditCard, Bell, Shield, Save } from 'lucide-react';
+import { Settings, User, CreditCard, Bell, Shield, Save, Calendar, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,14 @@ export default function SettingsPage() {
     queryKey: ['/api/credits/transactions'],
   });
 
+  const { data: subscription, refetch: refetchSubscription } = useQuery({
+    queryKey: ['/api/subscriptions'],
+  });
+
+  const { data: paymentMethods = [], refetch: refetchPaymentMethods } = useQuery({
+    queryKey: ['/api/billing/payment-methods'],
+  });
+
   const updateProfileMutation = useMutation({
     mutationFn: (data: any) => apiRequest('PUT', '/api/profile', data),
     onSuccess: () => {
@@ -48,6 +56,24 @@ export default function SettingsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('PUT', '/api/subscriptions', data),
+    onSuccess: () => {
+      toast({
+        title: "Subscription Updated",
+        description: "Your subscription has been successfully updated.",
+      });
+      refetchSubscription();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update subscription. Please try again.",
         variant: "destructive",
       });
     },
@@ -138,93 +164,144 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="billing">
-            <div className="space-y-6">
+          <TabsContent value="billing" className="space-y-6">
+              {/* Current Subscription */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <CreditCard className="mr-2 h-5 w-5" />
-                    Credits & Billing
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Current Subscription
                   </CardTitle>
                   <CardDescription>
-                    Manage your credits and billing information.
+                    Manage your subscription and billing
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{user?.credits || 0}</div>
-                      <div className="text-sm text-gray-600">Credits Available</div>
-                    </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">$0.00</div>
-                      <div className="text-sm text-gray-600">Monthly Spend</div>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">Free</div>
-                      <div className="text-sm text-gray-600">Current Plan</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Buy Credits</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleBuyCredits(50)}>
-                        <CardContent className="p-4 text-center">
-                          <div className="text-xl font-bold">50 Credits</div>
-                          <div className="text-sm text-gray-600">$9.99</div>
-                          <div className="text-xs text-gray-500 mt-2">$0.20 per credit</div>
-                        </CardContent>
-                      </Card>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer border-blue-200" onClick={() => handleBuyCredits(100)}>
-                        <CardContent className="p-4 text-center">
-                          <div className="text-xl font-bold">100 Credits</div>
-                          <div className="text-sm text-gray-600">$17.99</div>
-                          <div className="text-xs text-gray-500 mt-2">$0.18 per credit</div>
-                          <div className="text-xs text-blue-600 font-medium">Most Popular</div>
-                        </CardContent>
-                      </Card>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleBuyCredits(250)}>
-                        <CardContent className="p-4 text-center">
-                          <div className="text-xl font-bold">250 Credits</div>
-                          <div className="text-sm text-gray-600">$39.99</div>
-                          <div className="text-xs text-gray-500 mt-2">$0.16 per credit</div>
-                          <div className="text-xs text-green-600 font-medium">Best Value</div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Transactions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {creditTransactions.length === 0 ? (
-                    <p className="text-gray-500 text-center py-4">No transactions yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {creditTransactions.slice(0, 5).map((transaction: any) => (
-                        <div key={transaction.id} className="flex items-center justify-between py-2 border-b">
-                          <div>
-                            <div className="font-medium">{transaction.description}</div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(transaction.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className={`font-semibold ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {transaction.amount > 0 ? '+' : ''}{transaction.amount} credits
+                <CardContent className="space-y-4">
+                  {subscription ? (
+                    <>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-lg">{subscription.plan?.name}</h4>
+                          <p className="text-gray-600">${(subscription.plan?.price / 100).toFixed(2)} per {subscription.plan?.interval}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              subscription.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
+                              subscription.subscription.status === 'trialing' ? 'bg-blue-100 text-blue-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {subscription.subscription.status}
+                            </span>
                           </div>
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                        <div>
+                          <p className="text-sm text-gray-600">Current Period</p>
+                          <p className="font-medium">
+                            {new Date(subscription.subscription.currentPeriodStart).toLocaleDateString()} - {new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Next Billing</p>
+                          <p className="font-medium flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => updateSubscriptionMutation.mutate({ 
+                            cancelAtPeriodEnd: !subscription.subscription.cancelAtPeriodEnd 
+                          })}
+                        >
+                          {subscription.subscription.cancelAtPeriodEnd ? 'Resume Subscription' : 'Cancel Subscription'}
+                        </Button>
+                      </div>
+
+                      {subscription.subscription.cancelAtPeriodEnd && (
+                        <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                          <p className="text-sm text-yellow-800">
+                            Your subscription will end on {new Date(subscription.subscription.currentPeriodEnd).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600 mb-4">No active subscription</p>
+                      <Button onClick={() => window.location.href = '/subscription-onboarding'}>
+                        Subscribe Now
+                      </Button>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+
+              {/* Payment Methods */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Methods</CardTitle>
+                  <CardDescription>
+                    Manage your saved payment methods
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {paymentMethods.length > 0 ? (
+                    <div className="space-y-3">
+                      {paymentMethods.map((pm: any) => (
+                        <div key={pm.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="font-medium">•••• •••• •••• {pm.card.last4}</p>
+                              <p className="text-sm text-gray-600">{pm.card.brand.toUpperCase()} expires {pm.card.exp_month}/{pm.card.exp_year}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">No payment methods saved</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Billing History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Billing History</CardTitle>
+                  <CardDescription>
+                    View your recent billing transactions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {creditTransactions.slice(0, 5).map((transaction: any) => (
+                      <div key={transaction.id} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                        <div>
+                          <p className="font-medium">{transaction.description}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className={`font-medium ${
+                          transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {transaction.amount > 0 ? '+' : ''}{transaction.amount} credits
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
           <TabsContent value="notifications">
             <Card>

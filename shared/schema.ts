@@ -12,9 +12,7 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false).notNull(),
   aiCredits: integer("ai_credits").default(25).notNull(),
   stripeCustomerId: text("stripe_customer_id"),
-  subscriptionStatus: text("subscription_status").$type<'trial' | 'active' | 'canceled' | 'past_due' | 'incomplete'>().default('trial'),
-  subscriptionId: text("subscription_id"),
-  trialEndsAt: timestamp("trial_ends_at"),
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => {
@@ -100,6 +98,52 @@ export const creditTransactions = pgTable("credit_transactions", {
 }, (table) => {
   return {
     userIdIdx: index("credit_transactions_user_id_idx").on(table.userId),
+  };
+});
+
+// Subscription plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  stripePriceId: text("stripe_price_id").unique().notNull(),
+  stripeProductId: text("stripe_product_id").notNull(),
+  price: integer("price").notNull(), // in cents
+  currency: text("currency").default('usd').notNull(),
+  interval: text("interval").$type<'month' | 'year'>().default('month').notNull(),
+  aiCreditsIncluded: integer("ai_credits_included").default(0).notNull(),
+  maxStores: integer("max_stores").default(1).notNull(),
+  features: jsonb("features").$type<string[]>().default([]).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  trialDays: integer("trial_days").default(7).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    stripePriceIdIdx: index("subscription_plans_stripe_price_id_idx").on(table.stripePriceId),
+  };
+});
+
+// User subscriptions table
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  planId: integer("plan_id").references(() => subscriptionPlans.id).notNull(),
+  stripeSubscriptionId: text("stripe_subscription_id").unique().notNull(),
+  stripeCustomerId: text("stripe_customer_id").notNull(),
+  status: text("status").$type<'incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'paused'>().notNull(),
+  currentPeriodStart: timestamp("current_period_start").notNull(),
+  currentPeriodEnd: timestamp("current_period_end").notNull(),
+  trialStart: timestamp("trial_start"),
+  trialEnd: timestamp("trial_end"),
+  canceledAt: timestamp("canceled_at"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("user_subscriptions_user_id_idx").on(table.userId),
+    stripeSubscriptionIdIdx: index("user_subscriptions_stripe_subscription_id_idx").on(table.stripeSubscriptionId),
   };
 });
 
@@ -219,6 +263,20 @@ export const createUserStoreSchema = z.object({
   message: "storeUrl is required for Shopify stores, ebayUsername is required for eBay stores"
 });
 
+export const createSubscriptionSchema = z.object({
+  planId: z.number(),
+  paymentMethodId: z.string(),
+});
+
+export const updateSubscriptionSchema = z.object({
+  planId: z.number().optional(),
+  cancelAtPeriodEnd: z.boolean().optional(),
+});
+
+export const updatePaymentMethodSchema = z.object({
+  paymentMethodId: z.string(),
+});
+
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertUserStore = z.infer<typeof insertUserStoreSchema>;
@@ -229,10 +287,15 @@ export type UserStore = typeof userStores.$inferSelect;
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
 export type UserSession = typeof userSessions.$inferSelect;
 export type ProductOptimization = typeof productOptimizations.$inferSelect;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type AnalyzeStoreRequest = z.infer<typeof analyzeStoreRequestSchema>;
 export type RegisterUserRequest = z.infer<typeof registerUserSchema>;
 export type LoginUserRequest = z.infer<typeof loginUserSchema>;
 export type CreateUserStoreRequest = z.infer<typeof createUserStoreSchema>;
+export type CreateSubscriptionRequest = z.infer<typeof createSubscriptionSchema>;
+export type UpdateSubscriptionRequest = z.infer<typeof updateSubscriptionSchema>;
+export type UpdatePaymentMethodRequest = z.infer<typeof updatePaymentMethodSchema>;
 
 export interface StoreAnalysisResult {
   // Overall scoring section

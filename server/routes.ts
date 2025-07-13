@@ -11,7 +11,10 @@ import {
   analyzeStoreRequestSchema, 
   registerUserSchema, 
   loginUserSchema,
-  createUserStoreSchema 
+  createUserStoreSchema,
+  createSubscriptionSchema,
+  updateSubscriptionSchema,
+  updatePaymentMethodSchema
 } from "@shared/schema";
 import { analyzeShopifyStore, analyzeEbayStore } from "./services/storeAnalyzer";
 import { authenticateUser, requireAuth, requireAdmin, checkCredits, checkSubscription } from "./middleware/auth";
@@ -26,6 +29,7 @@ import {
   validateWebhookSignature
 } from "./services/shopifyIntegration";
 import { analyzeStoreWithAI } from "./services/openai";
+import { subscriptionService } from "./services/subscriptionService";
 import Stripe from "stripe";
 
 // Initialize Stripe if key is available
@@ -88,7 +92,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Return user data without password
       const { passwordHash, ...userWithoutPassword } = user;
-      res.status(201).json({ user: userWithoutPassword, session: session.id });
+      res.status(201).json({ 
+        user: userWithoutPassword, 
+        session: session.id,
+        needsOnboarding: true
+      });
       
     } catch (error) {
       console.error("Registration error:", error);
@@ -1299,6 +1307,94 @@ Return ONLY a JSON object with this exact format:
     }
   });
 
+  // ================ SUBSCRIPTION ROUTES ================
+  
+  // Get subscription plans
+  app.get("/api/subscription/plans", async (req: Request, res: Response) => {
+    try {
+      const plans = await subscriptionService.getSubscriptionPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ error: "Failed to fetch plans" });
+    }
+  });
+
+  // Get user's current subscription
+  app.get("/api/subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const subscription = await subscriptionService.getUserSubscription(req.user!.id);
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  // Create new subscription
+  app.post("/api/subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const validatedData = createSubscriptionSchema.parse(req.body);
+      
+      const result = await subscriptionService.createSubscription(
+        req.user!.id,
+        validatedData.planId,
+        validatedData.paymentMethodId
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(400).json({ 
+        error: "Failed to create subscription", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Update subscription
+  app.put("/api/subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const validatedData = updateSubscriptionSchema.parse(req.body);
+      
+      const subscription = await subscriptionService.updateSubscription(req.user!.id, validatedData);
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      res.status(400).json({ 
+        error: "Failed to update subscription", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Update payment method
+  app.post("/api/subscription/payment-method", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const validatedData = updatePaymentMethodSchema.parse(req.body);
+      
+      await subscriptionService.updatePaymentMethod(req.user!.id, validatedData.paymentMethodId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating payment method:", error);
+      res.status(400).json({ 
+        error: "Failed to update payment method", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  // Get payment methods
+  app.get("/api/subscription/payment-methods", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const paymentMethods = await subscriptionService.getPaymentMethods(req.user!.id);
+      res.json(paymentMethods);
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      res.status(500).json({ error: "Failed to fetch payment methods" });
+    }
+  });
+
   // ================ STRIPE PAYMENT ROUTES ================
   
   // Create payment intent for credit purchase
@@ -1354,29 +1450,22 @@ Return ONLY a JSON object with this exact format:
 
       const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
 
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          const paymentIntent = event.data.object;
-          const { userId, credits, package: packageType } = paymentIntent.metadata;
-          
-          if (userId && credits) {
-            await storage.addCredits(
-              parseInt(userId), 
-              parseInt(credits), 
-              `Credit purchase - ${packageType} package`,
-              paymentIntent.id
-            );
-          }
-          break;
+      // Handle subscription events
+      await subscriptionService.handleWebhookEvent(event);
 
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated':
-          const subscription = event.data.object;
-          // Handle subscription updates
-          break;
-
-        default:
-          console.log(`Unhandled event type ${event.type}`);
+      // Handle one-time credit purchases
+      if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object;
+        const { userId, credits, package: packageType } = paymentIntent.metadata;
+        
+        if (userId && credits) {
+          await storage.addCredits(
+            parseInt(userId), 
+            parseInt(credits), 
+            `Credit purchase - ${packageType} package`,
+            paymentIntent.id
+          );
+        }
       }
 
       res.json({ received: true });

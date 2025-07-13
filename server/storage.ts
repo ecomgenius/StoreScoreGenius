@@ -5,6 +5,8 @@ import {
   creditTransactions,
   userSessions,
   productOptimizations,
+  subscriptionPlans,
+  userSubscriptions,
   type StoreAnalysis, 
   type InsertStoreAnalysis,
   type User,
@@ -13,7 +15,9 @@ import {
   type InsertUserStore,
   type CreditTransaction,
   type UserSession,
-  type ProductOptimization
+  type ProductOptimization,
+  type SubscriptionPlan,
+  type UserSubscription
 } from "@shared/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";

@@ -77,26 +77,26 @@ export function checkCredits(minimumCredits: number = 1) {
 }
 
 export function checkSubscription(req: Request, res: Response, next: NextFunction) {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
 
-  const { subscriptionStatus, trialEndsAt } = req.user;
-  const now = new Date();
-
-  // Check if trial is still valid
-  if (subscriptionStatus === 'trial' && trialEndsAt && trialEndsAt > now) {
-    return next();
-  }
-
-  // Check if subscription is active
-  if (subscriptionStatus === 'active') {
-    return next();
-  }
-
-  return res.status(402).json({ 
-    error: 'Active subscription required',
-    subscriptionStatus,
-    trialExpired: trialEndsAt ? trialEndsAt < now : false
-  });
+    try {
+      const { subscriptionService } = await import('../services/subscriptionService');
+      const hasAccess = await subscriptionService.hasFeatureAccess(req.user.id);
+      
+      if (!hasAccess) {
+        return res.status(402).json({ 
+          error: 'Active subscription required',
+          message: 'Please upgrade your subscription to access this feature'
+        });
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Subscription check error:', error);
+      res.status(500).json({ error: 'Failed to verify subscription' });
+    }
+  };
 }
