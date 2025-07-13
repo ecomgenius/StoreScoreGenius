@@ -513,6 +513,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { storeId, productId, recommendationType, suggestion } = req.body;
       const { user } = req;
+      
+      // Debug: Log the incoming request data
+      console.log(`Debug - Apply recommendation request:`, {
+        storeId,
+        productId,
+        recommendationType,
+        suggestion,
+        userId: user.id
+      });
 
       // Get the user's store
       const store = await storage.getUserStore(parseInt(storeId));
