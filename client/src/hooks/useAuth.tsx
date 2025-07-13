@@ -35,8 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkAuth = async () => {
     try {
-      const response = await apiRequest('GET', '/api/auth/me');
-      const userData = await response.json();
+      const userData = await apiRequest('GET', '/api/auth/me');
       setUser(userData.user);
     } catch (error) {
       // Not authenticated, which is fine
@@ -47,20 +46,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await apiRequest('POST', '/api/auth/login', { email, password });
-    const userData = await response.json();
+    const userData = await apiRequest('POST', '/api/auth/login', { email, password });
     setUser(userData.user);
   };
 
   const register = async (email: string, password: string, name?: string) => {
     const [firstName, lastName] = (name || '').split(' ');
-    const response = await apiRequest('POST', '/api/auth/register', { 
+    const userData = await apiRequest('POST', '/api/auth/register', { 
       email, 
       password, 
       firstName: firstName || 'User',
       lastName: lastName || 'Name'
     });
-    const userData = await response.json();
     setUser(userData.user);
   };
 

@@ -24,8 +24,7 @@ export default function Dashboard() {
   const { data: analysisCount = 0 } = useQuery({
     queryKey: ['/api/analyses', 'count'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/analyses?limit=1000');
-      const analyses = await response.json();
+      const analyses = await apiRequest('GET', '/api/analyses?limit=1000');
       return analyses.length;
     },
     enabled: !!user,
@@ -35,8 +34,7 @@ export default function Dashboard() {
   const { data: userCredits } = useQuery({
     queryKey: ['/api/credits'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/credits');
-      return response.json();
+      return await apiRequest('GET', '/api/credits');
     },
     enabled: !!user,
   });
@@ -45,16 +43,14 @@ export default function Dashboard() {
   const { data: userStores = [] } = useQuery({
     queryKey: ['/api/stores'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/stores');
-      return response.json();
+      return await apiRequest('GET', '/api/stores');
     },
     enabled: !!user,
   });
 
   const analyzeMutation = useMutation({
     mutationFn: async (data: { storeUrl?: string; ebayUsername?: string; storeType: string }) => {
-      const response = await apiRequest('POST', '/api/analyze-store', data);
-      return response.json();
+      return await apiRequest('POST', '/api/analyze-store', data);
     },
     onSuccess: (data) => {
       console.log("✅ Dashboard received analysis result:", data);
