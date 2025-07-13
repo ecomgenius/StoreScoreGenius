@@ -136,20 +136,42 @@ function CheckoutForm({ selectedPackage, onSuccess }: CheckoutFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border rounded-lg">
-        <CardElement 
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
+      <div className="space-y-4">
+        <div className="p-4 border rounded-lg">
+          <CardElement 
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#424770',
+                  fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                  fontSmoothing: 'antialiased',
+                  '::placeholder': {
+                    color: '#aab7c4',
+                  },
                 },
+                invalid: {
+                  color: '#9e2146',
+                  iconColor: '#fa755a'
+                }
               },
-            },
-          }}
-        />
+              hidePostalCode: false,
+              iconStyle: 'solid'
+            }}
+          />
+        </div>
+        <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+          <p className="text-xs text-blue-800 dark:text-blue-200 font-medium mb-1">
+            Test with Stripe test cards:
+          </p>
+          <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+            <div><strong>Visa:</strong> 4242 4242 4242 4242</div>
+            <div><strong>Mastercard:</strong> 5555 5555 5555 4444</div>
+            <div><strong>CVV:</strong> Any 3 digits (e.g., 123)</div>
+            <div><strong>Expiry:</strong> Any future date (e.g., 12/25)</div>
+            <div><strong>ZIP:</strong> Any 5 digits (e.g., 12345)</div>
+          </div>
+        </div>
       </div>
       
       <Button 
