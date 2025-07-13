@@ -4,6 +4,7 @@ import {
   userStores,
   creditTransactions,
   userSessions,
+  productOptimizations,
   type StoreAnalysis, 
   type InsertStoreAnalysis,
   type User,
@@ -11,7 +12,8 @@ import {
   type UserStore,
   type InsertUserStore,
   type CreditTransaction,
-  type UserSession
+  type UserSession,
+  type ProductOptimization
 } from "@shared/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -52,6 +54,19 @@ export interface IStorage {
   getSession(sessionId: string): Promise<UserSession | undefined>;
   deleteSession(sessionId: string): Promise<boolean>;
   cleanExpiredSessions(): Promise<void>;
+  
+  // Product optimization tracking methods
+  recordProductOptimization(data: {
+    userId: number;
+    userStoreId: number;
+    shopifyProductId: string;
+    optimizationType: 'title' | 'description' | 'pricing' | 'keywords';
+    originalValue: string;
+    optimizedValue: string;
+    creditsUsed: number;
+  }): Promise<ProductOptimization>;
+  getProductOptimizations(userStoreId: number, optimizationType?: string): Promise<ProductOptimization[]>;
+  isProductOptimized(userStoreId: number, shopifyProductId: string, optimizationType: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -234,6 +249,45 @@ export class DatabaseStorage implements IStorage {
   async cleanExpiredSessions(): Promise<void> {
     await db.delete(userSessions)
       .where(gt(new Date(), userSessions.expiresAt));
+  }
+
+  // Product optimization tracking methods
+  async recordProductOptimization(data: {
+    userId: number;
+    userStoreId: number;
+    shopifyProductId: string;
+    optimizationType: 'title' | 'description' | 'pricing' | 'keywords';
+    originalValue: string;
+    optimizedValue: string;
+    creditsUsed: number;
+  }): Promise<ProductOptimization> {
+    const result = await db.insert(productOptimizations).values(data).returning();
+    return result[0];
+  }
+
+  async getProductOptimizations(userStoreId: number, optimizationType?: string): Promise<ProductOptimization[]> {
+    let query = db.select().from(productOptimizations).where(eq(productOptimizations.userStoreId, userStoreId));
+    
+    if (optimizationType) {
+      query = query.where(eq(productOptimizations.optimizationType, optimizationType as any));
+    }
+    
+    return await query.orderBy(desc(productOptimizations.appliedAt));
+  }
+
+  async isProductOptimized(userStoreId: number, shopifyProductId: string, optimizationType: string): Promise<boolean> {
+    const result = await db.select()
+      .from(productOptimizations)
+      .where(
+        and(
+          eq(productOptimizations.userStoreId, userStoreId),
+          eq(productOptimizations.shopifyProductId, shopifyProductId),
+          eq(productOptimizations.optimizationType, optimizationType as any)
+        )
+      )
+      .limit(1);
+    
+    return result.length > 0;
   }
 }
 
@@ -464,6 +518,34 @@ export class MemStorage implements IStorage {
         this.sessions.delete(sessionId);
       }
     }
+  }
+
+  // Product optimization tracking methods (stub implementation for memory storage)
+  async recordProductOptimization(data: {
+    userId: number;
+    userStoreId: number;
+    shopifyProductId: string;
+    optimizationType: 'title' | 'description' | 'pricing' | 'keywords';
+    originalValue: string;
+    optimizedValue: string;
+    creditsUsed: number;
+  }): Promise<ProductOptimization> {
+    // Stub implementation for memory storage
+    return {
+      id: Math.floor(Math.random() * 10000),
+      ...data,
+      appliedAt: new Date(),
+    };
+  }
+
+  async getProductOptimizations(userStoreId: number, optimizationType?: string): Promise<ProductOptimization[]> {
+    // Stub implementation for memory storage
+    return [];
+  }
+
+  async isProductOptimized(userStoreId: number, shopifyProductId: string, optimizationType: string): Promise<boolean> {
+    // Stub implementation for memory storage - always return false so optimizations can be applied
+    return false;
   }
 }
 

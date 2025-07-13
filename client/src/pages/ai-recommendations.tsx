@@ -119,6 +119,19 @@ export default function AIRecommendations() {
     enabled: !!user,
   });
 
+  // Fetch optimized products to show badges and filter lists
+  const { data: optimizedProducts = {} } = useQuery({
+    queryKey: ['/api/shopify/optimized-products', storeId],
+    queryFn: async () => {
+      try {
+        return await apiRequest('GET', `/api/shopify/optimized-products/${storeId}`);
+      } catch (error) {
+        return {}; // Return empty object if no optimizations yet
+      }
+    },
+    enabled: !!storeId,
+  });
+
   // Generate AI suggestion preview
   const generateSuggestionMutation = useMutation({
     mutationFn: async ({ productId, recommendationType }: { 
@@ -167,6 +180,7 @@ export default function AIRecommendations() {
       queryClient.invalidateQueries({ queryKey: ['/api/shopify/products', storeId] });
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: ['/api/ai-recommendations', storeId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shopify/optimized-products', storeId] });
       setPreviewingSuggestion(null); // Close preview modal
       toast({
         title: "Recommendation Applied",
@@ -212,6 +226,7 @@ export default function AIRecommendations() {
       queryClient.invalidateQueries({ queryKey: ['/api/shopify/products', storeId] });
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: ['/api/ai-recommendations', storeId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shopify/optimized-products', storeId] });
       setShowBulkModal(false);
       setSelectedProducts([]);
       toast({
@@ -273,29 +288,46 @@ export default function AIRecommendations() {
     }
   };
 
-  // Create product-based optimization opportunities for each tab
+  // Helper function to check if a product is optimized for a specific type
+  const isProductOptimized = (productId: string, type: string) => {
+    return optimizedProducts[productId] && optimizedProducts[productId][type];
+  };
+
+  // Create product-based optimization opportunities for each tab, excluding already optimized products
   const productOptimizations = {
-    title: products.filter(p => p.title && (
-      p.title.length < 30 || 
-      p.title.length > 70 || 
-      !p.title.includes(p.product_type || '') ||
-      p.title === p.title.toUpperCase()
-    )),
+    title: products.filter(p => 
+      !isProductOptimized(p.id, 'title') && // Filter out optimized products
+      p.title && (
+        p.title.length < 30 || 
+        p.title.length > 70 || 
+        !p.title.includes(p.product_type || '') ||
+        p.title === p.title.toUpperCase()
+      )
+    ),
     description: products.filter(p => 
-      !p.body_html || 
-      p.body_html.length < 100 || 
-      !p.body_html.includes('benefits') ||
-      !p.body_html.includes('features')
+      !isProductOptimized(p.id, 'description') && // Filter out optimized products
+      (
+        !p.body_html || 
+        p.body_html.length < 100 || 
+        !p.body_html.includes('benefits') ||
+        !p.body_html.includes('features')
+      )
     ),
     pricing: products.filter(p => 
-      !p.variants?.[0]?.price || 
-      parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
-      !p.variants[0].compare_at_price
+      !isProductOptimized(p.id, 'pricing') && // Filter out optimized products
+      (
+        !p.variants?.[0]?.price || 
+        parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
+        !p.variants[0].compare_at_price
+      )
     ),
     keywords: products.filter(p => 
-      !p.tags || 
-      p.tags.length < 3 ||
-      !p.handle.includes('-')
+      !isProductOptimized(p.id, 'keywords') && // Filter out optimized products
+      (
+        !p.tags || 
+        p.tags.length < 3 ||
+        !p.handle.includes('-')
+      )
     )
   };
 
@@ -571,7 +603,14 @@ export default function AIRecommendations() {
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-base mb-1 truncate">{product.title}</h4>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-semibold text-base truncate">{product.title}</h4>
+                                    {isProductOptimized(product.id, type) && (
+                                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                        ✓ AI Optimized
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <p className="text-sm text-muted-foreground mb-2">
                                     ${product.variants?.[0]?.price || 'No price'} • {product.product_type || 'Uncategorized'}
                                   </p>

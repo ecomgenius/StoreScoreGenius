@@ -403,6 +403,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get optimized products for a store
+  app.get("/api/shopify/optimized-products/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const { user } = req;
+
+      // Get the user's store
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      // Get all optimizations for this store
+      const optimizations = await storage.getProductOptimizations(store.id);
+      
+      // Group optimizations by product and type
+      const optimizedProducts: Record<string, Record<string, any>> = {};
+      
+      optimizations.forEach(opt => {
+        if (!optimizedProducts[opt.shopifyProductId]) {
+          optimizedProducts[opt.shopifyProductId] = {};
+        }
+        optimizedProducts[opt.shopifyProductId][opt.optimizationType] = {
+          optimizedAt: opt.appliedAt,
+          originalValue: opt.originalValue,
+          optimizedValue: opt.optimizedValue,
+        };
+      });
+
+      res.json(optimizedProducts);
+    } catch (error) {
+      console.error("Error fetching optimized products:", error);
+      res.status(500).json({ error: "Failed to fetch optimized products" });
+    }
+  });
+
   // Get AI recommendations for a store
   app.get("/api/ai-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -623,6 +659,20 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
 
       // Deduct credit
       await storage.deductCredits(user.id, 1, `AI optimized ${recommendationType} for "${currentProduct.title}"`);
+
+      // Record the optimization
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: productId,
+        optimizationType: recommendationType,
+        originalValue: recommendationType === 'title' ? currentProduct.title :
+                       recommendationType === 'description' ? (currentProduct.body_html || 'No description') :
+                       recommendationType === 'pricing' ? currentProduct.variants?.[0]?.price :
+                       currentProduct.tags || 'No tags',
+        optimizedValue: aiSuggestion,
+        creditsUsed: 1,
+      });
 
       res.json({ 
         success: true, 
@@ -865,12 +915,68 @@ Generate ONLY the new optimized title, nothing else:`;
               updateData.title = `Premium ${currentProduct.title}`;
             }
           } else if (recommendationType === 'description') {
-            updateData.body_html = `<p>AI-optimized product description with enhanced SEO keywords and compelling sales copy for ${currentProduct.title}.</p>`;
+            // Use OpenAI to generate personalized description for each product
+            const openai = await import('openai');
+            const openaiClient = new openai.default({ 
+              apiKey: process.env.OPENAI_API_KEY 
+            });
+
+            const descriptionPrompt = `You are an expert e-commerce copywriter specializing in conversion optimization. Create a compelling product description using market-proven keywords and conversion techniques.
+
+Product: ${currentProduct.title}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Brand'}
+Current price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+Current description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '').substring(0, 200) || 'No description'}
+
+Requirements:
+- Create a unique, compelling description for THIS specific product
+- Use emotional triggers and benefits-focused language
+- Include relevant SEO keywords naturally
+- Structure with bullet points for key features/benefits
+- Highlight unique selling propositions
+- Focus on customer problems this product solves
+- End with a clear call-to-action
+- Keep it engaging and scannable (150-250 words)
+
+Generate ONLY the clean description text without HTML tags, quotes, or extra formatting:`;
+
+            try {
+              const aiResponse = await openaiClient.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: descriptionPrompt }],
+                max_tokens: 300,
+                temperature: 0.7,
+              });
+              
+              updateData.body_html = `<p>${aiResponse.choices[0].message.content?.trim() || `Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.`}</p>`;
+            } catch (error) {
+              console.error('OpenAI description generation failed for bulk update:', error);
+              updateData.body_html = `<p>Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.</p>`;
+            }
           }
 
           if (Object.keys(updateData).length > 0) {
             await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
             await storage.deductCredits(user.id, 1, `Bulk ${recommendationType} optimization for "${currentProduct.title}"`);
+            
+            // Record the optimization
+            await storage.recordProductOptimization({
+              userId: user.id,
+              userStoreId: store.id,
+              shopifyProductId: productId,
+              optimizationType: recommendationType,
+              originalValue: recommendationType === 'title' ? currentProduct.title :
+                             recommendationType === 'description' ? (currentProduct.body_html || 'No description') :
+                             recommendationType === 'pricing' ? currentProduct.variants?.[0]?.price :
+                             currentProduct.tags || 'No tags',
+              optimizedValue: recommendationType === 'title' ? updateData.title :
+                              recommendationType === 'description' ? updateData.body_html :
+                              recommendationType === 'pricing' ? updateData.variants?.[0]?.price :
+                              updateData.tags || '',
+              creditsUsed: 1,
+            });
+            
             appliedCount++;
             creditsUsed++;
           }

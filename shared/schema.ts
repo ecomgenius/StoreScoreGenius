@@ -116,6 +116,24 @@ export const userSessions = pgTable("user_sessions", {
   };
 });
 
+// Product optimizations table - tracks AI optimizations applied to products
+export const productOptimizations = pgTable("product_optimizations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  userStoreId: integer("user_store_id").references(() => userStores.id).notNull(),
+  shopifyProductId: text("shopify_product_id").notNull(),
+  optimizationType: text("optimization_type").$type<'title' | 'description' | 'pricing' | 'keywords'>().notNull(),
+  originalValue: text("original_value"),
+  optimizedValue: text("optimized_value").notNull(),
+  creditsUsed: integer("credits_used").default(1).notNull(),
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userStoreProductIdx: index("product_optimizations_user_store_product_idx").on(table.userStoreId, table.shopifyProductId),
+    userIdIdx: index("product_optimizations_user_id_idx").on(table.userId),
+  };
+});
+
 // Schema validation
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -210,6 +228,7 @@ export type User = typeof users.$inferSelect;
 export type UserStore = typeof userStores.$inferSelect;
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
 export type UserSession = typeof userSessions.$inferSelect;
+export type ProductOptimization = typeof productOptimizations.$inferSelect;
 export type AnalyzeStoreRequest = z.infer<typeof analyzeStoreRequestSchema>;
 export type RegisterUserRequest = z.infer<typeof registerUserSchema>;
 export type LoginUserRequest = z.infer<typeof loginUserSchema>;
