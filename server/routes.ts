@@ -760,8 +760,12 @@ Generate ONLY the comma-separated list of optimized keywords, nothing else:`;
         updateData.tags = aiSuggestion;
       }
 
+      // Debug: Log the update data being sent to Shopify
+      console.log(`Debug - ${recommendationType} optimization updateData:`, JSON.stringify(updateData, null, 2));
+      
       // Update product via Shopify API
-      await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
+      const updateResult = await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
+      console.log(`Debug - Shopify update result for ${recommendationType}:`, updateResult ? 'Success' : 'Failed');
 
       // Deduct credit
       await storage.deductCredits(user.id, 1, `AI optimized ${recommendationType} for "${currentProduct.title}"`);
@@ -1179,7 +1183,9 @@ Return ONLY a JSON object with this exact format:
           }
 
           if (Object.keys(updateData).length > 0) {
-            await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
+            console.log(`Debug - Bulk ${recommendationType} updateData for product ${productId}:`, JSON.stringify(updateData, null, 2));
+            const bulkUpdateResult = await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
+            console.log(`Debug - Bulk Shopify update result for ${recommendationType}:`, bulkUpdateResult ? 'Success' : 'Failed');
             await storage.deductCredits(user.id, 1, `Bulk ${recommendationType} optimization for "${currentProduct.title}"`);
             
             // Record the optimization
