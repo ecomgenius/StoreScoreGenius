@@ -31,8 +31,8 @@ export class SubscriptionService {
       throw new Error('User already has an active subscription');
     }
 
-    // Get the main subscription plan
-    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, 'Professional Plan'));
+    // Get the main subscription plan - use the one with valid Stripe price ID
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, 'Pro Plan'));
     if (!plan) {
       throw new Error('Subscription plan not found');
     }
