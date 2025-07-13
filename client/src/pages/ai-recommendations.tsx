@@ -205,9 +205,35 @@ export default function AIRecommendations() {
     }
   };
 
+  // Map recommendation categories to tab types for better organization
+  const categoryToTab: Record<string, string> = {
+    'product': 'title',        // Product issues → Title optimization
+    'seo': 'description',      // SEO issues → Description optimization  
+    'pricing': 'pricing',      // Pricing issues → Pricing optimization
+    'design': 'keywords',      // Design issues → Keywords/Tags optimization
+    'trust': 'description',    // Trust issues → Description improvements
+    'conversion': 'title'      // Conversion issues → Title improvements
+  };
+
+  // Group recommendations by tab type and assign sample products
   const groupedRecommendations = recommendations.reduce((acc: Record<string, AIRecommendation[]>, rec: AIRecommendation) => {
-    if (!acc[rec.type]) acc[rec.type] = [];
-    acc[rec.type].push(rec);
+    const tabType = categoryToTab[rec.type] || 'title';
+    if (!acc[tabType]) acc[tabType] = [];
+    
+    // Assign sample products to each recommendation for demonstration
+    const sampleProducts = products.slice(0, Math.min(3, products.length)).map(p => ({
+      id: p.id,
+      title: p.title,
+      currentValue: tabType === 'title' ? p.title : 
+                    tabType === 'description' ? (p.description || 'No description') :
+                    tabType === 'pricing' ? (p.variants?.[0]?.price || 'No price') :
+                    'Keywords needed'
+    }));
+    
+    acc[tabType].push({
+      ...rec,
+      affectedProducts: sampleProducts
+    });
     return acc;
   }, {});
 
@@ -376,28 +402,85 @@ export default function AIRecommendations() {
 
           {(['title', 'description', 'pricing', 'keywords'] as const).map((type) => (
             <TabsContent key={type} value={type} className="space-y-4">
-              {groupedRecommendations[type]?.map((rec: AIRecommendation) => (
-                <Card key={rec.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-base">{rec.title}</CardTitle>
-                        <CardDescription className="mt-1">{rec.description}</CardDescription>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Badge variant={getPriorityColor(rec.priority)}>{rec.priority}</Badge>
-                          <Badge variant="outline">{rec.impact}</Badge>
+              {groupedRecommendations[type]?.length > 0 ? (
+                <>
+                  {groupedRecommendations[type].map((rec: AIRecommendation) => (
+                    <Card key={rec.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-base">{rec.title}</CardTitle>
+                            <CardDescription className="mt-1">{rec.description}</CardDescription>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Badge variant={getPriorityColor(rec.priority)}>{rec.priority}</Badge>
+                              <Badge variant="outline">{rec.impact}</Badge>
+                              <Badge variant="secondary">{rec.affectedProducts.length} products</Badge>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => handleBulkApply(type)}
+                            disabled={applyBulkMutation.isPending}
+                          >
+                            Fix All ({rec.affectedProducts.length} credits)
+                          </Button>
                         </div>
-                      </div>
-                      <Button
-                        onClick={() => handleBulkApply(type)}
-                        disabled={applyBulkMutation.isPending}
-                      >
-                        Fix All ({rec.affectedProducts.length} credits)
-                      </Button>
-                    </div>
-                  </CardHeader>
-                </Card>
-              )) || (
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {rec.affectedProducts.map((product: any) => (
+                            <div key={product.id} className="flex items-start justify-between p-4 border rounded-lg">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center">
+                                    <Tag className="h-4 w-4 text-gray-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{product.title}</p>
+                                    <p className="text-sm text-muted-foreground">Product ID: {product.id}</p>
+                                  </div>
+                                </div>
+                                <div className="ml-13">
+                                  <div className="text-sm">
+                                    <span className="font-medium text-muted-foreground">Current {type}:</span>
+                                    <p className="mt-1 p-2 bg-gray-50 rounded text-sm">
+                                      {product.currentValue || `No ${type} set`}
+                                    </p>
+                                  </div>
+                                  <div className="text-sm mt-3">
+                                    <span className="font-medium text-green-600">AI Suggestion:</span>
+                                    <p className="mt-1 p-2 bg-green-50 rounded text-sm">
+                                      {type === 'title' ? `Optimized SEO title based on: "${rec.suggestion}"` :
+                                       type === 'description' ? `Enhanced product description with: "${rec.suggestion}"` :
+                                       type === 'pricing' ? `Competitive pricing analysis suggests optimization` :
+                                       `Keyword optimization: "${rec.suggestion}"`}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                <Button
+                                  size="sm"
+                                  onClick={() => 
+                                    applyRecommendationMutation.mutate({
+                                      productId: product.id,
+                                      recommendationType: type,
+                                      suggestion: rec.suggestion,
+                                    })
+                                  }
+                                  disabled={applyRecommendationMutation.isPending}
+                                  className="shrink-0"
+                                >
+                                  {applyRecommendationMutation.isPending ? 'Applying...' : 'Apply (1 credit)'}
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              ) : (
                 <div className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Issues Found</h3>
