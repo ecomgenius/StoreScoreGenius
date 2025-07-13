@@ -1,6 +1,11 @@
 import express, { type Request, type Response, type Express } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { storage } from "./storage";
 import { 
   analyzeStoreRequestSchema, 
@@ -30,6 +35,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Add authentication middleware to all routes
   app.use(authenticateUser);
+  
+  // Handle Shopify callback at root level (in case redirect URI is set to root)
+  app.get("/", (req: Request, res: Response, next) => {
+    const { hmac, host, shop, timestamp, code, state } = req.query;
+    
+    // If this looks like a Shopify callback, redirect to proper callback endpoint
+    if (shop && (hmac || code)) {
+      console.log('Debug - Root callback detected, redirecting to /api/shopify/callback');
+      const queryString = new URLSearchParams(req.query as any).toString();
+      return res.redirect(`/api/shopify/callback?${queryString}`);
+    }
+    
+    // Otherwise, let other middleware handle it (Vite in development)
+    next();
+  });
 
   // ================ AUTHENTICATION ROUTES ================
   
