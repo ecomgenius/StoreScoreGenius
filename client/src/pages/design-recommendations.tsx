@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Palette, 
@@ -42,6 +44,7 @@ export default function DesignRecommendations() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [previewingSuggestion, setPreviewingSuggestion] = useState<DesignSuggestion | null>(null);
 
   // Fetch store details
   const { data: stores = [] } = useQuery({
@@ -293,7 +296,11 @@ export default function DesignRecommendations() {
                           </div>
                           
                           <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setPreviewingSuggestion(suggestion)}
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               Preview
                             </Button>
@@ -340,6 +347,163 @@ export default function DesignRecommendations() {
           </>
         )}
       </div>
+
+      {/* Design Preview Modal */}
+      <Dialog open={!!previewingSuggestion} onOpenChange={() => setPreviewingSuggestion(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Design Preview</DialogTitle>
+            <DialogDescription>
+              Preview how this design change will look on your store.
+            </DialogDescription>
+          </DialogHeader>
+          {previewingSuggestion && (
+            <div className="space-y-6">
+              {/* Design Info */}
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className={`p-2 rounded-lg bg-opacity-10 ${
+                  previewingSuggestion.type === 'colors' ? 'bg-purple-500' :
+                  previewingSuggestion.type === 'fonts' ? 'bg-blue-500' :
+                  previewingSuggestion.type === 'layout' ? 'bg-green-500' :
+                  previewingSuggestion.type === 'images' ? 'bg-orange-500' :
+                  'bg-indigo-500'
+                }`}>
+                  {previewingSuggestion.type === 'colors' ? <Palette className="h-5 w-5" /> :
+                   previewingSuggestion.type === 'fonts' ? <Type className="h-5 w-5" /> :
+                   previewingSuggestion.type === 'layout' ? <Layout className="h-5 w-5" /> :
+                   previewingSuggestion.type === 'images' ? <Image className="h-5 w-5" /> :
+                   <Smartphone className="h-5 w-5" />}
+                </div>
+                <div>
+                  <h4 className="font-medium">{previewingSuggestion.title}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {previewingSuggestion.type.charAt(0).toUpperCase() + previewingSuggestion.type.slice(1)} optimization
+                  </p>
+                </div>
+              </div>
+
+              {/* Before/After Comparison */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h5 className="font-medium text-sm text-muted-foreground mb-3">CURRENT DESIGN</h5>
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg min-h-[200px]">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Current State:</div>
+                      <p className="text-sm text-gray-700">
+                        {previewingSuggestion.suggestions.current || 'Current design element'}
+                      </p>
+                      
+                      {/* Visual representation based on type */}
+                      {previewingSuggestion.type === 'colors' && (
+                        <div className="mt-3">
+                          <div className="text-xs text-gray-500 mb-2">Current color scheme:</div>
+                          <div className="flex space-x-2">
+                            <div className="w-8 h-8 bg-gray-400 rounded border"></div>
+                            <div className="w-8 h-8 bg-gray-300 rounded border"></div>
+                            <div className="w-8 h-8 bg-gray-200 rounded border"></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {previewingSuggestion.type === 'fonts' && (
+                        <div className="mt-3">
+                          <div className="text-xs text-gray-500 mb-2">Current typography:</div>
+                          <div className="space-y-1">
+                            <div className="text-base font-bold">Heading Example</div>
+                            <div className="text-sm">Body text example with current font</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h5 className="font-medium text-sm text-green-600 mb-3">IMPROVED DESIGN</h5>
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg min-h-[200px]">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-green-800">Recommended:</div>
+                      <p className="text-sm text-green-700 font-medium">
+                        {previewingSuggestion.suggestions.recommended}
+                      </p>
+                      
+                      {/* Visual representation based on type */}
+                      {previewingSuggestion.type === 'colors' && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Improved color scheme:</div>
+                          <div className="flex space-x-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded border"></div>
+                            <div className="w-8 h-8 bg-blue-500 rounded border"></div>
+                            <div className="w-8 h-8 bg-blue-400 rounded border"></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {previewingSuggestion.type === 'fonts' && (
+                        <div className="mt-3">
+                          <div className="text-xs text-green-600 mb-2">Improved typography:</div>
+                          <div className="space-y-1">
+                            <div className="text-base font-bold font-serif">Enhanced Heading</div>
+                            <div className="text-sm font-sans">Improved body text with better readability</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Technical Details */}
+              {previewingSuggestion.suggestions.cssChanges && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <h5 className="font-medium text-sm mb-2">Implementation Details:</h5>
+                  <code className="text-xs bg-white p-2 rounded border block">
+                    {previewingSuggestion.suggestions.cssChanges}
+                  </code>
+                </div>
+              )}
+
+              {/* Impact & Benefits */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <h5 className="font-medium text-sm text-blue-800 mb-1">Expected Impact:</h5>
+                <p className="text-sm text-blue-700">{previewingSuggestion.impact}</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPreviewingSuggestion(null)}
+                >
+                  Close Preview
+                </Button>
+                <Button 
+                  onClick={() => {
+                    applyDesignMutation.mutate({
+                      suggestionId: previewingSuggestion.id,
+                      changes: previewingSuggestion.suggestions
+                    });
+                    setPreviewingSuggestion(null);
+                  }}
+                  disabled={applyDesignMutation.isPending || (userCredits?.credits || 0) < 1}
+                >
+                  {applyDesignMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Applying...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Apply Changes (1 credit)
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
