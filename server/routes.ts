@@ -541,8 +541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         redirectUri: process.env.REPLIT_DEV_DOMAIN 
           ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
           : 'http://localhost:5000/api/shopify/callback',
-        apiKey: SHOPIFY_API_KEY ? `${SHOPIFY_API_KEY.substring(0, 8)}...` : 'Missing',
-        note: 'If getting 404, the API key might not be from a Partner App with OAuth enabled'
+        apiKey: SHOPIFY_API_KEY,
+        apiSecret: SHOPIFY_API_SECRET ? 'Set' : 'Missing'
       });
       
       res.json({ authUrl: finalAuthUrl });

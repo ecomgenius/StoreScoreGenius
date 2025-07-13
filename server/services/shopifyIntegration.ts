@@ -87,12 +87,17 @@ export function generateShopifyAuthUrl(shopDomain: string, userId: number): Shop
   // For now, we'll encode userId in the state for simplicity
   const stateWithUser = `${state}:${userId}`;
   
+  // Test with minimal required scopes first
+  const minimalScopes = 'read_products';
+  
   const authUrl = `https://${shopDomain}/admin/oauth/authorize?` +
     `client_id=${SHOPIFY_API_KEY}&` +
-    `scope=${SHOPIFY_SCOPES}&` +
+    `scope=${minimalScopes}&` +
     `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-    `state=${stateWithUser}&` +
-    `grant_options[]=per-user`;
+    `state=${stateWithUser}`;
+    
+  console.log('Debug - Generated OAuth URL:', authUrl);
+  console.log('Debug - Encoded redirect URI:', encodeURIComponent(REDIRECT_URI));
 
   return {
     authUrl,
