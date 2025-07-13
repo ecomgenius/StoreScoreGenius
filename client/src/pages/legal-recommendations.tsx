@@ -52,13 +52,10 @@ export default function LegalRecommendationsPage() {
   const applyMutation = useMutation({
     mutationFn: async (data: { suggestionId: string; changes: any }) => {
       console.log('Applying legal recommendation:', data);
-      return apiRequest(`/api/apply-legal-recommendation`, {
-        method: 'POST',
-        body: JSON.stringify({
-          storeId: parseInt(storeId!),
-          suggestionId: data.suggestionId,
-          changes: data.changes
-        })
+      return apiRequest('POST', `/api/apply-legal-recommendation`, {
+        storeId: parseInt(storeId!),
+        suggestionId: data.suggestionId,
+        changes: data.changes
       });
     },
     onSuccess: (data) => {

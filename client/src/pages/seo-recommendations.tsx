@@ -52,13 +52,10 @@ export default function SEORecommendationsPage() {
   // Apply SEO recommendation mutation
   const applyMutation = useMutation({
     mutationFn: async (data: { suggestionId: string; changes: any }) => {
-      return apiRequest(`/api/apply-seo-recommendation`, {
-        method: 'POST',
-        body: JSON.stringify({
-          storeId: parseInt(storeId!),
-          suggestionId: data.suggestionId,
-          changes: data.changes
-        })
+      return apiRequest('POST', `/api/apply-seo-recommendation`, {
+        storeId: parseInt(storeId!),
+        suggestionId: data.suggestionId,
+        changes: data.changes
       });
     },
     onSuccess: () => {
