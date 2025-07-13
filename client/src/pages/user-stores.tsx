@@ -69,7 +69,10 @@ export default function UserStores() {
   });
 
   const analyzeStoreMutation = useMutation({
-    mutationFn: (storeId: number) => apiRequest('POST', `/api/shopify/analyze/${storeId}`),
+    mutationFn: (storeId: number) => {
+      console.log('🔄 Starting analysis mutation for store ID:', storeId);
+      return apiRequest('POST', `/api/shopify/analyze/${storeId}`);
+    },
     onSuccess: (data: any) => {
       console.log('🚀 Analysis mutation onSuccess triggered with data:', data);
       
@@ -79,11 +82,19 @@ export default function UserStores() {
       
       // Force redirect immediately - no conditions
       const analysisId = data?.id;
+      console.log('🔍 Checking analysis ID from response. Full data object:', JSON.stringify(data, null, 2));
+      
       if (analysisId) {
-        console.log('✅ Redirecting NOW to analysis page with ID:', analysisId);
-        window.location.replace(`/analysis/${analysisId}`);
+        console.log('✅ Analysis ID found! Redirecting to:', `/analysis/${analysisId}`);
+        // Try multiple redirect approaches
+        try {
+          window.location.replace(`/analysis/${analysisId}`);
+        } catch (e) {
+          console.log('Replace failed, trying href:', e);
+          window.location.href = `/analysis/${analysisId}`;
+        }
       } else {
-        console.error('❌ No analysis ID in response - cannot redirect. Data:', data);
+        console.error('❌ No analysis ID in response - cannot redirect. Keys in data:', Object.keys(data || {}));
       }
     },
     onError: (error: any) => {
