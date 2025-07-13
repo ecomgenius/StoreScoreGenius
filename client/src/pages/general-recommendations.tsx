@@ -46,7 +46,7 @@ export default function GeneralRecommendations() {
   const { user } = useAuth();
 
   // Fetch store details
-  const { data: stores = [] } = useQuery({
+  const { data: stores = [], isLoading: storesLoading } = useQuery({
     queryKey: ['/api/stores'],
     enabled: !!user,
   });
@@ -54,7 +54,7 @@ export default function GeneralRecommendations() {
   const store = stores.find((s: any) => s.id === parseInt(storeId!));
 
   // Fetch latest analysis for this store
-  const { data: analyses = [] } = useQuery({
+  const { data: analyses = [], isLoading: analysesLoading } = useQuery({
     queryKey: ['/api/analyses'],
     enabled: !!user,
   });
@@ -144,6 +144,19 @@ export default function GeneralRecommendations() {
     },
   ];
 
+  // Show loading state while data is being fetched
+  if (storesLoading || analysesLoading || !user) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading recommendations...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Only show "Store not found" after data has loaded and store is genuinely missing
   if (!store) {
     return (
       <DashboardLayout>
