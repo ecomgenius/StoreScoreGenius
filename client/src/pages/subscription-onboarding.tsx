@@ -148,18 +148,6 @@ function TrialSignupForm() {
         <p className="text-xs text-muted-foreground mt-1">
           Your card won't be charged during the 7-day free trial
         </p>
-        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-          <p className="text-xs text-blue-800 dark:text-blue-200 font-medium mb-1">
-            Test with Stripe test cards:
-          </p>
-          <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-            <div><strong>Visa:</strong> 4242 4242 4242 4242</div>
-            <div><strong>Mastercard:</strong> 5555 5555 5555 4444</div>
-            <div><strong>CVV:</strong> Any 3 digits (e.g., 123)</div>
-            <div><strong>Expiry:</strong> Any future date (e.g., 12/25)</div>
-            <div><strong>ZIP:</strong> Any 5 digits (e.g., 12345)</div>
-          </div>
-        </div>
       </div>
 
       <Alert>
