@@ -628,29 +628,135 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
         }
         updateData.body_html = `<p>${aiSuggestion}</p>`;
       } else if (recommendationType === 'pricing') {
-        // Generate optimized pricing with psychological pricing
-        const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
-        const optimizedPrice = currentPrice > 10 ? 
-          (Math.floor(currentPrice) - 0.01).toFixed(2) : // $19.99 strategy
-          (currentPrice * 0.95).toFixed(2); // 5% discount for low prices
-        aiSuggestion = optimizedPrice;
-        updateData.variants = [{ 
-          id: currentProduct.variants[0]?.id,
-          price: optimizedPrice 
-        }];
+        // Use OpenAI to generate optimized pricing with comprehensive market analysis
+        const openai = await import('openai');
+        const openaiClient = new openai.default({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
+
+        const pricingPrompt = `You are an expert e-commerce pricing strategist. Analyze this product and recommend an optimized price based on market psychology, competitive positioning, and conversion optimization.
+
+Product: ${currentProduct.title}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Brand'}
+Current price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+Compare at price: $${currentProduct.variants?.[0]?.compare_at_price || 'None'}
+Product tags: ${currentProduct.tags || 'None'}
+Created: ${currentProduct.created_at || 'Unknown'}
+
+Market Analysis Requirements:
+1. Apply psychological pricing principles (e.g., $19.99 vs $20.00)
+2. Consider product category positioning and market standards  
+3. Factor in competitive landscape and value perception
+4. Account for product lifecycle stage and inventory considerations
+5. Balance conversion optimization with profit margins
+6. Consider seasonal demand patterns if applicable
+
+Pricing Strategy Factors:
+- Premium positioning: Higher-end pricing for luxury/quality perception
+- Value positioning: Competitive pricing for volume sales
+- Psychological anchoring: Use of .99, .95, .97 endings
+- Bundle opportunities: Consider tiered pricing structures
+
+Return ONLY a JSON object with this exact format:
+{
+  "recommendedPrice": "XX.XX",
+  "reasoning": "Brief explanation of pricing strategy used",
+  "priceType": "premium|value|psychological|competitive"
+}`;
+
+        try {
+          const aiResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: pricingPrompt }],
+            max_tokens: 200,
+            temperature: 0.3,
+            response_format: { type: "json_object" }
+          });
+          
+          const pricingData = JSON.parse(aiResponse.choices[0].message.content || '{}');
+          
+          if (pricingData.recommendedPrice && !isNaN(parseFloat(pricingData.recommendedPrice))) {
+            aiSuggestion = pricingData.recommendedPrice;
+            updateData.variants = [{
+              id: currentProduct.variants[0]?.id,
+              price: pricingData.recommendedPrice
+            }];
+          } else {
+            // Fallback to psychological pricing
+            const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
+            const optimizedPrice = currentPrice > 10 ? 
+              (Math.floor(currentPrice) - 0.01).toFixed(2) : 
+              (currentPrice * 0.95).toFixed(2);
+            aiSuggestion = optimizedPrice;
+            updateData.variants = [{
+              id: currentProduct.variants[0]?.id,
+              price: optimizedPrice
+            }];
+          }
+        } catch (error) {
+          console.error('OpenAI pricing optimization failed:', error);
+          // Fallback to psychological pricing
+          const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
+          const optimizedPrice = currentPrice > 10 ? 
+            (Math.floor(currentPrice) - 0.01).toFixed(2) : 
+            (currentPrice * 0.95).toFixed(2);
+          aiSuggestion = optimizedPrice;
+          updateData.variants = [{
+            id: currentProduct.variants[0]?.id,
+            price: optimizedPrice
+          }];
+        }
       } else if (recommendationType === 'keywords') {
-        // Generate SEO-optimized tags using product analysis
-        const productType = currentProduct.product_type?.toLowerCase() || '';
-        const vendor = currentProduct.vendor?.toLowerCase() || '';
-        const titleWords = currentProduct.title.toLowerCase().split(' ').filter(word => word.length > 3);
-        aiSuggestion = [
-          ...titleWords.slice(0, 3),
-          productType,
-          vendor,
-          'premium',
-          'quality',
-          'bestseller'
-        ].filter(Boolean).join(', ');
+        // Use OpenAI to generate optimized keywords/tags
+        const openai = await import('openai');
+        const openaiClient = new openai.default({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
+
+        const keywordsPrompt = `You are an expert e-commerce SEO specialist. Generate optimized keywords and tags for this product to improve searchability and categorization.
+
+Product: ${currentProduct.title}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Brand'}
+Current tags: ${currentProduct.tags || 'None'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+
+Requirements:
+- Generate 8-12 relevant, high-impact keywords/tags
+- Include both broad and specific search terms
+- Mix of category terms, feature descriptors, and benefit keywords
+- Consider seasonal and trending keywords when applicable
+- Include brand and product type variations
+- Separate keywords with commas
+- Focus on terms customers actually search for
+
+Generate ONLY the comma-separated list of optimized keywords, nothing else:`;
+
+        try {
+          const aiResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: keywordsPrompt }],
+            max_tokens: 150,
+            temperature: 0.7,
+          });
+          
+          aiSuggestion = aiResponse.choices[0].message.content?.trim() || `${currentProduct.product_type || 'product'}, quality, premium, ${currentProduct.vendor || 'brand'}`;
+        } catch (error) {
+          console.error('OpenAI keywords generation failed:', error);
+          // Fallback to basic keyword generation
+          const productType = currentProduct.product_type?.toLowerCase() || '';
+          const vendor = currentProduct.vendor?.toLowerCase() || '';
+          const titleWords = currentProduct.title.toLowerCase().split(' ').filter(word => word.length > 3);
+          aiSuggestion = [
+            ...titleWords.slice(0, 3),
+            productType,
+            vendor,
+            'premium',
+            'quality',
+            'bestseller'
+          ].filter(Boolean).join(', ');
+        }
         updateData.tags = aiSuggestion;
       }
 
@@ -954,6 +1060,122 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
               console.error('OpenAI description generation failed for bulk update:', error);
               updateData.body_html = `<p>Experience the exceptional quality of our ${currentProduct.title}. Premium materials and expert craftsmanship ensure lasting satisfaction.</p>`;
             }
+          } else if (recommendationType === 'keywords') {
+            // Use OpenAI to generate optimized keywords/tags for each product
+            const openai = await import('openai');
+            const openaiClient = new openai.default({ 
+              apiKey: process.env.OPENAI_API_KEY 
+            });
+
+            const keywordsPrompt = `You are an expert e-commerce SEO specialist. Generate optimized keywords and tags for this product to improve searchability and categorization.
+
+Product: ${currentProduct.title}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Brand'}
+Current tags: ${currentProduct.tags || 'None'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+
+Requirements:
+- Generate 8-12 relevant, high-impact keywords/tags
+- Include both broad and specific search terms
+- Mix of category terms, feature descriptors, and benefit keywords
+- Consider seasonal and trending keywords when applicable
+- Include brand and product type variations
+- Separate keywords with commas
+- Focus on terms customers actually search for
+
+Generate ONLY the comma-separated list of optimized keywords, nothing else:`;
+
+            try {
+              const aiResponse = await openaiClient.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: keywordsPrompt }],
+                max_tokens: 150,
+                temperature: 0.7,
+              });
+              
+              updateData.tags = aiResponse.choices[0].message.content?.trim() || `${currentProduct.product_type || 'product'}, quality, premium, ${currentProduct.vendor || 'brand'}`;
+            } catch (error) {
+              console.error('OpenAI keywords generation failed for bulk update:', error);
+              updateData.tags = `${currentProduct.product_type || 'product'}, quality, premium, ${currentProduct.vendor || 'brand'}`;
+            }
+          } else if (recommendationType === 'pricing') {
+            // Use OpenAI to generate optimized pricing for each product
+            const openai = await import('openai');
+            const openaiClient = new openai.default({ 
+              apiKey: process.env.OPENAI_API_KEY 
+            });
+
+            const pricingPrompt = `You are an expert e-commerce pricing strategist. Analyze this product and recommend an optimized price based on market psychology, competitive positioning, and conversion optimization.
+
+Product: ${currentProduct.title}
+Product type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Brand'}
+Current price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+Compare at price: $${currentProduct.variants?.[0]?.compare_at_price || 'None'}
+Product tags: ${currentProduct.tags || 'None'}
+Created: ${currentProduct.created_at || 'Unknown'}
+
+Market Analysis Requirements:
+1. Apply psychological pricing principles (e.g., $19.99 vs $20.00)
+2. Consider product category positioning and market standards
+3. Factor in competitive landscape and value perception
+4. Account for product lifecycle stage and inventory considerations
+5. Balance conversion optimization with profit margins
+6. Consider seasonal demand patterns if applicable
+
+Pricing Strategy Factors:
+- Premium positioning: Higher-end pricing for luxury/quality perception
+- Value positioning: Competitive pricing for volume sales
+- Psychological anchoring: Use of .99, .95, .97 endings
+- Bundle opportunities: Consider tiered pricing structures
+
+Return ONLY a JSON object with this exact format:
+{
+  "recommendedPrice": "XX.XX",
+  "reasoning": "Brief explanation of pricing strategy used",
+  "priceType": "premium|value|psychological|competitive"
+}`;
+
+            try {
+              const aiResponse = await openaiClient.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: pricingPrompt }],
+                max_tokens: 200,
+                temperature: 0.3,
+                response_format: { type: "json_object" }
+              });
+              
+              const pricingData = JSON.parse(aiResponse.choices[0].message.content || '{}');
+              
+              if (pricingData.recommendedPrice && !isNaN(parseFloat(pricingData.recommendedPrice))) {
+                updateData.variants = [{
+                  id: currentProduct.variants?.[0]?.id,
+                  price: pricingData.recommendedPrice
+                }];
+              } else {
+                // Fallback to psychological pricing
+                const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
+                if (currentPrice > 0) {
+                  const optimizedPrice = currentPrice % 1 === 0 ? (currentPrice - 0.01).toFixed(2) : currentPrice.toFixed(2);
+                  updateData.variants = [{
+                    id: currentProduct.variants?.[0]?.id,
+                    price: optimizedPrice
+                  }];
+                }
+              }
+            } catch (error) {
+              console.error('OpenAI pricing optimization failed for bulk update:', error);
+              // Fallback to psychological pricing
+              const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
+              if (currentPrice > 0) {
+                const optimizedPrice = currentPrice % 1 === 0 ? (currentPrice - 0.01).toFixed(2) : currentPrice.toFixed(2);
+                updateData.variants = [{
+                  id: currentProduct.variants?.[0]?.id,
+                  price: optimizedPrice
+                }];
+              }
+            }
           }
 
           if (Object.keys(updateData).length > 0) {
@@ -973,7 +1195,8 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
               optimizedValue: recommendationType === 'title' ? updateData.title :
                               recommendationType === 'description' ? updateData.body_html :
                               recommendationType === 'pricing' ? updateData.variants?.[0]?.price :
-                              updateData.tags || '',
+                              recommendationType === 'keywords' ? updateData.tags :
+                              '',
               creditsUsed: 1,
             });
             

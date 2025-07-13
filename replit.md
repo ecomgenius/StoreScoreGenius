@@ -135,6 +135,8 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Resolved Shopify Write Permissions Issue**: Updated OAuth scope to request 'write_products' permission enabling actual product updates, added proper error handling and user guidance for permission upgrades
 - **Implemented Product Optimization Tracking**: Added comprehensive database tracking for AI optimizations with new productOptimizations table, filtering system to hide optimized products from recommendation lists, and visual badges showing optimization status
 - **Enhanced Optimization UX**: Products are automatically removed from optimization lists after being processed, counters decrease accurately, and optimization badges provide clear visual feedback on which products have been AI-enhanced
+- **Fixed Keyword Optimization Bug**: Resolved issue where keyword optimizations weren't being saved or tracked properly, now uses OpenAI to generate relevant SEO keywords and updates product tags correctly
+- **Enhanced AI Pricing Optimization**: Implemented comprehensive pricing strategy using OpenAI with market analysis, psychological pricing principles, competitive positioning, and conversion optimization logic including premium/value/psychological pricing strategies
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled
