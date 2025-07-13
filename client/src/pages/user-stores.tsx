@@ -371,15 +371,15 @@ export default function UserStores() {
                       </div>
                     )}
                     
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div className="flex space-x-2">
+                    <div className="pt-4 border-t space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         {store.isConnected && store.connectionStatus === 'connected' ? (
                           <>
                             <Button 
                               size="sm" 
                               onClick={() => handleAnalyzeStore(store.id)}
                               disabled={analyzeStoreMutation.isPending}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              className="bg-blue-600 hover:bg-blue-700 text-white flex-1 min-w-0"
                             >
                               <Zap className="mr-2 h-4 w-4" />
                               {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Run AI Analysis'}
@@ -388,24 +388,11 @@ export default function UserStores() {
                               size="sm" 
                               variant="outline"
                               onClick={() => window.location.href = `/dashboard/stores/${store.id}/recommendations`}
-                              className="border-green-300 text-green-700 hover:bg-green-50"
+                              className="border-purple-300 text-purple-700 hover:bg-purple-50 flex-1 min-w-0"
                             >
                               <Target className="mr-2 h-4 w-4" />
-                              View Recommendations
+                              Optimize with AI
                             </Button>
-                            {/* Show reconnect button if store lacks write permissions */}
-                            {store.shopifyScope && !store.shopifyScope.includes('write_products') && (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleReconnectStore(store.id)}
-                                disabled={connectShopifyMutation.isPending}
-                                className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                              >
-                                <Settings className="mr-2 h-4 w-4" />
-                                Upgrade Permissions
-                              </Button>
-                            )}
                           </>
                         ) : (
                           <Button 
@@ -413,20 +400,38 @@ export default function UserStores() {
                             variant="outline"
                             onClick={() => handleReconnectStore(store.id)}
                             disabled={connectShopifyMutation.isPending}
+                            className="flex-1"
                           >
                             <Settings className="mr-2 h-4 w-4" />
                             {store.isConnected ? 'Reconnect' : 'Connect Shopify'}
                           </Button>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeleteStore(store.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-2">
+                          {/* Show reconnect button if store lacks write permissions */}
+                          {store.isConnected && store.connectionStatus === 'connected' && store.shopifyScope && !store.shopifyScope.includes('write_products') && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleReconnectStore(store.id)}
+                              disabled={connectShopifyMutation.isPending}
+                              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                            >
+                              <Settings className="mr-2 h-4 w-4" />
+                              Upgrade Permissions
+                            </Button>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteStore(store.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
