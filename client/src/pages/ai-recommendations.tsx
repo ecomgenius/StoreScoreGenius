@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Zap, AlertCircle, CheckCircle, Clock, ShoppingBag, DollarSign, Tag, FileText } from 'lucide-react';
+import { ArrowLeft, Zap, AlertCircle, CheckCircle, Clock, ShoppingBag, DollarSign, Tag, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,23 @@ export default function AIRecommendations() {
     original: string;
     product: any;
   } | null>(null);
+
+  // Connect to Shopify mutation
+  const connectShopifyMutation = useMutation({
+    mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
+      apiRequest('POST', '/api/shopify/connect', data),
+    onSuccess: (data: { authUrl: string }) => {
+      // Redirect to Shopify OAuth page
+      window.location.href = data.authUrl;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to initiate Shopify connection.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch store details
   const { data: store } = useQuery({
@@ -288,6 +305,87 @@ export default function AIRecommendations() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Stores
             </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Check if store is connected to Shopify
+  const isShopifyConnected = store.accessToken && store.shopifyDomain;
+
+  if (!isShopifyConnected) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                onClick={() => setLocation('/dashboard/stores')}
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Stores</span>
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">AI Recommendations</h1>
+                <p className="text-muted-foreground">
+                  {store.name} • Not Connected
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Store Not Connected */}
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center max-w-md">
+              <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ExternalLink className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Connect Your Shopify Store</h3>
+              <p className="text-muted-foreground mb-6">
+                To use AI recommendations, you need to connect your store to Shopify. This allows us to access your products and apply optimizations.
+              </p>
+              <div className="space-y-3">
+                <Button 
+                  onClick={() => {
+                    // Trigger Shopify OAuth connection for this specific store
+                    const shopifyDomain = store.shopifyDomain || store.storeUrl;
+                    if (shopifyDomain) {
+                      connectShopifyMutation.mutate({
+                        shopDomain: shopifyDomain,
+                        userStoreId: store.id
+                      });
+                    } else {
+                      setLocation('/dashboard/stores');
+                    }
+                  }}
+                  disabled={connectShopifyMutation.isPending}
+                  className="w-full"
+                >
+                  {connectShopifyMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Connect to Shopify
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setLocation('/dashboard/stores')}
+                  className="w-full"
+                >
+                  Manage All Stores
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </DashboardLayout>
