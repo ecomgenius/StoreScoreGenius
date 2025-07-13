@@ -258,3 +258,48 @@ This is a comprehensive Shopify store that should be analyzed for:
 6. Site performance
 `;
 }
+
+/**
+ * Fetch store products for AI recommendations
+ */
+export async function fetchStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
+  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
+  
+  const response = await fetch(productsUrl, {
+    headers: {
+      'X-Shopify-Access-Token': accessToken,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch products: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.products || [];
+}
+
+/**
+ * Update a product via Shopify API
+ */
+export async function updateProduct(shopDomain: string, accessToken: string, productId: string, updateData: any) {
+  const productUrl = `https://${shopDomain}/admin/api/2023-10/products/${productId}.json`;
+  
+  const response = await fetch(productUrl, {
+    method: 'PUT',
+    headers: {
+      'X-Shopify-Access-Token': accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      product: updateData
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update product: ${response.statusText}`);
+  }
+
+  return await response.json();
+}

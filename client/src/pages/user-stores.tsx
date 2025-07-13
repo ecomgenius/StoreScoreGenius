@@ -340,12 +340,7 @@ export default function UserStores() {
                               variant="link"
                               size="sm"
                               className="h-auto p-0 text-blue-600 hover:text-blue-700"
-                              onClick={() => {
-                                toast({
-                                  title: "Coming Soon",
-                                  description: "AI-powered store management features will be available soon!",
-                                });
-                              }}
+                              onClick={() => window.location.href = `/dashboard/stores/${store.id}/recommendations`}
                             >
                               {store.aiRecommendationsCount} suggestions →
                             </Button>

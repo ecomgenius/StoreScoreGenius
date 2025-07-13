@@ -1,0 +1,78 @@
+Create a new page in the SaaS platform where users can view and apply AI-powered recommendations to their connected Shopify store.
+
+This page must include the following features and logic:
+
+🧠 1. Display AI Recommendations
+List all current AI-generated recommendations for the connected store.
+
+Each recommendation should be expandable to show affected products.
+
+Group them by type:
+
+Improve product titles
+
+Improve descriptions
+
+Improve pricing
+
+Add or fix keywords
+
+✏️ 2. Allow AI-Powered Product Improvements
+A. One-by-One Editing
+When the user selects a single product, show:
+
+Current title, description, pricing
+
+AI-suggested version (side-by-side or toggle)
+
+Button: “Apply suggestion (1 credit)”
+
+On confirm, call the Shopify API to update the product
+
+Deduct 1 AI credit from the user's balance
+
+B. Bulk Improvement
+Allow the user to apply suggestions in bulk by type (titles, descriptions, pricing, keywords).
+
+Before applying, show a confirmation modal:
+
+“This action will update all selected product fields. You won’t see individual previews. Continue?”
+
+After confirmation:
+
+Update all selected fields via Shopify API
+
+Deduct 1 credit per product modified
+
+Show a completion message with total credits used
+
+💳 3. Credit System Integration
+Every modification (whether individual or in bulk) consumes 1 credit per product.
+
+If the user has insufficient credits:
+
+Show a modal saying: “You need more AI credits to apply these changes. Buy more?”
+
+Add link to Stripe credit purchase page (already integrated)
+
+🔁 4. Optional Enhancements
+Add filtering options (e.g., “Show only low-score products” or “Products missing descriptions”)
+
+Add undo button for recent changes (last 5 mins) if feasible
+
+Display last sync timestamp + button to re-fetch products
+
+🧱 Tech requirements:
+Frontend: React or Next.js component with clean UI (cards, modals, preview toggles)
+
+Backend: API endpoints to:
+
+Fetch AI suggestions per user/store
+
+Apply changes to Shopify products via Shopify Admin API
+
+Track credit usage and enforce limits
+
+Auth required to access this page
+
+This new page should be accessible from “Your Stores” → click on a store → “AI Optimization”.

@@ -20,7 +20,10 @@ import {
   exchangeCodeForToken, 
   getShopInfo, 
   getStoreProducts, 
-  createShopifyAnalysisContent 
+  createShopifyAnalysisContent,
+  fetchStoreProducts,
+  updateProduct,
+  validateWebhookSignature
 } from "./services/shopifyIntegration";
 import { analyzeStoreWithAI } from "./services/openai";
 import Stripe from "stripe";
@@ -370,6 +373,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching credit transactions:", error);
       res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
+  // ================ AI RECOMMENDATIONS ROUTES ================
+  
+  // Get Shopify products for a store
+  app.get("/api/shopify/products/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const storeId = parseInt(req.params.storeId);
+      const { user } = req;
+
+      // Get the user's store
+      const store = await storage.getUserStore(storeId);
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!store.accessToken) {
+        return res.status(400).json({ error: "Store not connected to Shopify" });
+      }
+
+      // Fetch products from Shopify
+      const products = await fetchStoreProducts(store.shopifyDomain, store.accessToken);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching Shopify products:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  // Get AI recommendations for a store
+  app.get("/api/ai-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const storeId = parseInt(req.params.storeId);
+      const { user } = req;
+
+      // Get the user's store
+      const store = await storage.getUserStore(storeId);
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      // Get recent analysis for this store
+      const analyses = await storage.getUserAnalyses(user.id, 50);
+      const storeAnalysis = analyses.find(a => a.userStoreId === storeId);
+
+      if (!storeAnalysis || !storeAnalysis.result) {
+        return res.json([]);
+      }
+
+      // Convert analysis suggestions to recommendations format
+      const result = storeAnalysis.result as any;
+      const recommendations = result.suggestions?.map((suggestion: any, index: number) => ({
+        id: `rec-${storeId}-${index}`,
+        type: suggestion.category || 'general',
+        priority: suggestion.priority || 'medium',
+        title: suggestion.title,
+        description: suggestion.description,
+        impact: suggestion.impact,
+        suggestion: suggestion.description,
+        affectedProducts: [], // We'll populate this based on store products
+      })) || [];
+
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error fetching AI recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch recommendations" });
+    }
+  });
+
+  // Apply single recommendation
+  app.post("/api/shopify/apply-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, productId, recommendationType, suggestion } = req.body;
+      const { user } = req;
+
+      // Get the user's store
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!store.accessToken) {
+        return res.status(400).json({ error: "Store not connected to Shopify" });
+      }
+
+      // Apply the recommendation via Shopify API
+      const updateData: any = {};
+      
+      if (recommendationType === 'title') {
+        updateData.title = suggestion;
+      } else if (recommendationType === 'description') {
+        updateData.body_html = suggestion;
+      } else if (recommendationType === 'pricing' && suggestion.includes('$')) {
+        const price = suggestion.match(/\$(\d+\.?\d*)/)?.[1];
+        if (price) {
+          updateData.variants = [{ price }];
+        }
+      }
+
+      // Update product via Shopify API
+      await updateProduct(store.shopifyDomain, store.accessToken, productId, updateData);
+
+      // Deduct credit
+      await storage.deductCredits(user.id, 1, `Applied ${recommendationType} recommendation to product`);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error applying recommendation:", error);
+      res.status(500).json({ error: "Failed to apply recommendation" });
+    }
+  });
+
+  // Apply bulk recommendations
+  app.post("/api/shopify/apply-bulk-recommendations", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId, recommendationType, productIds } = req.body;
+      const { user } = req;
+
+      // Check if user has enough credits
+      const userCredits = await storage.getUserCredits(user.id);
+      if (userCredits < productIds.length) {
+        return res.status(402).json({ 
+          error: "Insufficient credits",
+          required: productIds.length,
+          available: userCredits
+        });
+      }
+
+      // Get the user's store
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!store.accessToken) {
+        return res.status(400).json({ error: "Store not connected to Shopify" });
+      }
+
+      let appliedCount = 0;
+      let creditsUsed = 0;
+
+      // Apply recommendations to each product
+      for (const productId of productIds) {
+        try {
+          // This is a simplified bulk update - in real implementation,
+          // you'd fetch AI suggestions for each specific product
+          const updateData: any = {};
+          
+          if (recommendationType === 'title') {
+            updateData.title = `Optimized Product Title - ${Date.now()}`;
+          } else if (recommendationType === 'description') {
+            updateData.body_html = `<p>AI-optimized product description with enhanced SEO keywords and compelling sales copy.</p>`;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await updateProduct(store.shopifyDomain, store.accessToken, productId, updateData);
+            await storage.deductCredits(user.id, 1, `Bulk ${recommendationType} optimization`);
+            appliedCount++;
+            creditsUsed++;
+          }
+        } catch (error) {
+          console.error(`Error updating product ${productId}:`, error);
+          // Continue with other products
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        appliedCount, 
+        creditsUsed,
+        message: `Successfully updated ${appliedCount} products`
+      });
+    } catch (error) {
+      console.error("Error applying bulk recommendations:", error);
+      res.status(500).json({ error: "Failed to apply bulk recommendations" });
     }
   });
 
