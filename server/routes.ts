@@ -785,8 +785,12 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       // Deduct credits
       await storage.deductCredits(req.user!.id, 1, "Shopify store analysis", storedAnalysis.id);
       
-      // Update store last analyzed timestamp
-      await storage.updateUserStore(store.id, { lastAnalyzedAt: new Date() });
+      // Update store with analysis results
+      await storage.updateUserStore(store.id, { 
+        lastAnalyzedAt: new Date(),
+        lastAnalysisScore: result.overallScore,
+        aiRecommendationsCount: result.suggestions?.length || 0
+      });
       
       res.json(storedAnalysis);
     } catch (error) {

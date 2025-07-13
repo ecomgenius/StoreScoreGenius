@@ -39,6 +39,8 @@ export const userStores = pgTable("user_stores", {
   connectionStatus: text("connection_status").$type<'pending' | 'connected' | 'error' | 'disconnected'>().default('disconnected'),
   lastSyncAt: timestamp("last_sync_at"),
   lastAnalyzedAt: timestamp("last_analyzed_at"),
+  lastAnalysisScore: integer("last_analysis_score"),
+  aiRecommendationsCount: integer("ai_recommendations_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => {

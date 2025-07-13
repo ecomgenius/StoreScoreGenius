@@ -73,10 +73,17 @@ export default function UserStores() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analyses'] });
+      
+      const score = data.overallScore || 0;
       toast({
         title: "Analysis Complete!",
-        description: `Store analysis completed with score: ${data.overallScore}/100`,
+        description: `Store analysis completed with score: ${score}/100`,
       });
+      
+      // Redirect to analysis page like other analyses
+      if (data.id) {
+        window.location.href = `/analysis/${data.id}`;
+      }
     },
     onError: (error: any) => {
       toast({
@@ -287,8 +294,39 @@ export default function UserStores() {
                     </div>
 
                     {store.isConnected && store.lastAnalyzedAt && (
-                      <div className="text-sm text-gray-500">
-                        Last analyzed: {new Date(store.lastAnalyzedAt).toLocaleDateString()}
+                      <div className="space-y-1">
+                        <div className="text-sm text-gray-500">
+                          Last analyzed: {new Date(store.lastAnalyzedAt).toLocaleDateString()}
+                        </div>
+                        {store.lastAnalysisScore && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Last Score:</span>
+                            <span className={`font-semibold ${
+                              store.lastAnalysisScore >= 80 ? 'text-green-600' : 
+                              store.lastAnalysisScore >= 60 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {store.lastAnalysisScore}/100
+                            </span>
+                          </div>
+                        )}
+                        {store.aiRecommendationsCount > 0 && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">AI Recommendations:</span>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                              onClick={() => {
+                                toast({
+                                  title: "Coming Soon",
+                                  description: "AI-powered store management features will be available soon!",
+                                });
+                              }}
+                            >
+                              {store.aiRecommendationsCount} suggestions →
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
 
