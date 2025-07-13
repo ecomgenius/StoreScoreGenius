@@ -17,6 +17,7 @@ import SEORecommendations from "@/pages/seo-recommendations";
 import LegalRecommendations from "@/pages/legal-recommendations";
 import ConversionRecommendations from "@/pages/conversion-recommendations";
 import TrustRecommendations from "@/pages/trust-recommendations";
+import BuyCredits from "@/pages/buy-credits";
 import { AuthProvider } from "@/hooks/useAuth";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/dashboard/stores/:storeId/conversion" component={ConversionRecommendations} />
       <Route path="/dashboard/stores/:storeId/trust" component={TrustRecommendations} />
       <Route path="/dashboard/settings" component={Settings} />
+      <Route path="/dashboard/credits" component={BuyCredits} />
       <Route component={NotFound} />
     </Switch>
   );

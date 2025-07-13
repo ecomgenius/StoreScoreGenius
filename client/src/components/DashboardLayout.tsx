@@ -27,6 +27,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Analyze Store', href: '/dashboard', icon: Search },
     { name: 'Past Analysis', href: '/dashboard/analysis', icon: History },
     { name: 'Your Stores', href: '/dashboard/stores', icon: Store },
+    { name: 'Buy Credits', href: '/dashboard/credits', icon: CreditCard },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
@@ -88,14 +89,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
           <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs"
-            >
-              <CreditCard className="w-3 h-3 mr-1" />
-              Buy Credits
-            </Button>
+            <Link href="/dashboard/credits">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs"
+              >
+                <CreditCard className="w-3 h-3 mr-1" />
+                Buy Credits
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="sm"
