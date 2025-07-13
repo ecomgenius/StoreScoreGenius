@@ -11,6 +11,8 @@ import AnalysisDetail from "@/pages/analysis-detail";
 import UserStores from "@/pages/user-stores";
 import Settings from "@/pages/settings";
 import AIRecommendations from "@/pages/ai-recommendations";
+import GeneralRecommendations from "@/pages/general-recommendations";
+import DesignRecommendations from "@/pages/design-recommendations";
 import { AuthProvider } from "@/hooks/useAuth";
 
 function Router() {
@@ -22,7 +24,9 @@ function Router() {
       <Route path="/dashboard/analysis/:id" component={AnalysisDetail} />
       <Route path="/analysis/:id" component={AnalysisDetail} />
       <Route path="/dashboard/stores" component={UserStores} />
-      <Route path="/dashboard/stores/:storeId/recommendations" component={AIRecommendations} />
+      <Route path="/dashboard/stores/:storeId/recommendations" component={GeneralRecommendations} />
+      <Route path="/dashboard/stores/:storeId/products" component={AIRecommendations} />
+      <Route path="/dashboard/stores/:storeId/design" component={DesignRecommendations} />
       <Route path="/dashboard/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

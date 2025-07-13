@@ -1,0 +1,345 @@
+import { useParams, useLocation, Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Palette, 
+  ChevronRight, 
+  Zap, 
+  Eye,
+  Smartphone,
+  Monitor,
+  Brush,
+  Type,
+  Image,
+  Layout,
+  CheckCircle
+} from "lucide-react";
+
+interface DesignSuggestion {
+  id: string;
+  type: 'colors' | 'fonts' | 'layout' | 'images' | 'mobile';
+  title: string;
+  description: string;
+  impact: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  suggestions: {
+    current?: string;
+    recommended: string;
+    cssChanges?: string;
+    preview?: string;
+  };
+}
+
+export default function DesignRecommendations() {
+  const { storeId } = useParams();
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Fetch store details
+  const { data: stores = [] } = useQuery({
+    queryKey: ['/api/stores'],
+    enabled: !!user,
+  });
+
+  const store = stores.find((s: any) => s.id === parseInt(storeId!));
+
+  // Fetch user credits
+  const { data: userCredits } = useQuery({
+    queryKey: ['/api/credits'],
+    enabled: !!user,
+  });
+
+  // Fetch design recommendations
+  const { data: designAnalysis, isLoading } = useQuery({
+    queryKey: ['/api/design-recommendations', storeId],
+    queryFn: async () => {
+      return await apiRequest('GET', `/api/design-recommendations/${storeId}`);
+    },
+    enabled: !!storeId && !!user,
+  });
+
+  // Apply design suggestion mutation
+  const applyDesignMutation = useMutation({
+    mutationFn: async ({ suggestionId, changes }: { suggestionId: string; changes: any }) => {
+      return await apiRequest('POST', '/api/shopify/apply-design', {
+        storeId,
+        suggestionId,
+        changes,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/design-recommendations', storeId] });
+      toast({
+        title: "Design Applied",
+        description: "Your store design has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Apply Design",
+        description: error.message || "Failed to update store design",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const designCategories = [
+    {
+      id: 'colors',
+      title: 'Color Scheme',
+      description: 'Optimize brand colors and visual hierarchy',
+      icon: Palette,
+      color: 'bg-purple-500',
+    },
+    {
+      id: 'fonts',
+      title: 'Typography',
+      description: 'Improve readability and brand consistency',
+      icon: Type,
+      color: 'bg-blue-500',
+    },
+    {
+      id: 'layout',
+      title: 'Layout & Spacing',
+      description: 'Enhance visual flow and user experience',
+      icon: Layout,
+      color: 'bg-green-500',
+    },
+    {
+      id: 'images',
+      title: 'Visual Assets',
+      description: 'Optimize product images and visual content',
+      icon: Image,
+      color: 'bg-orange-500',
+    },
+    {
+      id: 'mobile',
+      title: 'Mobile Experience',
+      description: 'Ensure perfect mobile responsiveness',
+      icon: Smartphone,
+      color: 'bg-indigo-500',
+    },
+  ];
+
+  if (!store) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold mb-4">Store not found</h2>
+          <Button onClick={() => setLocation('/dashboard/stores')}>
+            Back to Stores
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-2">
+            <Link href="/dashboard/stores" className="hover:text-primary">Stores</Link>
+            <ChevronRight className="h-4 w-4" />
+            <Link href={`/dashboard/stores/${storeId}/recommendations`} className="hover:text-primary">
+              {store.name}
+            </Link>
+            <ChevronRight className="h-4 w-4" />
+            <span>Design Recommendations</span>
+          </div>
+          <h1 className="text-3xl font-bold mb-2">Design & Branding</h1>
+          <p className="text-muted-foreground">
+            AI-powered design improvements for {store.name}
+          </p>
+        </div>
+
+        {/* Current Design Score */}
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Design Performance Score</CardTitle>
+                <CardDescription>
+                  Your store's visual appeal and user experience rating
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-primary">
+                  {designAnalysis?.designScore || 0}<span className="text-lg text-muted-foreground">/20</span>
+                </div>
+                <Progress value={(designAnalysis?.designScore || 0) * 5} className="w-32 mt-2" />
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Analyzing your store design...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Design Categories */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {designCategories.map((category) => {
+                const categorySuggestions = designAnalysis?.suggestions?.filter(
+                  (s: DesignSuggestion) => s.type === category.id
+                ) || [];
+                
+                return (
+                  <Card key={category.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-lg ${category.color} bg-opacity-10`}>
+                          <category.icon className="h-5 w-5 text-current" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{category.title}</CardTitle>
+                          <CardDescription className="text-sm">
+                            {category.description}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <Badge variant={categorySuggestions.length > 0 ? 'destructive' : 'default'}>
+                          {categorySuggestions.length} {categorySuggestions.length === 1 ? 'issue' : 'issues'}
+                        </Badge>
+                        {categorySuggestions.length === 0 && (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Design Suggestions */}
+            {designAnalysis?.suggestions && designAnalysis.suggestions.length > 0 ? (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold">Design Improvements</h2>
+                
+                {designAnalysis.suggestions.map((suggestion: DesignSuggestion, index: number) => {
+                  const category = designCategories.find(c => c.id === suggestion.type);
+                  
+                  return (
+                    <Card key={suggestion.id} className="overflow-hidden">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            {category && (
+                              <div className={`p-2 rounded-lg ${category.color} bg-opacity-10 mt-1`}>
+                                <category.icon className="h-4 w-4 text-current" />
+                              </div>
+                            )}
+                            <div>
+                              <CardTitle className="text-lg">{suggestion.title}</CardTitle>
+                              <CardDescription>{suggestion.description}</CardDescription>
+                              <div className="flex items-center space-x-2 mt-2">
+                                <Badge variant={
+                                  suggestion.priority === 'critical' ? 'destructive' :
+                                  suggestion.priority === 'high' ? 'secondary' : 'default'
+                                }>
+                                  {suggestion.priority} priority
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {suggestion.impact}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent>
+                        {/* Before/After Preview */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <h4 className="font-medium text-sm text-muted-foreground mb-2">CURRENT</h4>
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                              <p className="text-sm">{suggestion.suggestions.current || 'Current design element'}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-sm text-green-600 mb-2">RECOMMENDED</h4>
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                              <p className="text-sm font-medium">{suggestion.suggestions.recommended}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Preview Button */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              Preview changes before applying
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </Button>
+                            <Button 
+                              onClick={() => 
+                                applyDesignMutation.mutate({
+                                  suggestionId: suggestion.id,
+                                  changes: suggestion.suggestions
+                                })
+                              }
+                              disabled={applyDesignMutation.isPending || (userCredits?.credits || 0) < 1}
+                              size="sm"
+                            >
+                              {applyDesignMutation.isPending ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                  Applying...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="h-4 w-4 mr-2" />
+                                  Apply (1 credit)
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Great Design!</h3>
+                  <p className="text-muted-foreground">
+                    Your store design is optimized and doesn't need immediate improvements.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}
