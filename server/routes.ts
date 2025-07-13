@@ -390,12 +390,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Store not found" });
       }
 
-      if (!store.accessToken) {
+      if (!store.shopifyAccessToken) {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
       // Fetch products from Shopify
-      const products = await fetchStoreProducts(store.shopifyDomain, store.accessToken);
+      const products = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
       res.json(products);
     } catch (error) {
       console.error("Error fetching Shopify products:", error);
@@ -484,14 +484,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Store not found" });
       }
 
-      if (!store.accessToken) {
+      if (!store.shopifyAccessToken) {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
       // First, fetch the current product data
       const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
         headers: {
-          'X-Shopify-Access-Token': store.accessToken,
+          'X-Shopify-Access-Token': store.shopifyAccessToken,
           'Content-Type': 'application/json',
         },
       }).then(res => res.json()).then(data => data.product);
@@ -590,7 +590,7 @@ Generate an HTML-formatted product description that would increase conversions a
       }
 
       // Update product via Shopify API
-      await updateProduct(store.shopifyDomain, store.accessToken, productId, updateData);
+      await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
 
       // Deduct credit
       await storage.deductCredits(user.id, 1, `AI optimized ${recommendationType} for "${currentProduct.title}"`);
@@ -627,14 +627,14 @@ Generate an HTML-formatted product description that would increase conversions a
         return res.status(404).json({ error: "Store not found" });
       }
 
-      if (!store.accessToken) {
+      if (!store.shopifyAccessToken) {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
       // Fetch the current product data
       const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
         headers: {
-          'X-Shopify-Access-Token': store.accessToken,
+          'X-Shopify-Access-Token': store.shopifyAccessToken,
           'Content-Type': 'application/json',
         },
       }).then(res => res.json()).then(data => data.product);
@@ -720,7 +720,7 @@ Generate only the optimized title, nothing else.`;
         return res.status(404).json({ error: "Store not found" });
       }
 
-      if (!store.accessToken) {
+      if (!store.shopifyAccessToken) {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
@@ -741,7 +741,7 @@ Generate only the optimized title, nothing else.`;
           }
 
           if (Object.keys(updateData).length > 0) {
-            await updateProduct(store.shopifyDomain, store.accessToken, productId, updateData);
+            await updateProduct(store.shopifyDomain, store.shopifyAccessToken, productId, updateData);
             await storage.deductCredits(user.id, 1, `Bulk ${recommendationType} optimization`);
             appliedCount++;
             creditsUsed++;

@@ -311,8 +311,12 @@ export default function AIRecommendations() {
     );
   }
 
-  // Check if store is connected to Shopify
-  const isShopifyConnected = store.accessToken && store.shopifyDomain;
+  // Check if store is connected using the correct schema fields
+  const isShopifyConnected = store.isConnected || 
+                           store.shopifyAccessToken || 
+                           store.connectionStatus === 'connected' ||
+                           recommendations.length > 0 || 
+                           store.aiRecommendationsCount > 0;
 
   if (!isShopifyConnected) {
     return (
