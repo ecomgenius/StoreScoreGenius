@@ -19,6 +19,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/dashboard/analysis" component={PastAnalysis} />
       <Route path="/dashboard/analysis/:id" component={AnalysisDetail} />
+      <Route path="/analysis/:id" component={AnalysisDetail} />
       <Route path="/dashboard/stores" component={UserStores} />
       <Route path="/dashboard/settings" component={Settings} />
       <Route component={NotFound} />

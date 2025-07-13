@@ -76,6 +76,7 @@ export default function UserStores() {
       
       // Redirect to analysis page automatically without popup
       if (data.id) {
+        console.log('Redirecting to analysis page with ID:', data.id);
         window.location.href = `/analysis/${data.id}`;
       }
     },
