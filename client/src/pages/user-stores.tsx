@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Store, Plus, Settings, Trash2, Zap, ExternalLink, LinkIcon, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Store, Plus, Settings, Trash2, Zap, ExternalLink, LinkIcon, CheckCircle, Clock, AlertCircle, Target } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
 export default function UserStores() {
@@ -383,6 +383,15 @@ export default function UserStores() {
                             >
                               <Zap className="mr-2 h-4 w-4" />
                               {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Run AI Analysis'}
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => window.location.href = `/dashboard/stores/${store.id}/recommendations`}
+                              className="border-green-300 text-green-700 hover:bg-green-50"
+                            >
+                              <Target className="mr-2 h-4 w-4" />
+                              View Recommendations
                             </Button>
                             {/* Show reconnect button if store lacks write permissions */}
                             {store.shopifyScope && !store.shopifyScope.includes('write_products') && (
