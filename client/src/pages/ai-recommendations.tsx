@@ -315,21 +315,30 @@ export default function AIRecommendations() {
     ),
     pricing: products.filter(p => 
       !isProductOptimized(p.id, 'pricing') && // Filter out optimized products
+      p.variants?.[0]?.price && // Must have a price
       (
-        !p.variants?.[0]?.price || 
         parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
-        !p.variants[0].compare_at_price
+        !p.variants[0].compare_at_price // Missing compare at price for discounts
       )
     ),
     keywords: products.filter(p => 
       !isProductOptimized(p.id, 'keywords') && // Filter out optimized products
       (
-        !p.tags || 
-        p.tags.length < 3 ||
-        !p.handle.includes('-')
+        !p.tags || // No tags at all
+        p.tags.length < 5 || // Very few tags
+        !p.tags.includes(',') // Single tag without commas
       )
     )
   };
+
+  // Debug logging to see how many products are available for each optimization type
+  console.log('Debug - Product optimization counts:', {
+    title: productOptimizations.title.length,
+    description: productOptimizations.description.length,
+    pricing: productOptimizations.pricing.length,
+    keywords: productOptimizations.keywords.length,
+    totalProducts: products.length
+  });
 
   if (!store) {
     return (
