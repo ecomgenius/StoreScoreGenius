@@ -469,5 +469,21 @@ export class MemStorage implements IStorage {
 
 // Use database storage if available, otherwise fallback to memory storage
 console.log('Debug - Storage initialization - db available:', !!db);
-export const storage: IStorage = db ? new DatabaseStorage() : new MemStorage();
-console.log('Debug - Using storage type:', storage.constructor.name);
+
+let storage: IStorage;
+try {
+  // Try to initialize database storage
+  if (db) {
+    storage = new DatabaseStorage();
+    console.log('Debug - Using DatabaseStorage');
+  } else {
+    storage = new MemStorage();
+    console.log('Debug - Using MemStorage (fallback)');
+  }
+} catch (error) {
+  console.error('Debug - Database storage failed, falling back to memory storage:', error);
+  storage = new MemStorage();
+  console.log('Debug - Using MemStorage (error fallback)');
+}
+
+export { storage };
