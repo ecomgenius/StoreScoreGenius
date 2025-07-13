@@ -614,12 +614,26 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       
       // Parse state to get userId and optionally userStoreId
       const stateParts = (state as string).split(':');
-      const userId = stateParts.length >= 3 ? parseInt(stateParts[2]) : parseInt(stateParts[1]);
-      const userStoreId = stateParts.length >= 4 ? parseInt(stateParts[3]) : null;
+      let userId: number;
+      let userStoreId: number | null = null;
       
-      if (!userId || isNaN(userId)) {
-        console.log('Debug - State parsing:', { state, stateParts, userId, userStoreId });
-        return res.status(400).send("Invalid state parameter");
+      // Handle installation state (install_timestamp) vs regular OAuth state (hash:userId)
+      if (stateParts[0] === 'install') {
+        // For installation flow, we need to get the current user from session
+        if (!req.user?.id) {
+          console.log('Debug - Installation without authenticated user');
+          return res.redirect('/login?error=auth_required&message=' + encodeURIComponent('Please log in to connect your Shopify store.'));
+        }
+        userId = req.user.id;
+      } else {
+        // Regular OAuth state parsing
+        userId = stateParts.length >= 3 ? parseInt(stateParts[2]) : parseInt(stateParts[1]);
+        userStoreId = stateParts.length >= 4 ? parseInt(stateParts[3]) : null;
+        
+        if (!userId || isNaN(userId)) {
+          console.log('Debug - State parsing:', { state, stateParts, userId, userStoreId });
+          return res.status(400).send("Invalid state parameter");
+        }
       }
       
       // Exchange code for access token
