@@ -13,6 +13,10 @@ import Settings from "@/pages/settings";
 import AIRecommendations from "@/pages/ai-recommendations";
 import GeneralRecommendations from "@/pages/general-recommendations";
 import DesignRecommendations from "@/pages/design-recommendations";
+import SEORecommendations from "@/pages/seo-recommendations";
+import LegalRecommendations from "@/pages/legal-recommendations";
+import ConversionRecommendations from "@/pages/conversion-recommendations";
+import TrustRecommendations from "@/pages/trust-recommendations";
 import { AuthProvider } from "@/hooks/useAuth";
 
 function Router() {
@@ -27,6 +31,10 @@ function Router() {
       <Route path="/dashboard/stores/:storeId/recommendations" component={GeneralRecommendations} />
       <Route path="/dashboard/stores/:storeId/products" component={AIRecommendations} />
       <Route path="/dashboard/stores/:storeId/design" component={DesignRecommendations} />
+      <Route path="/dashboard/stores/:storeId/seo" component={SEORecommendations} />
+      <Route path="/dashboard/stores/:storeId/legal" component={LegalRecommendations} />
+      <Route path="/dashboard/stores/:storeId/conversion" component={ConversionRecommendations} />
+      <Route path="/dashboard/stores/:storeId/trust" component={TrustRecommendations} />
       <Route path="/dashboard/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

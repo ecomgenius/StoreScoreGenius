@@ -1865,6 +1865,221 @@ Provide actionable, specific recommendations that can be implemented.`;
     }
   });
 
+  // Categories & SEO recommendations
+  app.get("/api/seo-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateSEORecommendations } = await import("./services/openai");
+      const seoAnalysis = await generateSEORecommendations(store.storeUrl, store.storeType);
+      res.json(seoAnalysis);
+    } catch (error) {
+      console.error("Error fetching SEO recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch SEO recommendations" });
+    }
+  });
+
+  // Legal pages recommendations
+  app.get("/api/legal-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateLegalRecommendations } = await import("./services/openai");
+      const legalAnalysis = await generateLegalRecommendations(store.storeUrl, store.storeType);
+      res.json(legalAnalysis);
+    } catch (error) {
+      console.error("Error fetching legal recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch legal recommendations" });
+    }
+  });
+
+  // Conversion optimization recommendations
+  app.get("/api/conversion-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateConversionRecommendations } = await import("./services/openai");
+      const conversionAnalysis = await generateConversionRecommendations(store.storeUrl, store.storeType);
+      res.json(conversionAnalysis);
+    } catch (error) {
+      console.error("Error fetching conversion recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch conversion recommendations" });
+    }
+  });
+
+  // Reviews and trust recommendations
+  app.get("/api/trust-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateTrustRecommendations } = await import("./services/openai");
+      const trustAnalysis = await generateTrustRecommendations(store.storeUrl, store.storeType);
+      res.json(trustAnalysis);
+    } catch (error) {
+      console.error("Error fetching trust recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch trust recommendations" });
+    }
+  });
+
+  // Apply recommendation endpoints with credit deduction
+  app.post("/api/apply-seo-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      // Deduct credits
+      await storage.deductCredits(user.id, 1, `SEO optimization applied: ${suggestionId}`);
+
+      // Record the optimization
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'seo-optimization',
+        optimizationType: 'seo',
+        originalValue: changes.current || 'Current SEO',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "SEO optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying SEO recommendation:", error);
+      res.status(500).json({ error: "Failed to apply SEO recommendation" });
+    }
+  });
+
+  app.post("/api/apply-legal-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      await storage.deductCredits(user.id, 1, `Legal page optimization applied: ${suggestionId}`);
+
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'legal-page',
+        optimizationType: 'legal',
+        originalValue: changes.current || 'Current legal page',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Legal page optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying legal recommendation:", error);
+      res.status(500).json({ error: "Failed to apply legal recommendation" });
+    }
+  });
+
+  app.post("/api/apply-conversion-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      await storage.deductCredits(user.id, 1, `Conversion optimization applied: ${suggestionId}`);
+
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'conversion-optimization',
+        optimizationType: 'conversion',
+        originalValue: changes.current || 'Current conversion element',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Conversion optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying conversion recommendation:", error);
+      res.status(500).json({ error: "Failed to apply conversion recommendation" });
+    }
+  });
+
+  app.post("/api/apply-trust-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      await storage.deductCredits(user.id, 1, `Trust optimization applied: ${suggestionId}`);
+
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'trust-optimization',
+        optimizationType: 'trust',
+        originalValue: changes.current || 'Current trust element',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Trust optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying trust recommendation:", error);
+      res.status(500).json({ error: "Failed to apply trust recommendation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

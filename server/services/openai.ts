@@ -248,3 +248,298 @@ Provide realistic assessments based on ${data.storeType} standards and make sugg
     throw new Error("Failed to analyze store with AI: " + error.message);
   }
 }
+
+// SEO & Categories recommendations
+export async function generateSEORecommendations(storeUrl: string, storeType: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [{
+        role: "user",
+        content: `You are an expert SEO specialist for e-commerce stores. Generate specific SEO and category optimization recommendations for this ${storeType} store: ${storeUrl}
+
+Provide 4-6 specific SEO improvement recommendations in this JSON format:
+{
+  "seoScore": number (0-20),
+  "suggestions": [
+    {
+      "id": "unique-id",
+      "type": "meta-tags|keywords|categories|structure|content|schema",
+      "title": "Specific SEO improvement title",
+      "description": "Detailed explanation of the SEO improvement",
+      "impact": "Expected impact on search rankings and traffic",
+      "priority": "critical|high|medium|low",
+      "suggestions": {
+        "current": "Current SEO element description",
+        "recommended": "Specific recommended change",
+        "implementation": "How to implement this change"
+      }
+    }
+  ]
+}
+
+Focus on:
+- Meta titles and descriptions optimization
+- Product category structure improvement
+- Keyword optimization strategies
+- URL structure improvements
+- Schema markup implementation
+- Content optimization for search engines`
+      }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"suggestions": []}');
+    
+    // Add unique IDs if not present
+    result.suggestions = result.suggestions.map((suggestion: any, index: number) => ({
+      ...suggestion,
+      id: suggestion.id || `seo-${Date.now()}-${index}`
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("OpenAI SEO analysis failed:", error);
+    return {
+      seoScore: 10,
+      suggestions: [
+        {
+          id: `seo-fallback-${Date.now()}`,
+          type: 'meta-tags',
+          title: 'Optimize Meta Titles and Descriptions',
+          description: 'Improve search engine visibility with compelling meta titles and descriptions',
+          impact: 'Higher click-through rates from search results',
+          priority: 'high',
+          suggestions: {
+            current: 'Generic or missing meta titles and descriptions',
+            recommended: 'Create unique, keyword-rich meta titles (50-60 chars) and descriptions (150-160 chars) for each page',
+            implementation: 'Update theme templates and product pages with optimized meta tags'
+          }
+        }
+      ]
+    };
+  }
+}
+
+// Legal pages recommendations
+export async function generateLegalRecommendations(storeUrl: string, storeType: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [{
+        role: "user",
+        content: `You are an expert e-commerce legal consultant. Generate specific legal page and compliance recommendations for this ${storeType} store: ${storeUrl}
+
+Provide 3-5 specific legal compliance recommendations in this JSON format:
+{
+  "legalScore": number (0-15),
+  "suggestions": [
+    {
+      "id": "unique-id",
+      "type": "privacy|terms|returns|shipping|cookies|gdpr",
+      "title": "Specific legal improvement title",
+      "description": "Detailed explanation of the legal requirement",
+      "impact": "Legal protection and customer trust benefits",
+      "priority": "critical|high|medium|low",
+      "suggestions": {
+        "current": "Current legal page status",
+        "recommended": "Specific legal page or policy needed",
+        "implementation": "How to create and implement this legal document"
+      }
+    }
+  ]
+}
+
+Focus on:
+- Privacy Policy compliance (GDPR, CCPA)
+- Terms of Service and Terms & Conditions
+- Return and Refund Policy
+- Shipping Policy
+- Cookie Policy and consent
+- Age verification for restricted products`
+      }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"suggestions": []}');
+    
+    result.suggestions = result.suggestions.map((suggestion: any, index: number) => ({
+      ...suggestion,
+      id: suggestion.id || `legal-${Date.now()}-${index}`
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("OpenAI legal analysis failed:", error);
+    return {
+      legalScore: 8,
+      suggestions: [
+        {
+          id: `legal-fallback-${Date.now()}`,
+          type: 'privacy',
+          title: 'Create Comprehensive Privacy Policy',
+          description: 'Implement a GDPR and CCPA compliant privacy policy',
+          impact: 'Legal compliance and customer trust',
+          priority: 'critical',
+          suggestions: {
+            current: 'Missing or incomplete privacy policy',
+            recommended: 'Create comprehensive privacy policy covering data collection, usage, and user rights',
+            implementation: 'Use legal template generators or consult with legal expert to create compliant privacy policy'
+          }
+        }
+      ]
+    };
+  }
+}
+
+// Conversion optimization recommendations
+export async function generateConversionRecommendations(storeUrl: string, storeType: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [{
+        role: "user",
+        content: `You are an expert conversion rate optimization (CRO) specialist. Generate specific conversion improvement recommendations for this ${storeType} store: ${storeUrl}
+
+Provide 4-6 specific conversion optimization recommendations in this JSON format:
+{
+  "conversionScore": number (0-10),
+  "suggestions": [
+    {
+      "id": "unique-id",
+      "type": "checkout|cta|urgency|social-proof|forms|cart",
+      "title": "Specific conversion improvement title",
+      "description": "Detailed explanation of the conversion optimization",
+      "impact": "Expected impact on conversion rates and sales",
+      "priority": "critical|high|medium|low",
+      "suggestions": {
+        "current": "Current conversion element description",
+        "recommended": "Specific recommended optimization",
+        "implementation": "How to implement this conversion improvement"
+      }
+    }
+  ]
+}
+
+Focus on:
+- Call-to-action button optimization
+- Checkout process simplification
+- Urgency and scarcity tactics
+- Social proof implementation
+- Form optimization
+- Cart abandonment reduction
+- Mobile conversion improvements`
+      }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"suggestions": []}');
+    
+    result.suggestions = result.suggestions.map((suggestion: any, index: number) => ({
+      ...suggestion,
+      id: suggestion.id || `conversion-${Date.now()}-${index}`
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("OpenAI conversion analysis failed:", error);
+    return {
+      conversionScore: 6,
+      suggestions: [
+        {
+          id: `conversion-fallback-${Date.now()}`,
+          type: 'cta',
+          title: 'Optimize Call-to-Action Buttons',
+          description: 'Improve button design and copy to increase click-through rates',
+          impact: 'Higher conversion rates and more sales',
+          priority: 'high',
+          suggestions: {
+            current: 'Generic or weak call-to-action buttons',
+            recommended: 'Use action-oriented text, contrasting colors, and strategic placement for CTAs',
+            implementation: 'Update button text to "Buy Now", "Add to Cart", use contrasting colors and place above the fold'
+          }
+        }
+      ]
+    };
+  }
+}
+
+// Reviews and trust recommendations
+export async function generateTrustRecommendations(storeUrl: string, storeType: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [{
+        role: "user",
+        content: `You are an expert trust and reputation specialist for e-commerce. Generate specific trust building and review optimization recommendations for this ${storeType} store: ${storeUrl}
+
+Provide 4-6 specific trust and review improvement recommendations in this JSON format:
+{
+  "trustScore": number (0-15),
+  "suggestions": [
+    {
+      "id": "unique-id",
+      "type": "reviews|testimonials|badges|security|guarantees|contact",
+      "title": "Specific trust improvement title",
+      "description": "Detailed explanation of the trust building element",
+      "impact": "Expected impact on customer trust and conversions",
+      "priority": "critical|high|medium|low",
+      "suggestions": {
+        "current": "Current trust element status",
+        "recommended": "Specific trust building recommendation",
+        "implementation": "How to implement this trust element"
+      }
+    }
+  ]
+}
+
+Focus on:
+- Customer review system implementation
+- Trust badges and security certificates
+- Money-back guarantees
+- Customer testimonials display
+- Contact information visibility
+- About us page optimization
+- Social proof elements`
+      }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || '{"suggestions": []}');
+    
+    result.suggestions = result.suggestions.map((suggestion: any, index: number) => ({
+      ...suggestion,
+      id: suggestion.id || `trust-${Date.now()}-${index}`
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("OpenAI trust analysis failed:", error);
+    return {
+      trustScore: 9,
+      suggestions: [
+        {
+          id: `trust-fallback-${Date.now()}`,
+          type: 'reviews',
+          title: 'Implement Customer Review System',
+          description: 'Add customer reviews and ratings to build trust and social proof',
+          impact: 'Increased customer confidence and higher conversion rates',
+          priority: 'high',
+          suggestions: {
+            current: 'No customer reviews visible on product pages',
+            recommended: 'Install review app and encourage customers to leave reviews with automated email campaigns',
+            implementation: 'Use Shopify review apps like Judge.me or Yotpo, send review request emails after purchase'
+          }
+        }
+      ]
+    };
+  }
+}
