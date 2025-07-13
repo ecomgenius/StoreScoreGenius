@@ -137,6 +137,7 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Enhanced Optimization UX**: Products are automatically removed from optimization lists after being processed, counters decrease accurately, and optimization badges provide clear visual feedback on which products have been AI-enhanced
 - **Fixed Keyword Optimization Bug**: Resolved issue where keyword optimizations weren't being saved or tracked properly, now uses OpenAI to generate relevant SEO keywords and updates product tags correctly
 - **Enhanced AI Pricing Optimization**: Implemented comprehensive pricing strategy using OpenAI with market analysis, psychological pricing principles, competitive positioning, and conversion optimization logic including premium/value/psychological pricing strategies
+- **Fixed Critical Frontend Bug**: Resolved issue where frontend was sending 'title' as recommendationType for all optimizations regardless of actual tab clicked, now correctly passes keywords/pricing optimization types to server
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled

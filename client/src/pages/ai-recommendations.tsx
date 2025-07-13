@@ -331,14 +331,7 @@ export default function AIRecommendations() {
     )
   };
 
-  // Debug logging to see how many products are available for each optimization type
-  console.log('Debug - Product optimization counts:', {
-    title: productOptimizations.title.length,
-    description: productOptimizations.description.length,
-    pricing: productOptimizations.pricing.length,
-    keywords: productOptimizations.keywords.length,
-    totalProducts: products.length
-  });
+
 
   if (!store) {
     return (
@@ -783,7 +776,7 @@ export default function AIRecommendations() {
                   onClick={() => 
                     applyRecommendationMutation.mutate({
                       productId: previewingSuggestion.productId,
-                      recommendationType: 'title',
+                      recommendationType: previewingSuggestion.type,
                       suggestion: previewingSuggestion.suggestion,
                     })
                   }
