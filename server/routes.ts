@@ -619,19 +619,22 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       
       // Handle installation state (install_timestamp) vs regular OAuth state (hash:userId)
       if (stateParts[0] === 'install') {
+        console.log('Debug - Installation flow detected, using session user');
         // For installation flow, we need to get the current user from session
         if (!req.user?.id) {
           console.log('Debug - Installation without authenticated user');
           return res.redirect('/login?error=auth_required&message=' + encodeURIComponent('Please log in to connect your Shopify store.'));
         }
         userId = req.user.id;
+        console.log('Debug - Using session userId:', userId);
       } else {
+        console.log('Debug - Regular OAuth flow detected');
         // Regular OAuth state parsing
         userId = stateParts.length >= 3 ? parseInt(stateParts[2]) : parseInt(stateParts[1]);
         userStoreId = stateParts.length >= 4 ? parseInt(stateParts[3]) : null;
         
         if (!userId || isNaN(userId)) {
-          console.log('Debug - State parsing:', { state, stateParts, userId, userStoreId });
+          console.log('Debug - State parsing failed:', { state, stateParts, userId, userStoreId });
           return res.status(400).send("Invalid state parameter");
         }
       }
