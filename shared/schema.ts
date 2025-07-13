@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false).notNull(),
   aiCredits: integer("ai_credits").default(25).notNull(),
   stripeCustomerId: text("stripe_customer_id"),
+  subscriptionStatus: text("subscription_status").$type<'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'unpaid' | 'none'>().default('none').notNull(),
+  trialEndsAt: timestamp("trial_ends_at"),
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -131,7 +133,7 @@ export const userSubscriptions = pgTable("user_subscriptions", {
   planId: integer("plan_id").references(() => subscriptionPlans.id).notNull(),
   stripeSubscriptionId: text("stripe_subscription_id").unique().notNull(),
   stripeCustomerId: text("stripe_customer_id").notNull(),
-  status: text("status").$type<'incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'paused'>().notNull(),
+  status: text("status").$type<'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'trialing' | 'unpaid'>().notNull(),
   currentPeriodStart: timestamp("current_period_start").notNull(),
   currentPeriodEnd: timestamp("current_period_end").notNull(),
   trialStart: timestamp("trial_start"),
@@ -146,6 +148,8 @@ export const userSubscriptions = pgTable("user_subscriptions", {
     stripeSubscriptionIdIdx: index("user_subscriptions_stripe_subscription_id_idx").on(table.stripeSubscriptionId),
   };
 });
+
+
 
 // User sessions table
 export const userSessions = pgTable("user_sessions", {
@@ -275,6 +279,13 @@ export const updateSubscriptionSchema = z.object({
 
 export const updatePaymentMethodSchema = z.object({
   paymentMethodId: z.string(),
+});
+
+// Trial subscription schema
+export const createTrialSubscriptionSchema = z.object({
+  paymentMethodId: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
 });
 
 // Type exports

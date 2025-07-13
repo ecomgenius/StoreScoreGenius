@@ -1,12 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 import { User } from "@shared/schema";
+import { subscriptionService } from "../services/subscriptionService";
 
 declare global {
   namespace Express {
     interface Request {
       user?: User;
       session?: any;
+      subscriptionStatus?: string;
+      trialEndsAt?: Date;
     }
   }
 }
@@ -55,6 +58,39 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
+}
+
+export async function requireSubscription(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  // Admin always has access
+  if (req.user.isAdmin) {
+    return next();
+  }
+
+  try {
+    const accessCheck = await subscriptionService.checkUserAccess(req.user.id);
+    
+    if (!accessCheck.hasAccess) {
+      return res.status(402).json({ 
+        error: 'Subscription required',
+        subscriptionStatus: accessCheck.subscriptionStatus,
+        reason: accessCheck.reason,
+        requiresTrial: true
+      });
+    }
+
+    // User has access, attach subscription info to request
+    req.subscriptionStatus = accessCheck.subscriptionStatus;
+    req.trialEndsAt = accessCheck.trialEndsAt;
+    
+    next();
+  } catch (error) {
+    console.error('Subscription check error:', error);
+    return res.status(500).json({ error: 'Subscription validation failed' });
+  }
 }
 
 export function checkCredits(minimumCredits: number = 1) {

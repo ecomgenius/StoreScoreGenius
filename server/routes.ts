@@ -14,10 +14,11 @@ import {
   createUserStoreSchema,
   createSubscriptionSchema,
   updateSubscriptionSchema,
-  updatePaymentMethodSchema
+  updatePaymentMethodSchema,
+  createTrialSubscriptionSchema
 } from "@shared/schema";
 import { analyzeShopifyStore, analyzeEbayStore } from "./services/storeAnalyzer";
-import { authenticateUser, requireAuth, requireAdmin, checkCredits, checkSubscription } from "./middleware/auth";
+import { authenticateUser, requireAuth, requireAdmin, requireSubscription, checkCredits, checkSubscription } from "./middleware/auth";
 import { 
   generateShopifyAuthUrl, 
   exchangeCodeForToken, 
@@ -165,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ================ USER STORES ROUTES ================
   
   // Get user stores
-  app.get("/api/stores", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/stores", requireAuth, requireSubscription, async (req: Request, res: Response) => {
     try {
       const stores = await storage.getUserStores(req.user!.id);
       res.json(stores);
@@ -176,7 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create user store
-  app.post("/api/stores", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/stores", requireAuth, requireSubscription, async (req: Request, res: Response) => {
     try {
       const validatedData = createUserStoreSchema.parse(req.body);
       
@@ -199,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user store
-  app.put("/api/stores/:id", requireAuth, async (req: Request, res: Response) => {
+  app.put("/api/stores/:id", requireAuth, requireSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const store = await storage.getUserStore(id);
@@ -219,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete user store
-  app.delete("/api/stores/:id", requireAuth, async (req: Request, res: Response) => {
+  app.delete("/api/stores/:id", requireAuth, requireSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const store = await storage.getUserStore(id);
@@ -1392,6 +1393,30 @@ Return ONLY a JSON object with this exact format:
     } catch (error) {
       console.error("Error fetching payment methods:", error);
       res.status(500).json({ error: "Failed to fetch payment methods" });
+    }
+  });
+
+  // Start trial subscription (new user registration with payment method)
+  app.post("/api/subscription/trial", async (req: Request, res: Response) => {
+    try {
+      const validatedData = createTrialSubscriptionSchema.parse(req.body);
+      
+      const result = await subscriptionService.startTrial(
+        req.user?.id || 0, // Will be updated when user is created
+        validatedData.paymentMethodId
+      );
+
+      res.json({
+        success: true,
+        trialEnd: result.trialEnd,
+        message: "Trial started successfully"
+      });
+    } catch (error) {
+      console.error("Error starting trial:", error);
+      res.status(400).json({ 
+        error: "Failed to start trial", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 

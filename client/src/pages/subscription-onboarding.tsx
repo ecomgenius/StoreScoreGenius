@@ -1,290 +1,246 @@
-
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, CreditCard, Clock, Shield } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { useAuth } from '@/hooks/useAuth';
+import { loadStripe } from '@stripe/stripe-js';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Check, CreditCard, Shield, Users, Zap } from "lucide-react";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-
-interface SubscriptionPlan {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  currency: string;
-  interval: string;
-  aiCreditsIncluded: number;
-  maxStores: number;
-  features: string[];
-  trialDays: number;
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
 }
 
-function SubscriptionForm({ selectedPlan }: { selectedPlan: SubscriptionPlan }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(false);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
-  const createSubscriptionMutation = useMutation({
-    mutationFn: async ({ planId, paymentMethodId }: { planId: number; paymentMethodId: string }) => {
-      const response = await apiRequest('/api/subscription', {
-        method: 'POST',
-        body: JSON.stringify({ planId, paymentMethodId }),
-      });
-      if (!response.ok) throw new Error('Failed to create subscription');
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.status === 'trialing' || data.status === 'active') {
-        toast({
-          title: "Subscription Created!",
-          description: `Welcome to ${selectedPlan.name}! Your ${selectedPlan.trialDays}-day trial has started.`,
-        });
-        navigate('/dashboard');
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      color: '#424770',
+      fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+      fontSmoothing: 'antialiased',
+      fontSize: '16px',
+      '::placeholder': {
+        color: '#aab7c4'
       }
     },
-    onError: (error) => {
-      toast({
-        title: "Subscription Failed",
-        description: "There was an error creating your subscription. Please try again.",
-        variant: "destructive",
-      });
+    invalid: {
+      color: '#9e2146',
+      iconColor: '#fa755a'
     }
+  }
+};
+
+function TrialSignupForm() {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
   });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setIsProcessing(true);
+    setIsLoading(true);
 
     if (!stripe || !elements) {
-      setIsProcessing(false);
+      toast({
+        title: "Payment Error",
+        description: "Payment system not loaded. Please refresh and try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
       return;
     }
 
     const cardElement = elements.getElement(CardElement);
+    
     if (!cardElement) {
-      setIsProcessing(false);
+      toast({
+        title: "Payment Error", 
+        description: "Please enter your payment information.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
       return;
     }
 
     try {
       // Create payment method
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
+      const { error: createError, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardElement,
+        billing_details: {
+          name: `${formData.firstName} ${formData.lastName}`,
+        },
       });
 
-      if (error) {
-        toast({
-          title: "Payment Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
+      if (createError) {
+        throw new Error(createError.message);
       }
 
-      // Create subscription
-      await createSubscriptionMutation.mutateAsync({
-        planId: selectedPlan.id,
+      // Start trial with the payment method
+      const response = await apiRequest('POST', '/api/subscription/trial', {
         paymentMethodId: paymentMethod.id,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
       });
 
-    } catch (error) {
-      console.error('Subscription error:', error);
+      toast({
+        title: "Trial Started!",
+        description: "Your 7-day free trial has begun. Welcome to StoreScore!",
+      });
+
+      // Redirect to dashboard
+      setLocation('/dashboard');
+      
+    } catch (error: any) {
+      console.error('Trial signup error:', error);
+      toast({
+        title: "Trial Signup Failed",
+        description: error.message || "Failed to start trial. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsProcessing(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border rounded-lg bg-gray-50">
-        <h3 className="font-semibold mb-2">Payment Information</h3>
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-            },
-          }}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="firstName">First Name</Label>
+          <Input
+            id="firstName"
+            value={formData.firstName}
+            onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="lastName">Last Name</Label>
+          <Input
+            id="lastName"
+            value={formData.lastName}
+            onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+            required
+          />
+        </div>
       </div>
 
-      <div className="flex items-center space-x-2 text-sm text-gray-600">
+      <div>
+        <Label htmlFor="card">Payment Information</Label>
+        <div className="mt-2 p-3 border rounded-md">
+          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Your card won't be charged during the 7-day free trial
+        </p>
+      </div>
+
+      <Alert>
         <Shield className="h-4 w-4" />
-        <span>Your payment information is secure and encrypted</span>
-      </div>
+        <AlertDescription>
+          <strong>7-Day Free Trial</strong> - Start your trial now. You'll be billed $49/month after the trial period unless you cancel.
+        </AlertDescription>
+      </Alert>
 
-      <Button 
-        type="submit" 
-        disabled={!stripe || isProcessing}
-        className="w-full"
-        size="lg"
-      >
-        {isProcessing ? (
-          "Processing..."
-        ) : (
-          `Start ${selectedPlan.trialDays}-Day Free Trial`
-        )}
+      <Button type="submit" disabled={isLoading || !stripe} className="w-full">
+        {isLoading ? "Starting Trial..." : "Start 7-Day Free Trial"}
       </Button>
-
-      <p className="text-xs text-gray-500 text-center">
-        No charge for {selectedPlan.trialDays} days. Cancel anytime during trial period.
-        After trial, you'll be charged ${(selectedPlan.price / 100).toFixed(2)} per {selectedPlan.interval}.
-      </p>
     </form>
   );
 }
 
 export default function SubscriptionOnboarding() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-
-  const { data: plans = [] } = useQuery<SubscriptionPlan[]>({
-    queryKey: ['/api/subscription/plans'],
-  });
-
-  const selectedPlan = plans.find(plan => plan.id === selectedPlanId);
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
-
-  if (!user) return null;
-
-  const elementsOptions: StripeElementsOptions = {
-    appearance: {
-      theme: 'stripe',
-    },
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Choose Your Plan
-          </h1>
-          <p className="text-gray-600">
-            Start with a {plans[0]?.trialDays || 7}-day free trial. No commitment required.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full grid md:grid-cols-2 gap-8 items-center">
+        
+        {/* Left side - Benefits */}
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              Start Your Free Trial
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              Get 7 days of unlimited AI-powered store optimization
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full">
+                <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">1000 AI Credits Monthly</h3>
+                <p className="text-gray-600 dark:text-gray-300">Enough for comprehensive store optimization</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Up to 10 Stores</h3>
+                <p className="text-gray-600 dark:text-gray-300">Manage multiple stores from one dashboard</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-full">
+                <Check className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Full Feature Access</h3>
+                <p className="text-gray-600 dark:text-gray-300">Product optimization, SEO, design recommendations & more</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">Professional Plan</span>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">$49<span className="text-base font-normal">/mo</span></div>
+                <div className="text-sm text-green-600 dark:text-green-400">7 days free</div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Cancel anytime during your trial period
+            </p>
+          </div>
         </div>
 
-        {!selectedPlan ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {plans.map((plan) => (
-              <Card 
-                key={plan.id} 
-                className={`relative cursor-pointer transition-all hover:shadow-lg ${
-                  plan.name.toLowerCase().includes('pro') ? 'border-blue-500 border-2' : ''
-                }`}
-                onClick={() => setSelectedPlanId(plan.id)}
-              >
-                {plan.name.toLowerCase().includes('pro') && (
-                  <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500">
-                    Most Popular
-                  </Badge>
-                )}
-                
-                <CardHeader className="text-center">
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-3xl font-bold">
-                      ${(plan.price / 100).toFixed(0)}
-                    </span>
-                    <span className="text-gray-600">/{plan.interval}</span>
-                  </div>
-                </CardHeader>
-
-                <CardContent>
-                  <ul className="space-y-3">
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>{plan.aiCreditsIncluded} AI credits per month</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Up to {plan.maxStores} stores</span>
-                    </li>
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center space-x-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                    <li className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      <span>{plan.trialDays}-day free trial</span>
-                    </li>
-                  </ul>
-
-                  <Button className="w-full mt-6" size="lg">
-                    Select Plan
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Complete Your Subscription</CardTitle>
-                    <CardDescription>
-                      You've selected the {selectedPlan.name} plan
-                    </CardDescription>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setSelectedPlanId(null)}
-                  >
-                    Change Plan
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <CreditCard className="h-5 w-5 text-blue-600" />
-                    <span className="font-semibold">{selectedPlan.name}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    ${(selectedPlan.price / 100).toFixed(2)} per {selectedPlan.interval}
-                  </p>
-                  <p className="text-sm text-blue-600 font-medium">
-                    {selectedPlan.trialDays}-day free trial included
-                  </p>
-                </div>
-
-                <Elements stripe={stripePromise} options={elementsOptions}>
-                  <SubscriptionForm selectedPlan={selectedPlan} />
-                </Elements>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Right side - Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <CreditCard className="h-5 w-5" />
+              <span>Payment Information</span>
+            </CardTitle>
+            <CardDescription>
+              Your card will be securely stored but not charged during the trial period
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Elements stripe={stripePromise}>
+              <TrialSignupForm />
+            </Elements>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
