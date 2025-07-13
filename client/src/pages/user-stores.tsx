@@ -153,8 +153,11 @@ export default function UserStores() {
   const handleReconnectStore = (storeId: number) => {
     const store = stores.find((s: any) => s.id === storeId);
     if (store && store.shopifyDomain) {
-      setShopifyDomain(store.shopifyDomain);
-      setIsShopifyDialogOpen(true);
+      // For reconnection, directly trigger OAuth with store ID
+      connectShopifyMutation.mutate({ 
+        shopDomain: store.shopifyDomain,
+        userStoreId: storeId 
+      });
     }
   };
 
@@ -349,6 +352,19 @@ export default function UserStores() {
                       </div>
                     )}
 
+                    {/* Show permission status for Shopify stores */}
+                    {store.storeType === 'shopify' && store.shopifyScope && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Permissions:</span>
+                        <div className="flex items-center space-x-2">
+                          <div className={`h-2 w-2 rounded-full ${store.shopifyScope.includes('write_products') ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                          <span className={`font-medium text-xs ${store.shopifyScope.includes('write_products') ? 'text-green-700' : 'text-orange-700'}`}>
+                            {store.shopifyScope.includes('write_products') ? 'Full Access' : 'Read Only'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {store.isConnected && store.lastSyncAt && (
                       <div className="text-sm text-gray-500">
                         Last sync: {new Date(store.lastSyncAt).toLocaleDateString()}
@@ -358,15 +374,30 @@ export default function UserStores() {
                     <div className="flex items-center justify-between pt-4 border-t">
                       <div className="flex space-x-2">
                         {store.isConnected && store.connectionStatus === 'connected' ? (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleAnalyzeStore(store.id)}
-                            disabled={analyzeStoreMutation.isPending}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            <Zap className="mr-2 h-4 w-4" />
-                            {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Run AI Analysis'}
-                          </Button>
+                          <>
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleAnalyzeStore(store.id)}
+                              disabled={analyzeStoreMutation.isPending}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <Zap className="mr-2 h-4 w-4" />
+                              {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Run AI Analysis'}
+                            </Button>
+                            {/* Show reconnect button if store lacks write permissions */}
+                            {store.shopifyScope && !store.shopifyScope.includes('write_products') && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleReconnectStore(store.id)}
+                                disabled={connectShopifyMutation.isPending}
+                                className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                              >
+                                <Settings className="mr-2 h-4 w-4" />
+                                Upgrade Permissions
+                              </Button>
+                            )}
+                          </>
                         ) : (
                           <Button 
                             size="sm" 

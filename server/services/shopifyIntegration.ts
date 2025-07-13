@@ -79,13 +79,13 @@ export interface ShopifyStore {
 /**
  * Generate Shopify OAuth authorization URL
  */
-export async function generateShopifyAuthUrl(shopDomain: string, userId: number): Promise<ShopifyAuthUrl> {
+export async function generateShopifyAuthUrl(shopDomain: string, userId: number, userStoreId?: number): Promise<ShopifyAuthUrl> {
   const state = crypto.randomBytes(32).toString('hex');
   const nonce = crypto.randomBytes(16).toString('hex');
   
   // Store state for validation (in production, use Redis or database)
-  // For now, we'll encode userId in the state for simplicity
-  const stateWithUser = `${state}:${userId}`;
+  // Include userStoreId in state for store updates/reconnections
+  const stateWithUser = userStoreId ? `${state}:${userId}:${userStoreId}` : `${state}:${userId}`;
   
   // Use scopes needed for AI recommendations - including write permissions for product updates
   const publicAppScopes = 'read_products,write_products';

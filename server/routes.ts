@@ -1146,8 +1146,30 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
         return res.redirect('/dashboard/stores?error=shop_info_failed&message=' + encodeURIComponent('Connected to Shopify but failed to get store information.'));
       }
       
-      if (userStoreId) {
-        // Update existing store
+      // Check if store already exists for this user and shop domain
+      const existingStores = await storage.getUserStores(userId);
+      const existingStore = existingStores.find(store => 
+        store.shopifyDomain === shop || 
+        store.storeUrl?.includes(shop as string) ||
+        store.name === shopInfo.name
+      );
+
+      if (existingStore) {
+        // Update existing store with new token and permissions
+        console.log('Debug - Updating existing store:', existingStore.id);
+        await storage.updateUserStore(existingStore.id, {
+          shopifyAccessToken: access_token,
+          shopifyDomain: shop as string,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date(),
+          name: shopInfo.name,
+          storeUrl: `https://${shopInfo.domain}`
+        });
+      } else if (userStoreId) {
+        // Update specific store (from reconnection)
+        console.log('Debug - Updating specified store:', userStoreId);
         await storage.updateUserStore(userStoreId, {
           shopifyAccessToken: access_token,
           shopifyDomain: shop as string,
@@ -1159,7 +1181,8 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
           storeUrl: `https://${shopInfo.domain}`
         });
       } else {
-        // Create new store
+        // Create new store only if none exists
+        console.log('Debug - Creating new store for:', shopInfo.name);
         await storage.createUserStore({
           userId,
           name: shopInfo.name,
