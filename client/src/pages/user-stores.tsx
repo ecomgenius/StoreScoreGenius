@@ -74,27 +74,38 @@ export default function UserStores() {
       return apiRequest('POST', `/api/shopify/analyze/${storeId}`);
     },
     onSuccess: (data: any) => {
-      console.log('🚀 Analysis mutation onSuccess triggered with data:', data);
+      console.log('🚀 Analysis mutation onSuccess triggered');
+      console.log('📊 Response data type:', typeof data);
+      console.log('📊 Response data:', data);
+      console.log('📊 Response keys:', Object.keys(data || {}));
+      console.log('📊 Raw response as string:', JSON.stringify(data));
+      
+      // Check if data is an array or object
+      let analysisData = data;
+      if (Array.isArray(data) && data.length > 0) {
+        analysisData = data[0];
+        console.log('📊 Using first item from array:', analysisData);
+      }
       
       // Invalidate cache to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analyses'] });
       
-      // Force redirect immediately - no conditions
-      const analysisId = data?.id;
-      console.log('🔍 Checking analysis ID from response. Full data object:', JSON.stringify(data, null, 2));
+      const analysisId = analysisData?.id;
+      console.log('🔍 Extracted analysis ID:', analysisId);
       
       if (analysisId) {
-        console.log('✅ Analysis ID found! Redirecting to:', `/analysis/${analysisId}`);
-        // Try multiple redirect approaches
-        try {
-          window.location.replace(`/analysis/${analysisId}`);
-        } catch (e) {
-          console.log('Replace failed, trying href:', e);
+        console.log('✅ Redirecting to analysis page:', `/analysis/${analysisId}`);
+        setTimeout(() => {
           window.location.href = `/analysis/${analysisId}`;
-        }
+        }, 500);
       } else {
-        console.error('❌ No analysis ID in response - cannot redirect. Keys in data:', Object.keys(data || {}));
+        console.error('❌ No valid analysis ID found. Full analysis data:', analysisData);
+        // Fallback: redirect to analysis list
+        console.log('🔄 Redirecting to analysis list as fallback');
+        setTimeout(() => {
+          window.location.href = '/dashboard/analysis';
+        }, 1000);
       }
     },
     onError: (error: any) => {
