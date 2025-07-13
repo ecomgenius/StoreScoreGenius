@@ -147,7 +147,7 @@ export default function AIRecommendations() {
     onSuccess: (data: any) => {
       setPreviewingSuggestion({
         productId: data.product.id,
-        type: data.product.type || 'optimization',
+        type: data.product.type,
         suggestion: data.suggestion,
         original: data.original,
         product: data.product

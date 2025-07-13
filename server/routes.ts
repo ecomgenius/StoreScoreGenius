@@ -942,7 +942,8 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
           id: currentProduct.id,
           title: currentProduct.title,
           image: currentProduct.images?.[0]?.src,
-          price: currentProduct.variants?.[0]?.price
+          price: currentProduct.variants?.[0]?.price,
+          type: recommendationType // Add the recommendation type to the response
         }
       });
     } catch (error) {
