@@ -557,11 +557,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       res.status(500).json({ 
         error: "Failed to initiate Shopify connection",
-        details: `If getting 404 on OAuth URL, the development store might not be connected to your Partner App. Please:
-1. Go to Partners Dashboard → Your App → Test your app
-2. Install the app on your development store: ${domain}
-3. Or enable custom app development in the store admin
-Current redirect URI: ${currentRedirectUri}`
+        details: `OAuth 404 error suggests app distribution issue. In Shopify Partners Dashboard, check:
+1. App Setup → Distribution → Enable "Public distribution" (not just dev/test mode)
+2. App Setup → URLs → Ensure redirect URI is correct: ${currentRedirectUri}
+3. App must be PUBLIC for any store to use OAuth (like AutoDS works)
+Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       });
     }
   });

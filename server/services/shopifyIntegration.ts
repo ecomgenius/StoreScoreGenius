@@ -87,16 +87,17 @@ export async function generateShopifyAuthUrl(shopDomain: string, userId: number)
   // For now, we'll encode userId in the state for simplicity
   const stateWithUser = `${state}:${userId}`;
   
-  // Test with minimal required scopes first
-  const minimalScopes = 'read_products';
+  // Use standard public app scopes for OAuth
+  const publicAppScopes = 'read_products,read_orders,read_themes,read_content';
   
-  // Try different OAuth endpoint formats for development stores
+  // Standard OAuth URL for public Shopify apps (like AutoDS)
   const baseUrl = `https://${shopDomain}`;
   const authUrl = `${baseUrl}/admin/oauth/authorize?` +
     `client_id=${SHOPIFY_API_KEY}&` +
-    `scope=${minimalScopes}&` +
+    `scope=${publicAppScopes}&` +
     `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-    `state=${stateWithUser}`;
+    `state=${stateWithUser}&` +
+    `grant_options[]=per-user`;
     
   console.log('Debug - Generated OAuth URL:', authUrl);
   console.log('Debug - Base store URL test:', baseUrl);
