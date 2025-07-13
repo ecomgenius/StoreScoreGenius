@@ -74,13 +74,7 @@ export default function UserStores() {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analyses'] });
       
-      const score = data.overallScore || 0;
-      toast({
-        title: "Analysis Complete!",
-        description: `Store analysis completed with score: ${score}/100`,
-      });
-      
-      // Redirect to analysis page like other analyses
+      // Redirect to analysis page automatically without popup
       if (data.id) {
         window.location.href = `/analysis/${data.id}`;
       }
