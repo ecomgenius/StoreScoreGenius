@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,15 +98,15 @@ function CheckoutForm({ selectedPackage, onSuccess }: CheckoutFormProps) {
       // Create payment intent
       const { clientSecret } = await createPaymentIntent.mutateAsync(selectedPackage.id);
 
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) {
         throw new Error('Card element not found');
       }
 
       // Confirm payment
       const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: cardElement,
+          card: cardNumberElement,
         }
       });
 
@@ -136,28 +136,81 @@ function CheckoutForm({ selectedPackage, onSuccess }: CheckoutFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border rounded-lg">
-        <CardElement 
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-                fontSmoothing: 'antialiased',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-              invalid: {
-                color: '#9e2146',
-                iconColor: '#fa755a'
-              }
-            },
-            hidePostalCode: false,
-            iconStyle: 'solid'
-          }}
-        />
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Card Number</label>
+          <div className="p-3 border rounded-lg">
+            <CardNumberElement 
+              options={{
+                style: {
+                  base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                    fontSmoothing: 'antialiased',
+                    '::placeholder': {
+                      color: '#aab7c4',
+                    },
+                  },
+                  invalid: {
+                    color: '#9e2146',
+                    iconColor: '#fa755a'
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Expiry Date</label>
+            <div className="p-3 border rounded-lg">
+              <CardExpiryElement 
+                options={{
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#424770',
+                      fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                      fontSmoothing: 'antialiased',
+                      '::placeholder': {
+                        color: '#aab7c4',
+                      },
+                    },
+                    invalid: {
+                      color: '#9e2146',
+                      iconColor: '#fa755a'
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">CVV</label>
+            <div className="p-3 border rounded-lg">
+              <CardCvcElement 
+                options={{
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#424770',
+                      fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                      fontSmoothing: 'antialiased',
+                      '::placeholder': {
+                        color: '#aab7c4',
+                      },
+                    },
+                    invalid: {
+                      color: '#9e2146',
+                      iconColor: '#fa755a'
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
       
       <Button 

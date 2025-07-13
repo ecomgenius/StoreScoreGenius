@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
-const CARD_ELEMENT_OPTIONS = {
+const ELEMENT_OPTIONS = {
   style: {
     base: {
       color: '#424770',
@@ -33,9 +33,7 @@ const CARD_ELEMENT_OPTIONS = {
       color: '#9e2146',
       iconColor: '#fa755a'
     }
-  },
-  hidePostalCode: false, // Keep postal code for security
-  iconStyle: 'solid'
+  }
 };
 
 function TrialSignupForm() {
@@ -64,9 +62,9 @@ function TrialSignupForm() {
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
+    const cardNumberElement = elements.getElement(CardNumberElement);
     
-    if (!cardElement) {
+    if (!cardNumberElement) {
       toast({
         title: "Payment Error", 
         description: "Please enter your payment information.",
@@ -80,7 +78,7 @@ function TrialSignupForm() {
       // Create payment method
       const { error: createError, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
-        card: cardElement,
+        card: cardNumberElement,
         billing_details: {
           name: `${formData.firstName} ${formData.lastName}`,
         },
@@ -141,11 +139,30 @@ function TrialSignupForm() {
       </div>
 
       <div>
-        <Label htmlFor="card">Payment Information</Label>
-        <div className="mt-2 p-3 border rounded-md">
-          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        <Label>Payment Information</Label>
+        <div className="mt-2 space-y-3">
+          <div>
+            <Label htmlFor="cardNumber" className="text-sm">Card Number</Label>
+            <div className="mt-1 p-3 border rounded-md">
+              <CardNumberElement options={ELEMENT_OPTIONS} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="cardExpiry" className="text-sm">Expiry Date</Label>
+              <div className="mt-1 p-3 border rounded-md">
+                <CardExpiryElement options={ELEMENT_OPTIONS} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="cardCvc" className="text-sm">CVV</Label>
+              <div className="mt-1 p-3 border rounded-md">
+                <CardCvcElement options={ELEMENT_OPTIONS} />
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-2">
           Your card won't be charged during the 7-day free trial
         </p>
       </div>
