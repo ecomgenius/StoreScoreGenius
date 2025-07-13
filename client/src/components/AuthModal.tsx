@@ -53,12 +53,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     
     setIsLoading(true);
     try {
-      await register(registerData.email, registerData.password, `${registerData.firstName} ${registerData.lastName}`);
-      toast({
-        title: "Registration successful!",
-        description: "Welcome to StoreScore! You have 25 free AI credits to get started.",
-      });
+      const result = await register(registerData.email, registerData.password, `${registerData.firstName} ${registerData.lastName}`);
+      
+      // Close the modal first
       onClose();
+      
+      // Check if user needs onboarding (subscription setup)
+      if (result?.needsOnboarding) {
+        // Redirect to subscription onboarding
+        window.location.href = '/subscription-onboarding';
+      } else {
+        toast({
+          title: "Registration successful!",
+          description: "Welcome back to StoreScore!",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Registration failed",

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Search, Zap, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,20 @@ export default function Dashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Check subscription status and redirect if needed
+  useEffect(() => {
+    if (user) {
+      // Check if user has a subscription by trying to access stores
+      apiRequest('GET', '/api/stores')
+        .catch((error) => {
+          if (error.message.includes('402') || error.message.includes('Subscription required')) {
+            // User needs a subscription - redirect to onboarding
+            window.location.href = '/subscription-onboarding';
+          }
+        });
+    }
+  }, [user]);
 
   // Fetch user's analysis count
   const { data: analysisCount = 0 } = useQuery({
