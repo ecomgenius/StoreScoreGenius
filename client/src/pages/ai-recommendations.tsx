@@ -568,7 +568,7 @@ export default function AIRecommendations() {
                             </div>
                             
                             {/* Product Info */}
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <h4 className="font-semibold text-base mb-1 truncate">{product.title}</h4>
@@ -581,12 +581,21 @@ export default function AIRecommendations() {
                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                       Current {type}:
                                     </span>
-                                    <p className="mt-1 p-3 bg-gray-50 rounded-md text-sm border">
-                                      {type === 'title' ? product.title :
-                                       type === 'description' ? (product.body_html?.replace(/<[^>]*>/g, '').substring(0, 150) + '...' || 'No description') :
-                                       type === 'pricing' ? `$${product.variants?.[0]?.price || 'No price'}` :
-                                       product.tags || 'No tags'}
-                                    </p>
+                                    <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm border">
+                                      {type === 'description' ? (
+                                        <div className="max-h-32 overflow-y-auto">
+                                          <p className="break-words whitespace-pre-wrap">
+                                            {product.body_html?.replace(/<[^>]*>/g, '') || 'No description'}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <p className="break-words">
+                                          {type === 'title' ? product.title :
+                                           type === 'pricing' ? `$${product.variants?.[0]?.price || 'No price'}` :
+                                           product.tags || 'No tags'}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                   
                                   {/* Optimization Opportunity */}
@@ -652,7 +661,7 @@ export default function AIRecommendations() {
 
       {/* AI Suggestion Preview Modal */}
       <Dialog open={!!previewingSuggestion} onOpenChange={() => setPreviewingSuggestion(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>AI Optimization Preview</DialogTitle>
             <DialogDescription>
@@ -679,7 +688,11 @@ export default function AIRecommendations() {
                 <div>
                   <h5 className="font-medium text-sm text-muted-foreground mb-2">CURRENT</h5>
                   <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm">{previewingSuggestion.original || 'No current value'}</p>
+                    <div className="max-h-48 overflow-y-auto">
+                      <p className="text-sm break-words whitespace-pre-wrap">
+                        {previewingSuggestion.original || 'No current value'}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -690,7 +703,11 @@ export default function AIRecommendations() {
                      'NEW OPTIMIZATION GENERATED WITH AI'}
                   </h5>
                   <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-sm font-medium">{previewingSuggestion.suggestion}</p>
+                    <div className="max-h-48 overflow-y-auto">
+                      <p className="text-sm font-medium break-words whitespace-pre-wrap">
+                        {previewingSuggestion.suggestion}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
