@@ -51,6 +51,15 @@ export default function AIRecommendations() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkType, setBulkType] = useState<string>('');
   const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
+  
+  // State for AI suggestion previews
+  const [previewingSuggestion, setPreviewingSuggestion] = useState<{
+    productId: string;
+    type: string;
+    suggestion: string;
+    original: string;
+    product: any;
+  } | null>(null);
 
   // Fetch store details
   const { data: store } = useQuery({
@@ -62,11 +71,18 @@ export default function AIRecommendations() {
     enabled: !!storeId,
   });
 
-  // Fetch store products
-  const { data: products = [] } = useQuery({
+  // Fetch store products (remove dependency on recommendations)
+  const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['/api/shopify/products', storeId],
     queryFn: async () => {
-      return await apiRequest('GET', `/api/shopify/products/${storeId}`);
+      try {
+        return await apiRequest('GET', `/api/shopify/products/${storeId}`);
+      } catch (error: any) {
+        if (error.message?.includes('Store not connected')) {
+          return []; // Return empty array if store not connected
+        }
+        throw error;
+      }
     },
     enabled: !!storeId,
   });
@@ -84,6 +100,36 @@ export default function AIRecommendations() {
   const { data: userCredits } = useQuery({
     queryKey: ['/api/credits'],
     enabled: !!user,
+  });
+
+  // Generate AI suggestion preview
+  const generateSuggestionMutation = useMutation({
+    mutationFn: async ({ productId, recommendationType }: { 
+      productId: string; 
+      recommendationType: string; 
+    }) => {
+      return await apiRequest('POST', `/api/shopify/generate-suggestion`, {
+        storeId,
+        productId,
+        recommendationType,
+      });
+    },
+    onSuccess: (data: any) => {
+      setPreviewingSuggestion({
+        productId: data.product.id,
+        type: data.product.type || 'optimization',
+        suggestion: data.suggestion,
+        original: data.original,
+        product: data.product
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate AI suggestion",
+        variant: "destructive",
+      });
+    },
   });
 
   // Apply single recommendation
@@ -104,6 +150,7 @@ export default function AIRecommendations() {
       queryClient.invalidateQueries({ queryKey: ['/api/shopify/products', storeId] });
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: ['/api/ai-recommendations', storeId] });
+      setPreviewingSuggestion(null); // Close preview modal
       toast({
         title: "Recommendation Applied",
         description: "Product has been updated successfully",
@@ -160,9 +207,7 @@ export default function AIRecommendations() {
   });
 
   const handleBulkApply = (type: string) => {
-    const relevantProducts = recommendations
-      .filter((rec: AIRecommendation) => rec.type === type)
-      .flatMap((rec: AIRecommendation) => rec.affectedProducts.map(p => p.id));
+    const relevantProducts = productOptimizations[type as keyof typeof productOptimizations]?.map(p => p.id) || [];
     
     if (relevantProducts.length === 0) {
       toast({
@@ -205,37 +250,31 @@ export default function AIRecommendations() {
     }
   };
 
-  // Map recommendation categories to tab types for better organization
-  const categoryToTab: Record<string, string> = {
-    'product': 'title',        // Product issues → Title optimization
-    'seo': 'description',      // SEO issues → Description optimization  
-    'pricing': 'pricing',      // Pricing issues → Pricing optimization
-    'design': 'keywords',      // Design issues → Keywords/Tags optimization
-    'trust': 'description',    // Trust issues → Description improvements
-    'conversion': 'title'      // Conversion issues → Title improvements
+  // Create product-based optimization opportunities for each tab
+  const productOptimizations = {
+    title: products.filter(p => p.title && (
+      p.title.length < 30 || 
+      p.title.length > 70 || 
+      !p.title.includes(p.product_type || '') ||
+      p.title === p.title.toUpperCase()
+    )),
+    description: products.filter(p => 
+      !p.body_html || 
+      p.body_html.length < 100 || 
+      !p.body_html.includes('benefits') ||
+      !p.body_html.includes('features')
+    ),
+    pricing: products.filter(p => 
+      !p.variants?.[0]?.price || 
+      parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
+      !p.variants[0].compare_at_price
+    ),
+    keywords: products.filter(p => 
+      !p.tags || 
+      p.tags.length < 3 ||
+      !p.handle.includes('-')
+    )
   };
-
-  // Group recommendations by tab type and assign sample products
-  const groupedRecommendations = recommendations.reduce((acc: Record<string, AIRecommendation[]>, rec: AIRecommendation) => {
-    const tabType = categoryToTab[rec.type] || 'title';
-    if (!acc[tabType]) acc[tabType] = [];
-    
-    // Assign sample products to each recommendation for demonstration
-    const sampleProducts = products.slice(0, Math.min(3, products.length)).map(p => ({
-      id: p.id,
-      title: p.title,
-      currentValue: tabType === 'title' ? p.title : 
-                    tabType === 'description' ? (p.description || 'No description') :
-                    tabType === 'pricing' ? (p.variants?.[0]?.price || 'No price') :
-                    'Keywords needed'
-    }));
-    
-    acc[tabType].push({
-      ...rec,
-      affectedProducts: sampleProducts
-    });
-    return acc;
-  }, {});
 
   if (!store) {
     return (
@@ -285,32 +324,32 @@ export default function AIRecommendations() {
           </div>
         </div>
 
-        {/* Recommendations Overview */}
+        {/* Product Optimization Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {Object.entries(groupedRecommendations).map(([type, recs]) => (
+          {Object.entries(productOptimizations).map(([type, products]) => (
             <Card key={type} className="cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     {getRecommendationIcon(type)}
-                    <CardTitle className="text-sm capitalize">{type} Issues</CardTitle>
+                    <CardTitle className="text-sm capitalize">{type} Optimization</CardTitle>
                   </div>
-                  <Badge variant={getPriorityColor(recs[0]?.priority || 'medium')}>
-                    {recs.length}
+                  <Badge variant={products.length > 0 ? 'destructive' : 'default'}>
+                    {products.length}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-3">
-                  {recs.reduce((total, rec) => total + rec.affectedProducts.length, 0)} products affected
+                  {products.length} products need optimization
                 </p>
                 <Button
                   size="sm"
                   className="w-full"
                   onClick={() => handleBulkApply(type)}
-                  disabled={applyBulkMutation.isPending}
+                  disabled={applyBulkMutation.isPending || products.length === 0}
                 >
-                  Fix All ({recs.reduce((total, rec) => total + rec.affectedProducts.length, 0)} credits)
+                  {products.length > 0 ? `Optimize All (${products.length} credits)` : 'All Optimized'}
                 </Button>
               </CardContent>
             </Card>
@@ -328,164 +367,173 @@ export default function AIRecommendations() {
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">
-            {recommendations.map((rec: AIRecommendation) => (
-              <Card key={rec.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3">
-                      {getRecommendationIcon(rec.type)}
-                      <div>
-                        <CardTitle className="text-base">{rec.title}</CardTitle>
-                        <CardDescription className="mt-1">{rec.description}</CardDescription>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Badge variant={getPriorityColor(rec.priority)}>{rec.priority}</Badge>
-                          <Badge variant="outline">{rec.impact}</Badge>
-                          <Badge variant="secondary">{rec.affectedProducts.length} products</Badge>
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {Object.entries(productOptimizations).map(([type, products]) => (
+                <Card key={type}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {getRecommendationIcon(type)}
+                        <CardTitle className="text-base capitalize">{type} Optimization</CardTitle>
                       </div>
+                      <Badge variant={products.length > 0 ? 'destructive' : 'default'}>
+                        {products.length} products
+                      </Badge>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => 
-                        setExpandedRecommendation(
-                          expandedRecommendation === rec.id ? null : rec.id
-                        )
-                      }
-                    >
-                      {expandedRecommendation === rec.id ? 'Hide' : 'Show'} Products
-                    </Button>
-                  </div>
-                </CardHeader>
-                
-                {expandedRecommendation === rec.id && (
+                  </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {rec.affectedProducts.map((product) => (
-                        <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            {product.images?.[0] && (
-                              <img
-                                src={product.images[0].src}
-                                alt={product.title}
-                                className="h-12 w-12 object-cover rounded"
-                              />
-                            )}
-                            <div>
-                              <p className="font-medium">{product.title}</p>
-                              <p className="text-sm text-muted-foreground">
-                                ${product.variants?.[0]?.price || product.price}
-                              </p>
-                            </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {products.length > 0 
+                        ? `${products.length} products need ${type} improvements`
+                        : `All products have optimal ${type} settings`
+                      }
+                    </p>
+                    {products.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-xs text-muted-foreground">Sample products:</div>
+                        {products.slice(0, 3).map((product: Product) => (
+                          <div key={product.id} className="flex items-center space-x-2 text-sm">
+                            <div className="h-6 w-6 bg-gray-100 rounded flex-shrink-0"></div>
+                            <span className="truncate">{product.title}</span>
                           </div>
-                          <Button
-                            size="sm"
-                            onClick={() => 
-                              applyRecommendationMutation.mutate({
-                                productId: product.id,
-                                recommendationType: rec.type,
-                                suggestion: rec.suggestion,
-                              })
-                            }
-                            disabled={applyRecommendationMutation.isPending}
-                          >
-                            Apply (1 credit)
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                        {products.length > 3 && (
+                          <div className="text-xs text-muted-foreground">
+                            +{products.length - 3} more products
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
-                )}
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           {(['title', 'description', 'pricing', 'keywords'] as const).map((type) => (
             <TabsContent key={type} value={type} className="space-y-4">
-              {groupedRecommendations[type]?.length > 0 ? (
+              {productsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading products...</p>
+                  </div>
+                </div>
+              ) : productOptimizations[type]?.length > 0 ? (
                 <>
-                  {groupedRecommendations[type].map((rec: AIRecommendation) => (
-                    <Card key={rec.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-base">{rec.title}</CardTitle>
-                            <CardDescription className="mt-1">{rec.description}</CardDescription>
-                            <div className="flex items-center space-x-2 mt-2">
-                              <Badge variant={getPriorityColor(rec.priority)}>{rec.priority}</Badge>
-                              <Badge variant="outline">{rec.impact}</Badge>
-                              <Badge variant="secondary">{rec.affectedProducts.length} products</Badge>
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold">Products Needing {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {productOptimizations[type].length} products could benefit from AI-powered improvements
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => handleBulkApply(type)}
+                        disabled={applyBulkMutation.isPending}
+                        variant="outline"
+                      >
+                        Optimize All ({productOptimizations[type].length} credits)
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {productOptimizations[type].map((product: Product) => (
+                      <Card key={product.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start space-x-4">
+                            {/* Product Image */}
+                            <div className="flex-shrink-0">
+                              {product.images?.[0]?.src ? (
+                                <img
+                                  src={product.images[0].src}
+                                  alt={product.title}
+                                  className="h-20 w-20 object-cover rounded-lg border"
+                                />
+                              ) : (
+                                <div className="h-20 w-20 bg-gray-100 rounded-lg border flex items-center justify-center">
+                                  <Tag className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Product Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-base mb-1 truncate">{product.title}</h4>
+                                  <p className="text-sm text-muted-foreground mb-2">
+                                    ${product.variants?.[0]?.price || 'No price'} • {product.product_type || 'Uncategorized'}
+                                  </p>
+                                  
+                                  {/* Current Value */}
+                                  <div className="mb-3">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                      Current {type}:
+                                    </span>
+                                    <p className="mt-1 p-3 bg-gray-50 rounded-md text-sm border">
+                                      {type === 'title' ? product.title :
+                                       type === 'description' ? (product.body_html?.replace(/<[^>]*>/g, '').substring(0, 150) + '...' || 'No description') :
+                                       type === 'pricing' ? `$${product.variants?.[0]?.price || 'No price'}` :
+                                       product.tags || 'No tags'}
+                                    </p>
+                                  </div>
+                                  
+                                  {/* Optimization Opportunity */}
+                                  <div className="text-xs text-orange-600 mb-3">
+                                    <span className="font-medium">Why optimize: </span>
+                                    {type === 'title' && 'Title may need SEO optimization for better search visibility'}
+                                    {type === 'description' && 'Description could be more detailed and compelling'}
+                                    {type === 'pricing' && 'Pricing strategy could be optimized for conversions'}
+                                    {type === 'keywords' && 'Tags and keywords need improvement for better categorization'}
+                                  </div>
+                                </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="ml-4 flex-shrink-0 space-x-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => 
+                                      generateSuggestionMutation.mutate({
+                                        productId: product.id,
+                                        recommendationType: type,
+                                      })
+                                    }
+                                    disabled={generateSuggestionMutation.isPending}
+                                  >
+                                    {generateSuggestionMutation.isPending ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600 mr-1"></div>
+                                        Generating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Zap className="h-3 w-3 mr-1" />
+                                        Preview AI Suggestion
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <Button
-                            onClick={() => handleBulkApply(type)}
-                            disabled={applyBulkMutation.isPending}
-                          >
-                            Fix All ({rec.affectedProducts.length} credits)
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {rec.affectedProducts.map((product: any) => (
-                            <div key={product.id} className="flex items-start justify-between p-4 border rounded-lg">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-3 mb-2">
-                                  <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center">
-                                    <Tag className="h-4 w-4 text-gray-600" />
-                                  </div>
-                                  <div>
-                                    <p className="font-medium">{product.title}</p>
-                                    <p className="text-sm text-muted-foreground">Product ID: {product.id}</p>
-                                  </div>
-                                </div>
-                                <div className="ml-13">
-                                  <div className="text-sm">
-                                    <span className="font-medium text-muted-foreground">Current {type}:</span>
-                                    <p className="mt-1 p-2 bg-gray-50 rounded text-sm">
-                                      {product.currentValue || `No ${type} set`}
-                                    </p>
-                                  </div>
-                                  <div className="text-sm mt-3">
-                                    <span className="font-medium text-green-600">AI Suggestion:</span>
-                                    <p className="mt-1 p-2 bg-green-50 rounded text-sm">
-                                      {type === 'title' ? `Optimized SEO title based on: "${rec.suggestion}"` :
-                                       type === 'description' ? `Enhanced product description with: "${rec.suggestion}"` :
-                                       type === 'pricing' ? `Competitive pricing analysis suggests optimization` :
-                                       `Keyword optimization: "${rec.suggestion}"`}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="ml-4">
-                                <Button
-                                  size="sm"
-                                  onClick={() => 
-                                    applyRecommendationMutation.mutate({
-                                      productId: product.id,
-                                      recommendationType: type,
-                                      suggestion: rec.suggestion,
-                                    })
-                                  }
-                                  disabled={applyRecommendationMutation.isPending}
-                                  className="shrink-0"
-                                >
-                                  {applyRecommendationMutation.isPending ? 'Applying...' : 'Apply (1 credit)'}
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Issues Found</h3>
+                  <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
                   <p className="text-muted-foreground">
-                    All {type} optimizations are up to standard!
+                    {products.length > 0 ? 
+                      `All ${products.length} products have optimal ${type} settings.` :
+                      'Connect your Shopify store to see product optimization opportunities.'
+                    }
                   </p>
                 </div>
               )}
@@ -493,6 +541,93 @@ export default function AIRecommendations() {
           ))}
         </Tabs>
       </div>
+
+      {/* AI Suggestion Preview Modal */}
+      <Dialog open={!!previewingSuggestion} onOpenChange={() => setPreviewingSuggestion(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>AI Optimization Preview</DialogTitle>
+            <DialogDescription>
+              Review the AI-generated improvement before applying it to your product.
+            </DialogDescription>
+          </DialogHeader>
+          {previewingSuggestion && (
+            <div className="space-y-4">
+              {/* Product Info */}
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
+                  <Tag className="h-6 w-6 text-gray-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium">{previewingSuggestion.product.title}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    ${previewingSuggestion.product.price || 'No price'} • Product ID: {previewingSuggestion.productId}
+                  </p>
+                </div>
+              </div>
+
+              {/* Before/After Comparison */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h5 className="font-medium text-sm text-muted-foreground mb-2">CURRENT</h5>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm">{previewingSuggestion.original || 'No current value'}</p>
+                  </div>
+                </div>
+                <div>
+                  <h5 className="font-medium text-sm text-green-600 mb-2">AI SUGGESTED</h5>
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm font-medium">{previewingSuggestion.suggestion}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Benefits */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <h5 className="font-medium text-sm text-blue-800 mb-1">Expected Benefits:</h5>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Improved SEO ranking and search visibility</li>
+                  <li>• Better customer engagement and click-through rates</li>
+                  <li>• Enhanced product appeal and conversion potential</li>
+                </ul>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPreviewingSuggestion(null)}
+                  disabled={applyRecommendationMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => 
+                    applyRecommendationMutation.mutate({
+                      productId: previewingSuggestion.productId,
+                      recommendationType: 'title',
+                      suggestion: previewingSuggestion.suggestion,
+                    })
+                  }
+                  disabled={applyRecommendationMutation.isPending}
+                >
+                  {applyRecommendationMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Applying...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-3 w-3 mr-2" />
+                      Apply Optimization (1 credit)
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk Confirmation Modal */}
       <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>

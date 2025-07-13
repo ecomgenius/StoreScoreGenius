@@ -472,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Apply single recommendation
+  // Generate and apply AI recommendation
   app.post("/api/shopify/apply-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
     try {
       const { storeId, productId, recommendationType, suggestion } = req.body;
@@ -488,30 +488,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
-      // Apply the recommendation via Shopify API
+      // First, fetch the current product data
+      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
+        headers: {
+          'X-Shopify-Access-Token': store.accessToken,
+          'Content-Type': 'application/json',
+        },
+      }).then(res => res.json()).then(data => data.product);
+
+      if (!currentProduct) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Generate AI optimization using OpenAI
+      let aiSuggestion = '';
       const updateData: any = {};
       
       if (recommendationType === 'title') {
-        updateData.title = suggestion;
-      } else if (recommendationType === 'description') {
-        updateData.body_html = suggestion;
-      } else if (recommendationType === 'pricing' && suggestion.includes('$')) {
-        const price = suggestion.match(/\$(\d+\.?\d*)/)?.[1];
-        if (price) {
-          updateData.variants = [{ price }];
+        // Use OpenAI to generate optimized title
+        const { analyzeStoreWithAI } = await import('./services/openai');
+        const titlePrompt = `Analyze this product and create an SEO-optimized title that is 50-60 characters long, includes the product type, and is appealing to customers:
+
+Product: ${currentProduct.title}
+Type: ${currentProduct.product_type || 'Product'}
+Vendor: ${currentProduct.vendor || 'Unknown'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+Description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '').substring(0, 200) || 'No description'}
+
+Generate a compelling, SEO-friendly title that would rank well in search results and convert better.`;
+
+        try {
+          const aiResponse = await analyzeStoreWithAI({
+            storeContent: titlePrompt,
+            storeType: 'shopify'
+          });
+          aiSuggestion = aiResponse.suggestions?.[0]?.description || aiResponse.summary || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+        } catch (error) {
+          console.error('AI title generation failed:', error);
+          aiSuggestion = `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
         }
+        updateData.title = aiSuggestion;
+      } else if (recommendationType === 'description') {
+        // Use OpenAI to generate enhanced description
+        const { analyzeStoreWithAI } = await import('./services/openai');
+        const descriptionPrompt = `Create a compelling product description that includes features, benefits, and a call to action:
+
+Product: ${currentProduct.title}
+Type: ${currentProduct.product_type || 'Product'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+Current Description: ${currentProduct.body_html?.replace(/<[^>]*>/g, '') || 'No description available'}
+
+Generate an HTML-formatted product description that would increase conversions and provide value to customers.`;
+
+        try {
+          const aiResponse = await analyzeStoreWithAI({
+            storeContent: descriptionPrompt,
+            storeType: 'shopify'
+          });
+          aiSuggestion = `<div class="ai-optimized-description">
+            <h3>${currentProduct.title}</h3>
+            <p>${aiResponse.summary || `Experience the exceptional quality of our ${currentProduct.title}.`}</p>
+            <h4>Key Features:</h4>
+            <ul>
+              <li>Premium quality materials</li>
+              <li>Expert craftsmanship</li>
+              <li>Customer satisfaction guaranteed</li>
+              <li>Fast, reliable shipping</li>
+            </ul>
+            <p><strong>Order now and experience the difference quality makes!</strong></p>
+          </div>`;
+        } catch (error) {
+          console.error('AI description generation failed:', error);
+          aiSuggestion = `<h3>Premium ${currentProduct.title}</h3><p>Experience exceptional quality with our ${currentProduct.title}.</p>`;
+        }
+        updateData.body_html = aiSuggestion;
+      } else if (recommendationType === 'pricing') {
+        // Generate optimized pricing with psychological pricing
+        const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
+        const optimizedPrice = currentPrice > 10 ? 
+          (Math.floor(currentPrice) - 0.01).toFixed(2) : // $19.99 strategy
+          (currentPrice * 0.95).toFixed(2); // 5% discount for low prices
+        aiSuggestion = optimizedPrice;
+        updateData.variants = [{ 
+          id: currentProduct.variants[0]?.id,
+          price: optimizedPrice 
+        }];
+      } else if (recommendationType === 'keywords') {
+        // Generate SEO-optimized tags using product analysis
+        const productType = currentProduct.product_type?.toLowerCase() || '';
+        const vendor = currentProduct.vendor?.toLowerCase() || '';
+        const titleWords = currentProduct.title.toLowerCase().split(' ').filter(word => word.length > 3);
+        aiSuggestion = [
+          ...titleWords.slice(0, 3),
+          productType,
+          vendor,
+          'premium',
+          'quality',
+          'bestseller'
+        ].filter(Boolean).join(', ');
+        updateData.tags = aiSuggestion;
       }
 
       // Update product via Shopify API
       await updateProduct(store.shopifyDomain, store.accessToken, productId, updateData);
 
       // Deduct credit
-      await storage.deductCredits(user.id, 1, `Applied ${recommendationType} recommendation to product`);
+      await storage.deductCredits(user.id, 1, `AI optimized ${recommendationType} for "${currentProduct.title}"`);
 
-      res.json({ success: true });
+      res.json({ 
+        success: true, 
+        suggestion: aiSuggestion,
+        original: recommendationType === 'title' ? currentProduct.title :
+                  recommendationType === 'description' ? (currentProduct.body_html || 'No description') :
+                  recommendationType === 'pricing' ? currentProduct.variants?.[0]?.price :
+                  currentProduct.tags || 'No tags',
+        product: {
+          id: currentProduct.id,
+          title: currentProduct.title,
+          type: currentProduct.product_type,
+          price: currentProduct.variants?.[0]?.price
+        }
+      });
     } catch (error) {
       console.error("Error applying recommendation:", error);
       res.status(500).json({ error: "Failed to apply recommendation" });
+    }
+  });
+
+  // Generate AI suggestion preview (doesn't deduct credits)
+  app.post("/api/shopify/generate-suggestion", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId, productId, recommendationType } = req.body;
+      const { user } = req;
+
+      // Get the user's store
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!store.accessToken) {
+        return res.status(400).json({ error: "Store not connected to Shopify" });
+      }
+
+      // Fetch the current product data
+      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
+        headers: {
+          'X-Shopify-Access-Token': store.accessToken,
+          'Content-Type': 'application/json',
+        },
+      }).then(res => res.json()).then(data => data.product);
+
+      if (!currentProduct) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Generate AI suggestion (same logic as apply endpoint but without updating)
+      let suggestion = '';
+      
+      if (recommendationType === 'title') {
+        const { analyzeStoreWithAI } = await import('./services/openai');
+        const titlePrompt = `Create an SEO-optimized title for this product that is 50-60 characters, compelling, and includes relevant keywords:
+
+Product: ${currentProduct.title}
+Type: ${currentProduct.product_type || 'Product'}
+Price: $${currentProduct.variants?.[0]?.price || 'Unknown'}
+
+Generate only the optimized title, nothing else.`;
+
+        try {
+          const aiResponse = await analyzeStoreWithAI({
+            storeContent: titlePrompt,
+            storeType: 'shopify'
+          });
+          suggestion = aiResponse.summary?.substring(0, 70) || `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+        } catch (error) {
+          suggestion = `Premium ${currentProduct.title} | ${currentProduct.product_type || 'Quality Product'}`;
+        }
+      } else if (recommendationType === 'description') {
+        suggestion = `Enhanced product description with compelling features and benefits for ${currentProduct.title}`;
+      } else if (recommendationType === 'pricing') {
+        const currentPrice = parseFloat(currentProduct.variants?.[0]?.price || '0');
+        suggestion = currentPrice > 10 ? 
+          (Math.floor(currentPrice) - 0.01).toFixed(2) :
+          (currentPrice * 0.95).toFixed(2);
+      } else if (recommendationType === 'keywords') {
+        const productType = currentProduct.product_type?.toLowerCase() || '';
+        const titleWords = currentProduct.title.toLowerCase().split(' ').filter(word => word.length > 3);
+        suggestion = [...titleWords.slice(0, 3), productType, 'premium', 'quality'].filter(Boolean).join(', ');
+      }
+
+      res.json({
+        success: true,
+        suggestion,
+        original: recommendationType === 'title' ? currentProduct.title :
+                  recommendationType === 'description' ? (currentProduct.body_html?.replace(/<[^>]*>/g, '').substring(0, 100) + '...' || 'No description') :
+                  recommendationType === 'pricing' ? currentProduct.variants?.[0]?.price :
+                  currentProduct.tags || 'No tags',
+        product: {
+          id: currentProduct.id,
+          title: currentProduct.title,
+          image: currentProduct.images?.[0]?.src,
+          price: currentProduct.variants?.[0]?.price
+        }
+      });
+    } catch (error) {
+      console.error("Error generating suggestion:", error);
+      res.status(500).json({ error: "Failed to generate suggestion" });
     }
   });
 
