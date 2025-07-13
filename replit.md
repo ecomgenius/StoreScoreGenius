@@ -131,6 +131,8 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Streamlined Analysis Flow**: Removed popup notifications and implemented seamless redirect to detailed analysis page after completion
 - **Fixed Authentication System**: Resolved API response parsing issues that caused authentication failures and "response.json is not a function" errors
 - **Built AI Recommendations Page**: Created comprehensive AI-powered store optimization interface with individual and bulk product improvements, accessible from store cards
+- **Fixed AI Title Generation System**: Replaced placeholder content with real OpenAI GPT-4o powered product title optimization, generating conversion-focused, SEO-optimized titles under 60 characters
+- **Resolved Shopify Write Permissions Issue**: Updated OAuth scope to request 'write_products' permission enabling actual product updates, added proper error handling and user guidance for permission upgrades
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled

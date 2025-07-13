@@ -488,6 +488,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
+      // Check if store has write permissions for products
+      if (!store.shopifyScope?.includes('write_products')) {
+        return res.status(403).json({ 
+          error: "Insufficient permissions",
+          message: "Your store connection needs write permissions to update products. Please reconnect your store to enable AI optimizations.",
+          needsReconnection: true
+        });
+      }
+
       // First, fetch the current product data
       const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
         headers: {

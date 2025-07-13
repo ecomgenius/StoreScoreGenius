@@ -180,6 +180,12 @@ export default function AIRecommendations() {
           description: "You need more AI credits to apply recommendations",
           variant: "destructive",
         });
+      } else if (error.message?.includes('Insufficient permissions') || error.message?.includes('write permissions')) {
+        toast({
+          title: "Permission Required",
+          description: "Your store needs write permissions to update products. Please reconnect your store to enable AI optimizations.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Failed to Apply",
