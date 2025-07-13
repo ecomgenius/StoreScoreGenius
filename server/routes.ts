@@ -557,9 +557,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       res.status(500).json({ 
         error: "Failed to initiate Shopify connection",
-        details: `This might be due to incorrect Shopify Partner App configuration. Please ensure:
-1. SHOPIFY_API_KEY and SHOPIFY_API_SECRET are from a Partner App with OAuth enabled
-2. Add this exact redirect URI to your Partner App settings: ${currentRedirectUri}`
+        details: `If getting 404 on OAuth URL, the development store might not be connected to your Partner App. Please:
+1. Go to Partners Dashboard → Your App → Test your app
+2. Install the app on your development store: ${domain}
+3. Or enable custom app development in the store admin
+Current redirect URI: ${currentRedirectUri}`
       });
     }
   });
