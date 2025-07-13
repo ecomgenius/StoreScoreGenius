@@ -11,6 +11,86 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export class SubscriptionService {
+
+  /**
+   * Create or get Stripe product and price
+   */
+  private async ensureStripeProductAndPrice(): Promise<{ productId: string; priceId: string }> {
+    try {
+      // First check if we already have the product in our database
+      const [existingPlan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, 'Pro Plan'));
+      
+      if (existingPlan && existingPlan.stripePriceId && existingPlan.stripeProductId) {
+        // Verify the price exists in Stripe
+        try {
+          await stripe.prices.retrieve(existingPlan.stripePriceId);
+          return {
+            productId: existingPlan.stripeProductId,
+            priceId: existingPlan.stripePriceId
+          };
+        } catch (error) {
+          console.log('Existing price not found in Stripe, creating new one...');
+        }
+      }
+
+      // Create product in Stripe
+      const product = await stripe.products.create({
+        name: 'StoreScore Pro Plan',
+        description: 'Full access to all StoreScore features with unlimited analysis and optimization tools',
+        type: 'service',
+      });
+
+      // Create price in Stripe
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: 4900, // $49.00 in cents
+        currency: 'usd',
+        recurring: {
+          interval: 'month',
+        },
+      });
+
+      // Update or create the plan in our database
+      if (existingPlan) {
+        await db.update(subscriptionPlans)
+          .set({
+            stripeProductId: product.id,
+            stripePriceId: price.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(subscriptionPlans.id, existingPlan.id));
+      } else {
+        await db.insert(subscriptionPlans).values({
+          name: 'Pro Plan',
+          description: 'Full access to all StoreScore features with unlimited analysis and optimization tools',
+          stripeProductId: product.id,
+          stripePriceId: price.id,
+          price: 4900,
+          currency: 'usd',
+          interval: 'month',
+          aiCreditsIncluded: 0,
+          maxStores: 1,
+          features: [
+            "Unlimited store analysis",
+            "AI-powered optimization", 
+            "Shopify integration",
+            "Bulk optimization tools",
+            "Priority support"
+          ],
+          isActive: true,
+          trialDays: 7,
+        });
+      }
+
+      return {
+        productId: product.id,
+        priceId: price.id
+      };
+    } catch (error) {
+      console.error('Error creating Stripe product/price:', error);
+      throw new Error('Failed to setup subscription plan');
+    }
+  }
   
   /**
    * Start a 7-day free trial with automatic billing after trial ends
@@ -31,7 +111,10 @@ export class SubscriptionService {
       throw new Error('User already has an active subscription');
     }
 
-    // Get the main subscription plan - use the one with valid Stripe price ID
+    // Ensure Stripe product and price exist
+    const { priceId } = await this.ensureStripeProductAndPrice();
+    
+    // Get the updated plan from database
     const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, 'Pro Plan'));
     if (!plan) {
       throw new Error('Subscription plan not found');
@@ -72,7 +155,7 @@ export class SubscriptionService {
 
     const subscription = await stripe.subscriptions.create({
       customer: stripeCustomer.id,
-      items: [{ price: plan.stripePriceId }],
+      items: [{ price: priceId }],
       default_payment_method: paymentMethodId,
       trial_end: Math.floor(trialEnd.getTime() / 1000),
       expand: ['latest_invoice.payment_intent'],
