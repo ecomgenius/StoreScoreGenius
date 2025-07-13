@@ -566,15 +566,30 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
     }
   });
   
-  // Shopify OAuth callback
+  // Shopify OAuth callback (handles both installation and authorization)
   app.get("/api/shopify/callback", async (req: Request, res: Response) => {
     try {
       console.log('Debug - Shopify callback received:', req.query);
-      const { code, state, shop } = req.query;
+      const { code, state, shop, hmac, host, timestamp } = req.query;
       
-      if (!code || !state || !shop) {
-        console.log('Debug - Missing parameters:', { code: !!code, state: !!state, shop: !!shop });
-        return res.status(400).send("Missing required parameters");
+      // Handle app installation (when redirected without code)
+      if (!code && shop && hmac) {
+        console.log('Debug - App installation detected, redirecting to OAuth');
+        // This is an app installation, redirect to proper OAuth flow
+        const shopDomain = shop as string;
+        const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
+          `client_id=${process.env.SHOPIFY_API_KEY}&` +
+          `scope=read_products,read_orders,read_themes,read_content&` +
+          `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
+          `state=install_${Date.now()}`;
+        
+        return res.redirect(installUrl);
+      }
+      
+      // Handle OAuth authorization (when code is present)
+      if (!code || !shop) {
+        console.log('Debug - Missing required OAuth parameters:', { code: !!code, shop: !!shop });
+        return res.status(400).send("Missing required OAuth parameters");
       }
       
       // Parse state to get userId and optionally userStoreId
