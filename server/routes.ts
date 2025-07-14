@@ -1794,6 +1794,9 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
     try {
       const { storeId, suggestionId, changes } = req.body;
       const { user } = req;
+      
+      console.log('Apply design request:', { storeId, suggestionId, changes });
+      console.log('Changes received:', JSON.stringify(changes, null, 2));
 
       // Check if user has enough credits
       const userCredits = await storage.getUserCredits(user.id);
@@ -1852,7 +1855,35 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         }
 
         // Apply changes based on suggestion type
-        if (changes.type === 'colors' && changes.colorPalette) {
+        // Handle different data structures - frontend sends suggestion.suggestions
+        let colorPalette;
+        if (changes.colorPalette) {
+          colorPalette = changes.colorPalette;
+        } else if (changes.recommended && typeof changes.recommended === 'string') {
+          // Try to parse colors from the recommended text
+          try {
+            const recommendedText = changes.recommended;
+            // Extract hex colors from text using regex
+            const hexColorRegex = /#[0-9A-Fa-f]{6}/g;
+            const extractedColors = recommendedText.match(hexColorRegex) || [];
+            
+            if (extractedColors.length >= 4) {
+              colorPalette = {
+                primary: extractedColors[0],
+                secondary: extractedColors[1],
+                accent: extractedColors[2],
+                background: extractedColors[3],
+                text: extractedColors[4] || '#333333'
+              };
+            }
+          } catch (e) {
+            console.warn('Could not parse colors from recommended text');
+          }
+        }
+        
+        console.log('Extracted color palette:', colorPalette);
+        
+        if (colorPalette) {
           let colorUpdateSuccess = false;
           
           // Try method 1: Update theme settings (requires write_themes permission)
@@ -1888,7 +1919,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
               };
 
               let colorsUpdated = false;
-              Object.entries(changes.colorPalette).forEach(([colorType, hexColor]) => {
+              Object.entries(colorPalette).forEach(([colorType, hexColor]) => {
                 const possibleKeys = colorMappings[colorType as keyof typeof colorMappings] || [];
                 possibleKeys.forEach(key => {
                   if (settings.current && settings.current[key] !== undefined) {
@@ -1918,7 +1949,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
                 );
 
                 if (updateResponse.ok) {
-                  console.log('Successfully updated theme settings with colors:', changes.colorPalette);
+                  console.log('Successfully updated theme settings with colors:', colorPalette);
                   colorUpdateSuccess = true;
                 } else {
                   console.warn('Theme settings update failed:', updateResponse.status, updateResponse.statusText);
@@ -1933,15 +1964,15 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
           if (!colorUpdateSuccess) {
             try {
               console.log('Falling back to CSS injection method');
-              console.log('Will create CSS with colors:', changes.colorPalette);
+              console.log('Will create CSS with colors:', colorPalette);
               
               const customCSS = `/* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
 :root {
-  --storescore-primary: ${changes.colorPalette.primary} !important;
-  --storescore-secondary: ${changes.colorPalette.secondary} !important;
-  --storescore-background: ${changes.colorPalette.background} !important;
-  --storescore-text: ${changes.colorPalette.text} !important;
-  --storescore-accent: ${changes.colorPalette.accent} !important;
+  --storescore-primary: ${colorPalette.primary} !important;
+  --storescore-secondary: ${colorPalette.secondary} !important;
+  --storescore-background: ${colorPalette.background} !important;
+  --storescore-text: ${colorPalette.text} !important;
+  --storescore-accent: ${colorPalette.accent} !important;
 }
 
 /* DEBUG: Test if CSS is loading */
@@ -1959,15 +1990,15 @@ body::before {
 
 /* Test border for immediate visibility */
 body {
-  border-top: 5px solid ${changes.colorPalette.primary} !important;
+  border-top: 5px solid ${colorPalette.primary} !important;
 }
 
 /* Apply optimized colors to common Shopify elements */
 .site-header, .header, .page-header,
 .shopify-section-header, .top-bar,
 [class*="header"], header, nav, .navigation { 
-  background-color: ${changes.colorPalette.primary} !important; 
-  background: ${changes.colorPalette.primary} !important;
+  background-color: ${colorPalette.primary} !important; 
+  background: ${colorPalette.primary} !important;
   color: white !important;
 }
 
@@ -1976,9 +2007,9 @@ input[type="submit"], input[type="button"],
 .btn-primary, [class*="button"], [class*="btn"],
 .product-form__cart-submit, .cart__submit,
 .shopify-payment-button__button, .add-to-cart { 
-  background-color: ${changes.colorPalette.accent} !important; 
-  background: ${changes.colorPalette.accent} !important;
-  border-color: ${changes.colorPalette.accent} !important;
+  background-color: ${colorPalette.accent} !important; 
+  background: ${colorPalette.accent} !important;
+  border-color: ${colorPalette.accent} !important;
   color: white !important;
 }
 
@@ -1989,7 +2020,7 @@ input[type="submit"], input[type="button"],
 .price, .product__price, .product-price,
 [class*="price"], .money, .currency,
 .product-form__price, span[class*="price"] { 
-  color: ${changes.colorPalette.primary} !important; 
+  color: ${colorPalette.primary} !important; 
   font-weight: 700 !important;
   font-size: 1.1em !important;
 }
@@ -2033,7 +2064,7 @@ input[type="submit"], input[type="button"],
               if (cssUpdateResponse.ok) {
                 console.log('Successfully injected custom CSS for color optimization');
                 console.log('CSS file created: assets/storescore-colors.css');
-                console.log('Colors applied:', changes.colorPalette);
+                console.log('Colors applied:', colorPalette);
                 colorUpdateSuccess = true;
                 
                 // Also try to add the CSS link to theme.liquid
@@ -2099,7 +2130,7 @@ input[type="submit"], input[type="button"],
         }
 
         console.log(`Successfully applied design changes to Shopify store: ${store.shopifyDomain}`);
-        console.log('Applied color palette:', JSON.stringify(changes.colorPalette, null, 2));
+        console.log('Applied color palette:', JSON.stringify(colorPalette, null, 2));
       } catch (shopifyError) {
         console.error('Shopify API error:', shopifyError);
         
