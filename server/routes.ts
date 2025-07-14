@@ -1982,82 +1982,177 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         if (colorPalette) {
           let colorUpdateSuccess = false;
           
-          // Simple and direct approach - create CSS asset for specific theme
+          // Use Script Tag injection which is more reliable than CSS assets
           try {
-            console.log('Creating CSS asset for theme ID:', activeTheme.id);
+            console.log('Applying colors via Script Tag injection for theme ID:', activeTheme.id);
             console.log('Store domain:', store.shopifyDomain);
             console.log('Color palette to apply:', colorPalette);
             
-            // Create very simple CSS that should work
-            const simpleCSS = `/* StoreScore Color Optimization - Applied ${new Date().toISOString()} */
-body { 
-  border-top: 5px solid ${colorPalette.primary} !important; 
-}
-body::before {
-  content: "StoreScore Colors Applied ✓" !important;
-  position: fixed !important;
-  top: 10px !important;
-  right: 10px !important;
-  background: ${colorPalette.primary} !important;
-  color: white !important;
-  padding: 8px 12px !important;
-  font-size: 14px !important;
-  font-weight: bold !important;
-  z-index: 99999 !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-}
-/* Apply primary color to buttons */
-button, .btn, .button, input[type="submit"] {
-  background-color: ${colorPalette.accent || colorPalette.primary} !important;
-  border-color: ${colorPalette.accent || colorPalette.primary} !important;
-}
-/* Apply primary color to headers */
-header, .header, .site-header {
-  background-color: ${colorPalette.primary} !important;
-  color: white !important;
-}`;
+            // First, remove any existing StoreScore script tags
+            try {
+              const existingScriptsResponse = await fetch(
+                `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+                {
+                  headers: {
+                    'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+              
+              if (existingScriptsResponse.ok) {
+                const scripts = await existingScriptsResponse.json();
+                console.log('Found existing script tags:', scripts.script_tags?.length || 0);
+                
+                for (const script of scripts.script_tags || []) {
+                  if (script.display_scope === 'online_store' && 
+                      (script.src?.includes('storescore') || 
+                       (script.event === 'onload' && script.src?.includes('data:text/javascript')))) {
+                    console.log('Removing existing StoreScore script:', script.id);
+                    await fetch(
+                      `https://${store.shopifyDomain}/admin/api/2023-10/script_tags/${script.id}.json`,
+                      {
+                        method: 'DELETE',
+                        headers: {
+                          'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                        },
+                      }
+                    );
+                  }
+                }
+              }
+            } catch (cleanupError) {
+              console.warn('Could not clean up existing scripts:', cleanupError);
+            }
+            
+            // Create a JavaScript snippet that injects CSS
+            const colorInjectionScript = `
+(function() {
+  // Remove any existing StoreScore styles
+  var existing = document.getElementById('storescore-dynamic-styles');
+  if (existing) existing.remove();
+  
+  // Create and inject new styles
+  var style = document.createElement('style');
+  style.id = 'storescore-dynamic-styles';
+  style.innerHTML = \`
+    /* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
+    
+    /* Visual confirmation indicator */
+    body::before {
+      content: "✓ StoreScore Colors Active" !important;
+      position: fixed !important;
+      top: 10px !important;
+      right: 10px !important;
+      background: ${colorPalette.primary} !important;
+      color: white !important;
+      padding: 8px 12px !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+      z-index: 99999 !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+    }
+    
+    /* Apply colors to headers */
+    .site-header, .header, .page-header,
+    .shopify-section-header, .top-bar, .header-wrapper,
+    [class*="header"], header, nav, .navigation,
+    .site-nav, .main-nav, #shopify-section-header { 
+      background-color: ${colorPalette.primary} !important; 
+      background: ${colorPalette.primary} !important;
+      color: white !important;
+    }
+    
+    /* Apply colors to buttons */
+    button, .btn, .button, 
+    input[type="submit"], input[type="button"],
+    .btn-primary, [class*="button"], [class*="btn"],
+    .product-form__cart-submit, .cart__submit,
+    .shopify-payment-button__button, .add-to-cart,
+    .btn--add-to-cart, .product-single__add-to-cart { 
+      background-color: ${colorPalette.accent} !important; 
+      background: ${colorPalette.accent} !important;
+      border-color: ${colorPalette.accent} !important;
+      color: white !important;
+    }
+    
+    /* Apply colors to prices */
+    .price, .product__price, .product-price,
+    [class*="price"], .money, .currency,
+    .product-form__price, span[class*="price"],
+    .price-item, .product-single__price { 
+      color: ${colorPalette.primary} !important; 
+      font-weight: 700 !important;
+    }
+    
+    /* Apply colors to footer */
+    .footer, .site-footer, [class*="footer"],
+    #shopify-section-footer { 
+      background-color: ${colorPalette.secondary} !important; 
+      color: white !important;
+    }
+    
+    /* Links in primary color */
+    a { color: ${colorPalette.primary} !important; }
+    
+    /* Navigation links */
+    .site-nav a, .main-nav a, nav a {
+      color: white !important;
+    }
+    
+    /* Immediate visual confirmation */
+    body {
+      border-top: 5px solid ${colorPalette.primary} !important;
+    }
+  \`;
+  document.head.appendChild(style);
+  
+  console.log('StoreScore: Colors applied successfully via script injection');
+  console.log('Applied colors:', ${JSON.stringify(colorPalette)});
+})();`;
 
-            const cssAssetPayload = {
-              asset: {
-                key: 'assets/storescore-colors.css',
-                value: simpleCSS
+            // Create the script tag
+            const scriptTagPayload = {
+              script_tag: {
+                event: 'onload',
+                src: `data:text/javascript;base64,${Buffer.from(colorInjectionScript).toString('base64')}`,
+                display_scope: 'online_store'
               }
             };
             
-            console.log('CSS Asset creation URL:', `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`);
-            console.log('CSS Asset payload size:', JSON.stringify(cssAssetPayload).length, 'characters');
-            
-            const cssAssetResponse = await fetch(
-              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+            console.log('Creating script tag for color injection...');
+            const scriptResponse = await fetch(
+              `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
               {
-                method: 'PUT',
+                method: 'POST',
                 headers: {
                   'X-Shopify-Access-Token': store.shopifyAccessToken!,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(cssAssetPayload)
+                body: JSON.stringify(scriptTagPayload)
               }
             );
             
-            console.log('CSS Asset creation response status:', cssAssetResponse.status);
-            console.log('CSS Asset creation response headers:', Object.fromEntries(cssAssetResponse.headers));
+            console.log('Script tag creation response status:', scriptResponse.status);
             
-            if (cssAssetResponse.ok) {
-              const cssResult = await cssAssetResponse.json();
-              console.log('CSS Asset created successfully!', cssResult);
+            if (scriptResponse.ok) {
+              const scriptResult = await scriptResponse.json();
+              console.log('Script tag created successfully!', scriptResult.script_tag?.id);
               colorUpdateSuccess = true;
             } else {
-              const cssAssetError = await cssAssetResponse.text();
-              console.error('CSS Asset creation failed:', cssAssetError);
+              const scriptError = await scriptResponse.text();
+              console.error('Script tag creation failed:', scriptError);
             }
             
-          } catch (simpleError) {
-            console.error('Simple CSS asset creation failed:', simpleError);
+          } catch (scriptError) {
+            console.error('Script tag injection failed:', scriptError);
           }
           
           if (!colorUpdateSuccess) {
-            console.warn('Could not apply colors to theme');
+            console.warn('Could not apply colors to theme via any method');
+          } else {
+            console.log('Colors successfully applied to store via script injection!');
           }
         } else {
           console.warn('No color palette available to apply');
