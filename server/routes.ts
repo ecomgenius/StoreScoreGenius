@@ -1928,6 +1928,28 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
           // Direct theme.liquid modification - most reliable method
           try {
             console.log('Attempting direct theme.liquid modification');
+            console.log('Theme ID:', activeTheme.id);
+            console.log('Store domain:', store.shopifyDomain);
+            
+            // First, let's check what assets are available for this theme
+            const assetsListResponse = await fetch(
+              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+              {
+                headers: {
+                  'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+            
+            if (assetsListResponse.ok) {
+              const assetsList = await assetsListResponse.json();
+              console.log('Available theme assets:', assetsList.assets?.slice(0, 10).map(a => a.key));
+              
+              // Look for theme.liquid specifically
+              const themeAsset = assetsList.assets?.find(asset => asset.key === 'layout/theme.liquid');
+              console.log('Found theme.liquid asset:', !!themeAsset);
+            }
             
             // Get theme.liquid content
             const themeResponse = await fetch(
@@ -1940,6 +1962,9 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
               }
             );
 
+            console.log('Theme response status:', themeResponse.status);
+            console.log('Theme response headers:', Object.fromEntries(themeResponse.headers.entries()));
+            
             if (themeResponse.ok) {
               const themeData = await themeResponse.json();
               let themeContent = themeData.asset.value;
@@ -2062,10 +2087,174 @@ a { color: ${colorPalette.primary} !important; }
               } else {
                 const errorBody = await updateResponse.text();
                 console.error('Theme update failed:', errorBody);
-                throw new Error(`Theme update failed: ${updateResponse.status} - ${errorBody}`);
+                
+                // Fallback to script tag injection if theme.liquid fails
+                console.log('Attempting fallback method: script tag injection');
+                await tryScriptTagInjection();
               }
             } else {
-              throw new Error(`Could not fetch theme.liquid: ${themeResponse.status}`);
+              const errorBody = await themeResponse.text();
+              console.error('Could not fetch theme.liquid:', errorBody);
+              
+              // Fallback to script tag injection if theme.liquid fetch fails
+              console.log('Attempting fallback method: script tag injection');
+              await tryScriptTagInjection();
+            }
+            
+            // Fallback function using script tag injection
+            async function tryScriptTagInjection() {
+              try {
+                console.log('Creating script tag with CSS injection');
+                
+                // Create a script tag that injects CSS dynamically
+                const scriptContent = `
+(function() {
+  // Remove any existing StoreScore styles
+  var existing = document.getElementById('storescore-dynamic-styles');
+  if (existing) existing.remove();
+  
+  // Create and inject new styles
+  var style = document.createElement('style');
+  style.id = 'storescore-dynamic-styles';
+  style.innerHTML = \`
+    /* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
+    :root {
+      --storescore-primary: ${colorPalette.primary} !important;
+      --storescore-secondary: ${colorPalette.secondary} !important;
+      --storescore-background: ${colorPalette.background} !important;
+      --storescore-text: ${colorPalette.text} !important;
+      --storescore-accent: ${colorPalette.accent} !important;
+    }
+    
+    /* Visual confirmation indicator */
+    body::before {
+      content: "StoreScore Colors Active" !important;
+      position: fixed !important;
+      top: 10px !important;
+      right: 10px !important;
+      background: green !important;
+      color: white !important;
+      padding: 5px 10px !important;
+      font-size: 12px !important;
+      z-index: 9999 !important;
+      border-radius: 3px !important;
+    }
+    
+    /* Immediate visual confirmation */
+    body {
+      border-top: 5px solid ${colorPalette.primary} !important;
+    }
+    
+    /* Apply colors to headers */
+    .site-header, .header, .page-header,
+    .shopify-section-header, .top-bar, .header-wrapper,
+    [class*="header"], header, nav, .navigation,
+    .site-nav, .main-nav, #shopify-section-header { 
+      background-color: ${colorPalette.primary} !important; 
+      background: ${colorPalette.primary} !important;
+      color: white !important;
+    }
+    
+    /* Apply colors to buttons */
+    button, .btn, .button, 
+    input[type="submit"], input[type="button"],
+    .btn-primary, [class*="button"], [class*="btn"],
+    .product-form__cart-submit, .cart__submit,
+    .shopify-payment-button__button, .add-to-cart,
+    .btn--add-to-cart, .product-single__add-to-cart { 
+      background-color: ${colorPalette.accent} !important; 
+      background: ${colorPalette.accent} !important;
+      border-color: ${colorPalette.accent} !important;
+      color: white !important;
+    }
+    
+    /* Apply colors to prices */
+    .price, .product__price, .product-price,
+    [class*="price"], .money, .currency,
+    .product-form__price, span[class*="price"],
+    .price-item, .product-single__price { 
+      color: ${colorPalette.primary} !important; 
+      font-weight: 700 !important;
+    }
+    
+    /* Apply colors to footer */
+    .footer, .site-footer, [class*="footer"],
+    #shopify-section-footer { 
+      background-color: ${colorPalette.secondary} !important; 
+      color: white !important;
+    }
+    
+    /* Links in primary color */
+    a { color: ${colorPalette.primary} !important; }
+    
+    /* Navigation links */
+    .site-nav a, .main-nav a, nav a {
+      color: white !important;
+    }
+  \`;
+  document.head.appendChild(style);
+  
+  console.log('StoreScore: Colors applied dynamically');
+})();`;
+
+                // First, try to delete any existing StoreScore script tags
+                const existingScriptsResponse = await fetch(
+                  `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+                  {
+                    headers: {
+                      'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                );
+                
+                if (existingScriptsResponse.ok) {
+                  const scripts = await existingScriptsResponse.json();
+                  for (const script of scripts.script_tags) {
+                    if (script.src && script.src.includes('storescore')) {
+                      await fetch(
+                        `https://${store.shopifyDomain}/admin/api/2023-10/script_tags/${script.id}.json`,
+                        {
+                          method: 'DELETE',
+                          headers: {
+                            'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                          },
+                        }
+                      );
+                    }
+                  }
+                }
+                
+                // Create new script tag
+                const scriptResponse = await fetch(
+                  `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      script_tag: {
+                        event: 'onload',
+                        src: `data:text/javascript;base64,${Buffer.from(scriptContent).toString('base64')}`
+                      }
+                    })
+                  }
+                );
+                
+                if (scriptResponse.ok) {
+                  console.log('Successfully applied colors via script tag injection');
+                  colorUpdateSuccess = true;
+                } else {
+                  const scriptError = await scriptResponse.text();
+                  console.error('Script tag creation failed:', scriptError);
+                  throw new Error(`Script tag injection failed: ${scriptResponse.status}`);
+                }
+              } catch (scriptError) {
+                console.error('Script tag injection failed:', scriptError);
+                throw new Error(`All color application methods failed: ${scriptError.message}`);
+              }
             }
           } catch (themeError) {
             console.error('Theme modification failed:', themeError);
