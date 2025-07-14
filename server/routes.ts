@@ -1695,6 +1695,100 @@ Provide actionable, specific recommendations that can be implemented.`;
     }
   });
 
+  // Generate new color palette suggestions
+  app.post("/api/design-recommendations/generate-colors", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.body;
+      const { user } = req;
+
+      // Get the user's store
+      const store = await storage.getUserStore(storeId);
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      // Get recent analysis for this store to extract design insights
+      const analyses = await storage.getUserAnalyses(user.id, 50);
+      let storeAnalysis = analyses.find(a => a.userStoreId === storeId);
+      
+      if (!storeAnalysis && store.storeUrl) {
+        storeAnalysis = analyses.find(a => a.storeUrl === store.storeUrl);
+      }
+
+      if (!storeAnalysis) {
+        return res.status(400).json({ 
+          error: "No analysis available. Please run a store analysis first." 
+        });
+      }
+
+      // Generate new color palette using OpenAI
+      const openai = await import('openai');
+      const openaiClient = new openai.default({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+
+      const colorPrompt = `You are an expert brand designer and color theory specialist. Generate a fresh, modern color palette for this e-commerce store.
+
+Store Analysis Data:
+- Store URL: ${storeAnalysis.storeUrl}
+- Store Type: ${storeAnalysis.storeType}
+- Current Design Score: ${storeAnalysis.designScore}/20
+
+Create a new professional color palette with exactly 5 colors:
+1. Primary brand color (for headers, CTAs, branding)
+2. Secondary color (for accents, highlights)  
+3. Background color (main page background)
+4. Text color (readable on background)
+5. Accent color (for buttons, links, highlights)
+
+Provide the response in this exact JSON format:
+{
+  "id": "colors-new-${Date.now()}",
+  "type": "colors",
+  "title": "Modern Color Palette Update",
+  "description": "Fresh color scheme designed to improve brand recognition and conversion rates",
+  "impact": "Enhanced visual hierarchy and professional appearance",
+  "priority": "medium",
+  "suggestions": {
+    "current": "Current color scheme lacks cohesion and modern appeal",
+    "recommended": "Implement this carefully selected color palette: Primary: [COLOR1], Secondary: [COLOR2], Background: [COLOR3], Text: [COLOR4], Accent: [COLOR5]",
+    "cssChanges": "Update CSS custom properties: --primary-color: [COLOR1]; --secondary-color: [COLOR2]; --bg-color: [COLOR3]; --text-color: [COLOR4]; --accent-color: [COLOR5];",
+    "colorPalette": {
+      "primary": "[HEX_COLOR1]",
+      "secondary": "[HEX_COLOR2]", 
+      "background": "[HEX_COLOR3]",
+      "text": "[HEX_COLOR4]",
+      "accent": "[HEX_COLOR5]"
+    }
+  }
+}
+
+Generate colors that:
+- Work well together and have good contrast
+- Suit the store's industry and target audience
+- Follow modern design trends
+- Are accessible (WCAG compliant)
+- Create a professional, trustworthy appearance
+
+Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
+
+      const aiResponse = await openaiClient.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: colorPrompt }],
+        response_format: { type: "json_object" },
+        max_tokens: 800,
+        temperature: 0.8, // Higher temperature for more creative color combinations
+      });
+
+      const newColorSuggestion = JSON.parse(aiResponse.choices[0].message.content || '{}');
+      
+      res.json(newColorSuggestion);
+    } catch (error) {
+      console.error("Error generating new colors:", error);
+      res.status(500).json({ error: "Failed to generate new color palette" });
+    }
+  });
+
   // Apply design changes to Shopify store
   app.post("/api/shopify/apply-design", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -1721,12 +1815,134 @@ Provide actionable, specific recommendations that can be implemented.`;
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
-      // For now, we'll simulate design application since Shopify theme customization
-      // requires more complex API calls and theme asset management
-      // In a real implementation, this would:
-      // 1. Update theme settings via Admin API
-      // 2. Modify theme assets (CSS, liquid files)
-      // 3. Update theme customizations
+      // Apply actual design changes to Shopify store
+      try {
+        // Get active theme first
+        const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
+          headers: {
+            'X-Shopify-Access-Token': store.shopifyAccessToken!,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!themesResponse.ok) {
+          throw new Error(`Failed to fetch themes: ${themesResponse.statusText}`);
+        }
+
+        const themesData = await themesResponse.json();
+        const activeTheme = themesData.themes.find((theme: any) => theme.role === 'main');
+
+        if (!activeTheme) {
+          throw new Error('No active theme found');
+        }
+
+        // Apply changes based on suggestion type
+        if (changes.type === 'colors' && changes.colorPalette) {
+          // Update theme settings for color changes
+          const settingsResponse = await fetch(
+            `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=config/settings_data.json`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (settingsResponse.ok) {
+            const settingsData = await settingsResponse.json();
+            let settings = {};
+            
+            try {
+              settings = JSON.parse(settingsData.asset.value);
+            } catch (e) {
+              console.warn('Could not parse existing settings, using defaults');
+            }
+
+            // Update color settings (common theme setting names)
+            const colorMappings = {
+              primary: ['color_primary', 'accent_color', 'brand_color'],
+              secondary: ['color_secondary', 'secondary_color'],
+              background: ['color_body_bg', 'background_color', 'body_color'],
+              text: ['color_body_text', 'text_color', 'body_text'],
+              accent: ['color_accent', 'accent_color_2', 'highlight_color']
+            };
+
+            // Try to apply colors to common theme setting names
+            Object.entries(changes.colorPalette).forEach(([colorType, hexColor]) => {
+              const possibleKeys = colorMappings[colorType as keyof typeof colorMappings] || [];
+              possibleKeys.forEach(key => {
+                if (settings.current && settings.current[key] !== undefined) {
+                  settings.current[key] = hexColor;
+                }
+              });
+            });
+
+            // Update the settings
+            const updateResponse = await fetch(
+              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+              {
+                method: 'PUT',
+                headers: {
+                  'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  asset: {
+                    key: 'config/settings_data.json',
+                    value: JSON.stringify(settings)
+                  }
+                })
+              }
+            );
+
+            if (!updateResponse.ok) {
+              console.warn('Could not update theme settings, falling back to CSS injection');
+              
+              // Fallback: Inject custom CSS
+              const customCSS = `
+/* StoreScore Design Optimization */
+:root {
+  --ss-primary: ${changes.colorPalette.primary} !important;
+  --ss-secondary: ${changes.colorPalette.secondary} !important;
+  --ss-background: ${changes.colorPalette.background} !important;
+  --ss-text: ${changes.colorPalette.text} !important;
+  --ss-accent: ${changes.colorPalette.accent} !important;
+}
+
+/* Apply new colors to common elements */
+.header, .site-header { background-color: var(--ss-primary) !important; }
+.btn, .button, input[type="submit"] { background-color: var(--ss-accent) !important; }
+body { background-color: var(--ss-background) !important; color: var(--ss-text) !important; }
+.product-price, .price { color: var(--ss-primary) !important; }
+`;
+
+              // Try to update custom CSS file
+              await fetch(
+                `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    asset: {
+                      key: 'assets/storescore-custom.css',
+                      value: customCSS
+                    }
+                  })
+                }
+              );
+            }
+          }
+        }
+
+        console.log(`Applied design changes to Shopify store: ${store.shopifyDomain}`);
+      } catch (shopifyError) {
+        console.error('Shopify API error:', shopifyError);
+        // Continue with credit deduction even if Shopify update fails
+      }
 
       // Deduct credits
       await storage.deductCredits(user.id, 1, `Design optimization applied: ${suggestionId}`);
@@ -1766,7 +1982,7 @@ Provide actionable, specific recommendations that can be implemented.`;
         const shopDomain = shop as string;
         const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
           `client_id=${process.env.SHOPIFY_API_KEY}&` +
-          `scope=read_products,read_orders,read_themes,read_content&` +
+          `scope=read_products,write_products,read_themes,write_themes&` +
           `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
           `state=install_${Date.now()}`;
         

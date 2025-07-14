@@ -4,7 +4,7 @@ import { storage } from '../storage';
 // Shopify OAuth configuration
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY!;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET!;
-const SHOPIFY_SCOPES = 'read_products,write_products';
+const SHOPIFY_SCOPES = 'read_products,write_products,read_themes,write_themes';
 const REDIRECT_URI = process.env.REPLIT_DEV_DOMAIN 
   ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
   : 'http://localhost:5000/api/shopify/callback';
@@ -87,8 +87,8 @@ export async function generateShopifyAuthUrl(shopDomain: string, userId: number,
   // Include userStoreId in state for store updates/reconnections
   const stateWithUser = userStoreId ? `${state}:${userId}:${userStoreId}` : `${state}:${userId}`;
   
-  // Use scopes needed for AI recommendations - including write permissions for product updates
-  const publicAppScopes = 'read_products,write_products';
+  // Use scopes needed for AI recommendations - including write permissions for product updates and theme changes
+  const publicAppScopes = 'read_products,write_products,read_themes,write_themes';
   
   // Standard OAuth URL for public Shopify apps (like AutoDS)
   const baseUrl = `https://${shopDomain}`;
