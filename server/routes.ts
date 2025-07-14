@@ -1845,7 +1845,8 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
           });
         }
         
-        // Get active theme first
+        // Get active theme first with detailed debugging
+        console.log('Fetching themes from:', `https://${store.shopifyDomain}/admin/api/2023-10/themes.json`);
         const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
           headers: {
             'X-Shopify-Access-Token': store.shopifyAccessToken!,
@@ -1853,8 +1854,13 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
           },
         });
 
+        console.log('Themes response status:', themesResponse.status);
+        console.log('Themes response headers:', Object.fromEntries(themesResponse.headers));
+
         if (!themesResponse.ok) {
+          const errorText = await themesResponse.text();
           console.error(`Themes API error: ${themesResponse.status} ${themesResponse.statusText}`);
+          console.error('Error body:', errorText);
           
           // Check if it's a permission issue
           if (themesResponse.status === 403) {
@@ -1869,21 +1875,43 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         }
 
         const themesData = await themesResponse.json();
-        console.log('Available themes:', themesData.themes.map((t: any) => ({ id: t.id, name: t.name, role: t.role })));
+        console.log('Raw themes data:', JSON.stringify(themesData, null, 2));
+        console.log('Available themes:', themesData.themes?.map((t: any) => ({ id: t.id, name: t.name, role: t.role })));
         
         // Try to find main theme first, then published as fallback
-        let activeTheme = themesData.themes.find((theme: any) => theme.role === 'main');
+        let activeTheme = themesData.themes?.find((theme: any) => theme.role === 'main');
         if (!activeTheme) {
-          activeTheme = themesData.themes.find((theme: any) => theme.role === 'published');
+          activeTheme = themesData.themes?.find((theme: any) => theme.role === 'published');
+        }
+        if (!activeTheme) {
+          activeTheme = themesData.themes?.[0]; // Use first theme as last resort
         }
 
         if (!activeTheme) {
-          throw new Error('No active theme found');
+          throw new Error('No themes found in store');
         }
         
-        console.log('Using theme:', { id: activeTheme.id, name: activeTheme.name, role: activeTheme.role });
+        console.log('Selected theme for modification:', { id: activeTheme.id, name: activeTheme.name, role: activeTheme.role });
+        
+        // Test theme assets endpoint first
+        console.log('Testing theme assets access...');
+        const testAssetsResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`, {
+          headers: {
+            'X-Shopify-Access-Token': store.shopifyAccessToken!,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Assets endpoint status:', testAssetsResponse.status);
+        if (!testAssetsResponse.ok) {
+          const assetsError = await testAssetsResponse.text();
+          console.error('Assets endpoint error:', assetsError);
+        } else {
+          const assetsData = await testAssetsResponse.json();
+          console.log('Sample assets:', assetsData.assets?.slice(0, 3)?.map((a: any) => a.key));
+        }
 
-        // Apply changes based on suggestion type
+        // Apply changes based on suggestion type  
         // Handle different data structures - frontend sends suggestion.suggestions
         let colorPalette;
         if (changes.colorPalette) {
