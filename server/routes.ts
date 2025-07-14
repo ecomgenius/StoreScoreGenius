@@ -1828,11 +1828,11 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
       try {
         // Check if we have theme permissions first
         console.log('Checking theme permissions for store:', store.shopifyDomain);
-        console.log('Store scope:', store.scope);
+        console.log('Store scope:', store.shopifyScope);
 
-        // Check if we have required permissions
+        // Check if we have required permissions  
         const requiredScopes = ['write_themes', 'write_script_tags'];
-        const currentScopes = store.scope?.split(',') || [];
+        const currentScopes = store.shopifyScope?.split(',') || [];
         const missingScopes = requiredScopes.filter(scope => !currentScopes.includes(scope));
         
         if (missingScopes.length > 0) {
@@ -2337,7 +2337,7 @@ a { color: ${colorPalette.primary} !important; }
         const shopDomain = shop as string;
         const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
           `client_id=${process.env.SHOPIFY_API_KEY}&` +
-          `scope=read_products,write_products,read_themes,write_themes,write_script_tags&` +
+          `scope=read_products,write_products,read_themes,write_themes,write_script_tags,read_content,write_content,read_customers,write_customers,read_orders,read_analytics,read_checkouts,write_checkouts,read_inventory,write_inventory,read_locations,read_price_rules,write_price_rules,read_discounts,write_discounts,read_marketing_events,write_marketing_events,read_product_listings,write_product_listings,read_reports,read_resource_feedbacks,write_resource_feedbacks,read_shipping,write_shipping,read_shopify_payments_payouts,read_shopify_payments_disputes,read_translations,write_translations,read_locales,read_all_orders&` +
           `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
           `state=install_${Date.now()}`;
         

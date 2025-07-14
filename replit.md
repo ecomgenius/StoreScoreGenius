@@ -144,6 +144,7 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Completed Mandatory Subscription Flow**: Fixed registration to require credit card input and trial subscription setup before dashboard access, preventing users from bypassing subscription requirements and ensuring proper $49/month billing after 7-day trial
 - **Enhanced Payment Security**: Implemented separate Stripe elements for card number, expiry date, and CVV validation, removing test card information from user interface while maintaining comprehensive payment verification
 - **Fixed Color Application System Completely**: Resolved critical 404 errors in theme.liquid modification by implementing comprehensive permission checking, enhanced debugging, and robust script tag injection fallback, updated OAuth scopes to include write_script_tags permission for reliable color application to Shopify stores
+- **Implemented Comprehensive Shopify Permissions**: Updated OAuth scopes to request all necessary permissions upfront (products, themes, script tags, content, customers, orders, analytics, inventory, discounts, marketing, shipping, translations, etc.) ensuring no permission errors for any platform features
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled
