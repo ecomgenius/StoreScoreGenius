@@ -295,18 +295,18 @@ export default function AIRecommendations() {
       return products;
     } else if (productFilter === 'optimized') {
       return products.filter((product: Product) => 
-        optimizedProducts[type]?.includes(product.id)
+        optimizedProducts[product.id]?.[type]
       );
     } else { // not-optimized
       return products.filter((product: Product) => 
-        !optimizedProducts[type]?.includes(product.id)
+        !optimizedProducts[product.id]?.[type]
       );
     }
   };
 
   // Helper function to check if a product is optimized for a specific type
   const isProductOptimized = (productId: string, type: string) => {
-    return optimizedProducts[type]?.includes(productId) || false;
+    return optimizedProducts[productId]?.[type] || false;
   };
 
   // Create product-based optimization opportunities for each tab, with filtering
