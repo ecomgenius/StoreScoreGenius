@@ -50,36 +50,36 @@ export class SubscriptionService {
         },
       });
 
-      // Update or create the plan in our database
+      // Create the plan in our database without timestamp issues
+      const planData = {
+        name: 'Pro Plan',
+        description: 'Full access to all StoreScore features with unlimited analysis and optimization tools',
+        stripeProductId: product.id,
+        stripePriceId: price.id,
+        price: 4900,
+        currency: 'usd',
+        interval: 'month' as const,
+        aiCreditsIncluded: 0,
+        maxStores: 1,
+        features: [
+          "Unlimited store analysis",
+          "AI-powered optimization", 
+          "Shopify integration",
+          "Bulk optimization tools",
+          "Priority support"
+        ],
+        isActive: true,
+        trialDays: 7,
+      };
+
       if (existingPlan) {
         await db.update(subscriptionPlans)
           .set({
-            stripeProductId: product.id,
-            stripePriceId: price.id,
-            updatedAt: new Date(),
+            ...planData
           })
           .where(eq(subscriptionPlans.id, existingPlan.id));
       } else {
-        await db.insert(subscriptionPlans).values({
-          name: 'Pro Plan',
-          description: 'Full access to all StoreScore features with unlimited analysis and optimization tools',
-          stripeProductId: product.id,
-          stripePriceId: price.id,
-          price: 4900,
-          currency: 'usd',
-          interval: 'month',
-          aiCreditsIncluded: 0,
-          maxStores: 1,
-          features: [
-            "Unlimited store analysis",
-            "AI-powered optimization", 
-            "Shopify integration",
-            "Bulk optimization tools",
-            "Priority support"
-          ],
-          isActive: true,
-          trialDays: 7,
-        });
+        await db.insert(subscriptionPlans).values(planData);
       }
 
       return {
@@ -99,26 +99,27 @@ export class SubscriptionService {
     subscription: any;
     trialEnd: Date;
   }> {
-    // Get user
-    const user = await storage.getUserById(userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
+    try {
+      // Get user
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
 
-    // Check if user already has a subscription
-    const existingSub = await this.getUserSubscription(userId);
-    if (existingSub) {
-      throw new Error('User already has an active subscription');
-    }
+      // Check if user already has a subscription
+      const existingSub = await this.getUserSubscription(userId);
+      if (existingSub) {
+        throw new Error('User already has an active subscription');
+      }
 
-    // Ensure Stripe product and price exist
-    const { priceId } = await this.ensureStripeProductAndPrice();
-    
-    // Get the updated plan from database
-    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, 'Pro Plan'));
-    if (!plan) {
-      throw new Error('Subscription plan not found');
-    }
+      // Ensure Stripe product and price exist
+      const { priceId } = await this.ensureStripeProductAndPrice();
+      
+      // Get the updated plan from database
+      const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, 'Pro Plan'));
+      if (!plan) {
+        throw new Error('Subscription plan not found');
+      }
 
     // Create or get Stripe customer
     let stripeCustomer;
@@ -180,10 +181,14 @@ export class SubscriptionService {
       trialEndsAt: trialEnd,
     });
 
-    return {
-      subscription,
-      trialEnd,
-    };
+      return {
+        subscription,
+        trialEnd,
+      };
+    } catch (error) {
+      console.error('Error starting trial:', error);
+      throw error;
+    }
   }
 
   /**
