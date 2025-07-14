@@ -1925,10 +1925,13 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         if (colorPalette) {
           let colorUpdateSuccess = false;
           
-          // Try method 1: Update theme settings (requires write_themes permission)
+          // Direct theme.liquid modification - most reliable method
           try {
-            const settingsResponse = await fetch(
-              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=config/settings_data.json`,
+            console.log('Attempting direct theme.liquid modification');
+            
+            // Get theme.liquid content
+            const themeResponse = await fetch(
+              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=layout/theme.liquid`,
               {
                 headers: {
                   'X-Shopify-Access-Token': store.shopifyAccessToken!,
@@ -1937,75 +1940,14 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
               }
             );
 
-            if (settingsResponse.ok) {
-              const settingsData = await settingsResponse.json();
-              let settings = {};
+            if (themeResponse.ok) {
+              const themeData = await themeResponse.json();
+              let themeContent = themeData.asset.value;
               
-              try {
-                settings = JSON.parse(settingsData.asset.value);
-              } catch (e) {
-                console.warn('Could not parse existing settings, using defaults');
-                settings = { current: {} };
-              }
-
-              // Update color settings (common theme setting names)
-              const colorMappings = {
-                primary: ['color_primary', 'accent_color', 'brand_color'],
-                secondary: ['color_secondary', 'secondary_color'],
-                background: ['color_body_bg', 'background_color', 'body_color'],
-                text: ['color_body_text', 'text_color', 'body_text'],
-                accent: ['color_accent', 'accent_color_2', 'highlight_color']
-              };
-
-              let colorsUpdated = false;
-              Object.entries(colorPalette).forEach(([colorType, hexColor]) => {
-                const possibleKeys = colorMappings[colorType as keyof typeof colorMappings] || [];
-                possibleKeys.forEach(key => {
-                  if (settings.current && settings.current[key] !== undefined) {
-                    settings.current[key] = hexColor;
-                    colorsUpdated = true;
-                  }
-                });
-              });
-
-              // Update the settings if any colors were mapped
-              if (colorsUpdated) {
-                const updateResponse = await fetch(
-                  `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
-                  {
-                    method: 'PUT',
-                    headers: {
-                      'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      asset: {
-                        key: 'config/settings_data.json',
-                        value: JSON.stringify(settings)
-                      }
-                    })
-                  }
-                );
-
-                if (updateResponse.ok) {
-                  console.log('Successfully updated theme settings with colors:', colorPalette);
-                  colorUpdateSuccess = true;
-                } else {
-                  console.warn('Theme settings update failed:', updateResponse.status, updateResponse.statusText);
-                }
-              }
-            }
-          } catch (settingsError) {
-            console.warn('Theme settings update failed:', settingsError.message);
-          }
-
-          // Method 2: Inject custom CSS (works with existing permissions)
-          if (!colorUpdateSuccess) {
-            try {
-              console.log('Falling back to CSS injection method');
-              console.log('Will create CSS with colors:', colorPalette);
-              
-              const customCSS = `/* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
+              // Create inline CSS with our colors
+              const inlineCSS = `
+<style>
+/* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
 :root {
   --storescore-primary: ${colorPalette.primary} !important;
   --storescore-secondary: ${colorPalette.secondary} !important;
@@ -2014,79 +1956,87 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
   --storescore-accent: ${colorPalette.accent} !important;
 }
 
-/* DEBUG: Test if CSS is loading */
+/* Visual confirmation indicator */
 body::before {
-  content: "StoreScore CSS Active";
+  content: "StoreScore Colors Active";
   position: fixed;
-  top: 0;
-  right: 0;
-  background: #4CAF50;
+  top: 10px;
+  right: 10px;
+  background: green;
   color: white;
   padding: 5px 10px;
   font-size: 12px;
   z-index: 9999;
+  border-radius: 3px;
 }
 
-/* Test border for immediate visibility */
+/* Immediate visual confirmation */
 body {
   border-top: 5px solid ${colorPalette.primary} !important;
 }
 
-/* Apply optimized colors to common Shopify elements */
+/* Apply colors to headers */
 .site-header, .header, .page-header,
-.shopify-section-header, .top-bar,
-[class*="header"], header, nav, .navigation { 
+.shopify-section-header, .top-bar, .header-wrapper,
+[class*="header"], header, nav, .navigation,
+.site-nav, .main-nav, #shopify-section-header { 
   background-color: ${colorPalette.primary} !important; 
   background: ${colorPalette.primary} !important;
   color: white !important;
 }
 
+/* Apply colors to buttons */
 button, .btn, .button, 
 input[type="submit"], input[type="button"],
 .btn-primary, [class*="button"], [class*="btn"],
 .product-form__cart-submit, .cart__submit,
-.shopify-payment-button__button, .add-to-cart { 
+.shopify-payment-button__button, .add-to-cart,
+.btn--add-to-cart, .product-single__add-to-cart { 
   background-color: ${colorPalette.accent} !important; 
   background: ${colorPalette.accent} !important;
   border-color: ${colorPalette.accent} !important;
   color: white !important;
 }
 
-.btn:hover, .button:hover { 
-  background-color: var(--storescore-primary) !important; 
-}
-
+/* Apply colors to prices */
 .price, .product__price, .product-price,
 [class*="price"], .money, .currency,
-.product-form__price, span[class*="price"] { 
+.product-form__price, span[class*="price"],
+.price-item, .product-single__price { 
   color: ${colorPalette.primary} !important; 
   font-weight: 700 !important;
-  font-size: 1.1em !important;
 }
 
-.product-form__buttons .btn,
-.product__add-to-cart { 
-  background-color: var(--storescore-accent) !important; 
+/* Apply colors to footer */
+.footer, .site-footer, [class*="footer"],
+#shopify-section-footer { 
+  background-color: ${colorPalette.secondary} !important; 
   color: white !important;
 }
 
-/* Navigation and links */
-.site-nav__link, .nav-link,
-[class*="navigation"] a { 
-  color: var(--storescore-text) !important; 
-}
+/* Links in primary color */
+a { color: ${colorPalette.primary} !important; }
 
-/* Secondary elements */
-.badge, .label, .tag,
-[class*="badge"] { 
-  background-color: var(--storescore-secondary) !important; 
+/* Navigation links */
+.site-nav a, .main-nav a, nav a {
   color: white !important;
-}`;
+}
+</style>`;
 
-              console.log('Attempting to create CSS asset for theme:', activeTheme.id);
-              console.log('CSS content length:', customCSS.length);
+              // Remove any existing StoreScore CSS
+              themeContent = themeContent.replace(
+                /<style>[\s\S]*?StoreScore AI Color Optimization[\s\S]*?<\/style>/g,
+                ''
+              );
               
-              const cssUpdateResponse = await fetch(
+              // Add new CSS before closing </head>
+              themeContent = themeContent.replace(
+                '</head>',
+                `${inlineCSS}\n</head>`
+              );
+              
+              // Update theme.liquid
+              const updateResponse = await fetch(
                 `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
                 {
                   method: 'PUT',
@@ -2096,85 +2046,30 @@ input[type="submit"], input[type="button"],
                   },
                   body: JSON.stringify({
                     asset: {
-                      key: 'assets/storescore-colors.css',
-                      value: customCSS
+                      key: 'layout/theme.liquid',
+                      value: themeContent
                     }
                   })
                 }
               );
               
-              console.log('CSS Update Response Status:', cssUpdateResponse.status);
-              console.log('CSS Update Response Headers:', Object.fromEntries(cssUpdateResponse.headers.entries()));
+              console.log('Theme update response status:', updateResponse.status);
               
-              if (!cssUpdateResponse.ok) {
-                const errorBody = await cssUpdateResponse.text();
-                console.error('CSS Update Error Body:', errorBody);
-                throw new Error(`CSS update failed: ${cssUpdateResponse.status} ${cssUpdateResponse.statusText} - ${errorBody}`);
-              }
-
-              if (cssUpdateResponse.ok) {
-                console.log('Successfully injected custom CSS for color optimization');
-                console.log('CSS file created: assets/storescore-colors.css');
+              if (updateResponse.ok) {
+                console.log('Successfully applied colors via theme.liquid modification');
                 console.log('Colors applied:', colorPalette);
                 colorUpdateSuccess = true;
-                
-                // Also try to add the CSS link to theme.liquid
-                try {
-                  const themeResponse = await fetch(
-                    `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=layout/theme.liquid`,
-                    {
-                      headers: {
-                        'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                        'Content-Type': 'application/json',
-                      },
-                    }
-                  );
-                  
-                  if (themeResponse.ok) {
-                    const themeData = await themeResponse.json();
-                    let themeContent = themeData.asset.value;
-                    
-                    // Check if our CSS is already linked
-                    if (!themeContent.includes('storescore-colors.css')) {
-                      // Add before closing </head>
-                      themeContent = themeContent.replace(
-                        '</head>',
-                        '  {{ "storescore-colors.css" | asset_url | stylesheet_tag }}\n</head>'
-                      );
-                      
-                      // Update theme.liquid
-                      const updateThemeResponse = await fetch(
-                        `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
-                        {
-                          method: 'PUT',
-                          headers: {
-                            'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({
-                            asset: {
-                              key: 'layout/theme.liquid',
-                              value: themeContent
-                            }
-                          })
-                        }
-                      );
-                      
-                      if (updateThemeResponse.ok) {
-                        console.log('Successfully linked CSS to theme.liquid');
-                      }
-                    }
-                  }
-                } catch (linkError) {
-                  console.warn('Could not link CSS to theme.liquid:', linkError.message);
-                }
+              } else {
+                const errorBody = await updateResponse.text();
+                console.error('Theme update failed:', errorBody);
+                throw new Error(`Theme update failed: ${updateResponse.status} - ${errorBody}`);
               }
-            } catch (cssError) {
-              console.error('CSS injection failed:', cssError);
-              console.error('CSS update response status:', cssError.status || 'Unknown');
-              console.error('CSS update response body:', cssError.message || 'No message');
-              throw new Error(`Failed to apply color changes: ${cssError.message || 'Unknown error'}`);
+            } else {
+              throw new Error(`Could not fetch theme.liquid: ${themeResponse.status}`);
             }
+          } catch (themeError) {
+            console.error('Theme modification failed:', themeError);
+            throw new Error(`Failed to apply colors: ${themeError.message}`);
           }
 
           if (!colorUpdateSuccess) {
