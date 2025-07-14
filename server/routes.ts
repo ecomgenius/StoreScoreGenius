@@ -2337,7 +2337,7 @@ a { color: ${colorPalette.primary} !important; }
         const shopDomain = shop as string;
         const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
           `client_id=${process.env.SHOPIFY_API_KEY}&` +
-          `scope=read_products,write_products,read_themes,write_themes,write_script_tags,read_content,write_content,read_customers,write_customers,read_orders,read_analytics,read_checkouts,write_checkouts,read_inventory,write_inventory,read_locations,read_price_rules,write_price_rules,read_discounts,write_discounts,read_marketing_events,write_marketing_events,read_product_listings,write_product_listings,read_reports,read_resource_feedbacks,write_resource_feedbacks,read_shipping,write_shipping,read_shopify_payments_payouts,read_shopify_payments_disputes,read_translations,write_translations,read_locales,read_all_orders&` +
+          `scope=read_products,write_products,read_themes,write_themes,write_script_tags,read_content,write_content,read_customers,write_customers,read_orders,read_inventory,write_inventory,read_locations,read_price_rules,write_price_rules,read_discounts,write_discounts,read_marketing_events,write_marketing_events,read_product_listings,write_product_listings,read_resource_feedbacks,write_resource_feedbacks,read_shipping,write_shipping,read_translations,write_translations&` +
           `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
           `state=install_${Date.now()}`;
         

@@ -4,7 +4,7 @@ import { storage } from '../storage';
 // Shopify OAuth configuration
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY!;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET!;
-const SHOPIFY_SCOPES = 'read_products,write_products,read_themes,write_themes,write_script_tags,read_content,write_content,read_customers,write_customers,read_orders,read_analytics,read_checkouts,write_checkouts,read_inventory,write_inventory,read_locations,read_price_rules,write_price_rules,read_discounts,write_discounts,read_marketing_events,write_marketing_events,read_product_listings,write_product_listings,read_reports,read_resource_feedbacks,write_resource_feedbacks,read_shipping,write_shipping,read_shopify_payments_payouts,read_shopify_payments_disputes,read_translations,write_translations,read_locales,read_all_orders';
+const SHOPIFY_SCOPES = 'read_products,write_products,read_themes,write_themes,write_script_tags,read_content,write_content,read_customers,write_customers,read_orders,read_inventory,write_inventory,read_locations,read_price_rules,write_price_rules,read_discounts,write_discounts,read_marketing_events,write_marketing_events,read_product_listings,write_product_listings,read_resource_feedbacks,write_resource_feedbacks,read_shipping,write_shipping,read_translations,write_translations';
 const REDIRECT_URI = process.env.REPLIT_DEV_DOMAIN 
   ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
   : 'http://localhost:5000/api/shopify/callback';
