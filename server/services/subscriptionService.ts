@@ -170,8 +170,8 @@ export class SubscriptionService {
       status: subscription.status as any,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      trialStart: new Date(subscription.trial_start! * 1000),
-      trialEnd: new Date(subscription.trial_end! * 1000),
+      trialStart: subscription.trial_start ? new Date(subscription.trial_start * 1000) : null,
+      trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
     });
 
     // Update user status
