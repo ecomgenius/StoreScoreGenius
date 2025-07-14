@@ -311,7 +311,7 @@ export default function AIRecommendations() {
 
   // Create product-based optimization opportunities for each tab, with filtering
   const productOptimizations = {
-    title: getFilteredProducts('title').filter(p => 
+    title: productFilter === 'optimized' ? getFilteredProducts('title') : getFilteredProducts('title').filter(p => 
       p.title && (
         p.title.length < 30 || 
         p.title.length > 70 || 
@@ -319,7 +319,7 @@ export default function AIRecommendations() {
         p.title === p.title.toUpperCase()
       )
     ),
-    description: getFilteredProducts('description').filter(p => 
+    description: productFilter === 'optimized' ? getFilteredProducts('description') : getFilteredProducts('description').filter(p => 
       (
         !p.body_html || 
         p.body_html.length < 100 || 
@@ -327,14 +327,14 @@ export default function AIRecommendations() {
         !p.body_html.includes('features')
       )
     ),
-    pricing: getFilteredProducts('pricing').filter(p => 
+    pricing: productFilter === 'optimized' ? getFilteredProducts('pricing') : getFilteredProducts('pricing').filter(p => 
       p.variants?.[0]?.price && // Must have a price
       (
         parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
         !p.variants[0].compare_at_price // Missing compare at price for discounts
       )
     ),
-    keywords: getFilteredProducts('keywords').filter(p => 
+    keywords: productFilter === 'optimized' ? getFilteredProducts('keywords') : getFilteredProducts('keywords').filter(p => 
       (
         !p.tags || // No tags at all
         p.tags.length < 5 || // Very few tags
@@ -725,14 +725,26 @@ export default function AIRecommendations() {
                 </>
               ) : (
                 <div className="text-center py-12">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
-                  <p className="text-muted-foreground">
-                    {products.length > 0 ? 
-                      `All ${products.length} products have optimal ${type} settings.` :
-                      'Connect your Shopify store to see product optimization opportunities.'
-                    }
-                  </p>
+                  {productFilter === 'optimized' ? (
+                    <>
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Optimized Products</h3>
+                      <p className="text-muted-foreground">
+                        No products have been optimized for {type} yet. Switch to "Need Optimization" to see available opportunities.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
+                      <p className="text-muted-foreground">
+                        {products.length > 0 ? 
+                          `All ${products.length} products have optimal ${type} settings.` :
+                          'Connect your Shopify store to see product optimization opportunities.'
+                        }
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </TabsContent>
