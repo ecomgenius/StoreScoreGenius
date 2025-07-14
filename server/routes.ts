@@ -1979,16 +1979,232 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         
         console.log('Extracted color palette:', colorPalette);
         
-        if (colorPalette) {
-          let colorUpdateSuccess = false;
+        // Generate a complete new theme using OpenAI
+        let themeUpdateSuccess = false;
+        
+        try {
+          console.log('Generating complete new theme with OpenAI for store:', store.shopifyDomain);
           
-          // Use Script Tag injection which is more reliable than CSS assets
-          try {
-            console.log('Applying colors via Script Tag injection for theme ID:', activeTheme.id);
-            console.log('Store domain:', store.shopifyDomain);
-            console.log('Color palette to apply:', colorPalette);
-            
-            // First, remove any existing StoreScore script tags
+          // First, analyze the current store to understand its structure
+          const storeAnalysisPrompt = `Analyze this Shopify store and create a comprehensive theme redesign recommendation.
+
+Store URL: ${store.storeUrl}
+Current theme ID: ${activeTheme.id}
+Design recommendation: ${changes.recommended}
+
+Based on the design recommendation, generate a complete theme overhaul that includes:
+1. A modern, professional color palette
+2. Typography recommendations
+3. Layout improvements
+4. Mobile-first responsive design
+5. E-commerce conversion optimizations
+
+Return ONLY a JSON object with this structure:
+{
+  "themeName": "StoreScore Optimized Theme",
+  "colorPalette": {
+    "primary": "#hexcolor",
+    "secondary": "#hexcolor", 
+    "accent": "#hexcolor",
+    "background": "#hexcolor",
+    "text": "#hexcolor",
+    "success": "#hexcolor",
+    "warning": "#hexcolor",
+    "error": "#hexcolor"
+  },
+  "typography": {
+    "headingFont": "font family name",
+    "bodyFont": "font family name",
+    "headingSizes": ["h1 size", "h2 size", "h3 size"],
+    "lineHeight": "1.6"
+  },
+  "layout": {
+    "headerStyle": "description",
+    "navigationStyle": "description", 
+    "productGridColumns": 3,
+    "footerStyle": "description"
+  },
+  "customCSS": "/* Complete CSS that transforms the theme */",
+  "designNotes": "Brief explanation of the design decisions"
+}`;
+
+          const themeResponse = await openaiClient.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: storeAnalysisPrompt }],
+            response_format: { type: "json_object" },
+            max_tokens: 2000,
+          });
+
+          const themeDesign = JSON.parse(themeResponse.choices[0].message.content || '{}');
+          console.log('Generated theme design:', JSON.stringify(themeDesign, null, 2));
+          
+          if (themeDesign.customCSS) {
+            // Create a comprehensive CSS override
+            const fullThemeCSS = `
+/* StoreScore AI-Generated Theme - Applied ${new Date().toLocaleString()} */
+/* Theme: ${themeDesign.themeName || 'StoreScore Optimized'} */
+
+/* Visual confirmation indicator */
+body::before {
+  content: "✓ StoreScore AI Theme Active" !important;
+  position: fixed !important;
+  top: 10px !important;
+  right: 10px !important;
+  background: ${themeDesign.colorPalette?.primary || '#1A73E8'} !important;
+  color: white !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  z-index: 99999 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+
+/* Apply generated color palette */
+:root {
+  --storescore-primary: ${themeDesign.colorPalette?.primary || '#1A73E8'};
+  --storescore-secondary: ${themeDesign.colorPalette?.secondary || '#185ABC'};
+  --storescore-accent: ${themeDesign.colorPalette?.accent || '#FF6F61'};
+  --storescore-background: ${themeDesign.colorPalette?.background || '#FFFFFF'};
+  --storescore-text: ${themeDesign.colorPalette?.text || '#333333'};
+  --storescore-success: ${themeDesign.colorPalette?.success || '#10b981'};
+  --storescore-warning: ${themeDesign.colorPalette?.warning || '#f59e0b'};
+  --storescore-error: ${themeDesign.colorPalette?.error || '#ef4444'};
+}
+
+/* Typography improvements */
+body {
+  font-family: ${themeDesign.typography?.bodyFont || 'system-ui, -apple-system, sans-serif'} !important;
+  line-height: ${themeDesign.typography?.lineHeight || '1.6'} !important;
+  color: var(--storescore-text) !important;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: ${themeDesign.typography?.headingFont || 'system-ui, -apple-system, sans-serif'} !important;
+  color: var(--storescore-text) !important;
+}
+
+/* Generated custom CSS */
+${themeDesign.customCSS}
+
+/* Enhanced header styling */
+.site-header, .header, .page-header,
+.shopify-section-header, .top-bar, .header-wrapper,
+[class*="header"], header, nav, .navigation,
+.site-nav, .main-nav, #shopify-section-header { 
+  background-color: var(--storescore-primary) !important; 
+  background: var(--storescore-primary) !important;
+  color: white !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+}
+
+/* Modern button styling */
+button, .btn, .button, 
+input[type="submit"], input[type="button"],
+.btn-primary, [class*="button"], [class*="btn"],
+.product-form__cart-submit, .cart__submit,
+.shopify-payment-button__button, .add-to-cart,
+.btn--add-to-cart, .product-single__add-to-cart { 
+  background-color: var(--storescore-accent) !important; 
+  background: var(--storescore-accent) !important;
+  border-color: var(--storescore-accent) !important;
+  color: white !important;
+  border-radius: 6px !important;
+  padding: 12px 24px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+button:hover, .btn:hover, .button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+
+/* Enhanced price styling */
+.price, .product__price, .product-price,
+[class*="price"], .money, .currency,
+.product-form__price, span[class*="price"],
+.price-item, .product-single__price { 
+  color: var(--storescore-primary) !important; 
+  font-weight: 700 !important;
+  font-size: 1.2em !important;
+}
+
+/* Modern footer */
+.footer, .site-footer, [class*="footer"],
+#shopify-section-footer { 
+  background-color: var(--storescore-secondary) !important; 
+  color: white !important;
+  padding: 40px 0 !important;
+}
+
+/* Improved links */
+a { 
+  color: var(--storescore-primary) !important;
+  text-decoration: none !important;
+  transition: color 0.3s ease !important;
+}
+
+a:hover {
+  color: var(--storescore-accent) !important;
+}
+
+/* Navigation improvements */
+.site-nav a, .main-nav a, nav a {
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  border-radius: 4px !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.site-nav a:hover, .main-nav a:hover, nav a:hover {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+
+/* Product grid improvements */
+.product-item, .product-card, [class*="product"] {
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.product-item:hover, .product-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  body::before {
+    font-size: 10px !important;
+    padding: 6px 10px !important;
+  }
+  
+  button, .btn, .button {
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+  }
+}`;
+
+            // Create script tag to inject the complete theme
+            const themeScript = `
+(function() {
+  // Remove any existing StoreScore styles
+  var existing = document.getElementById('storescore-ai-theme');
+  if (existing) existing.remove();
+  
+  // Create and inject new complete theme
+  var style = document.createElement('style');
+  style.id = 'storescore-ai-theme';
+  style.innerHTML = \`${fullThemeCSS.replace(/`/g, '\\`')}\`;
+  document.head.appendChild(style);
+  
+  console.log('StoreScore: AI-generated theme applied successfully');
+  console.log('Theme design:', ${JSON.stringify(themeDesign)});
+})();`;
+
+            // First, clean up any existing StoreScore scripts
             try {
               const existingScriptsResponse = await fetch(
                 `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
@@ -2006,8 +2222,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
                 
                 for (const script of scripts.script_tags || []) {
                   if (script.display_scope === 'online_store' && 
-                      (script.src?.includes('storescore') || 
-                       (script.event === 'onload' && script.src?.includes('data:text/javascript')))) {
+                      script.src?.includes('data:text/javascript')) {
                     console.log('Removing existing StoreScore script:', script.id);
                     await fetch(
                       `https://${store.shopifyDomain}/admin/api/2023-10/script_tags/${script.id}.json`,
@@ -2024,104 +2239,17 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
             } catch (cleanupError) {
               console.warn('Could not clean up existing scripts:', cleanupError);
             }
-            
-            // Create a JavaScript snippet that injects CSS
-            const colorInjectionScript = `
-(function() {
-  // Remove any existing StoreScore styles
-  var existing = document.getElementById('storescore-dynamic-styles');
-  if (existing) existing.remove();
-  
-  // Create and inject new styles
-  var style = document.createElement('style');
-  style.id = 'storescore-dynamic-styles';
-  style.innerHTML = \`
-    /* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
-    
-    /* Visual confirmation indicator */
-    body::before {
-      content: "✓ StoreScore Colors Active" !important;
-      position: fixed !important;
-      top: 10px !important;
-      right: 10px !important;
-      background: ${colorPalette.primary} !important;
-      color: white !important;
-      padding: 8px 12px !important;
-      font-size: 12px !important;
-      font-weight: bold !important;
-      z-index: 99999 !important;
-      border-radius: 4px !important;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-    }
-    
-    /* Apply colors to headers */
-    .site-header, .header, .page-header,
-    .shopify-section-header, .top-bar, .header-wrapper,
-    [class*="header"], header, nav, .navigation,
-    .site-nav, .main-nav, #shopify-section-header { 
-      background-color: ${colorPalette.primary} !important; 
-      background: ${colorPalette.primary} !important;
-      color: white !important;
-    }
-    
-    /* Apply colors to buttons */
-    button, .btn, .button, 
-    input[type="submit"], input[type="button"],
-    .btn-primary, [class*="button"], [class*="btn"],
-    .product-form__cart-submit, .cart__submit,
-    .shopify-payment-button__button, .add-to-cart,
-    .btn--add-to-cart, .product-single__add-to-cart { 
-      background-color: ${colorPalette.accent} !important; 
-      background: ${colorPalette.accent} !important;
-      border-color: ${colorPalette.accent} !important;
-      color: white !important;
-    }
-    
-    /* Apply colors to prices */
-    .price, .product__price, .product-price,
-    [class*="price"], .money, .currency,
-    .product-form__price, span[class*="price"],
-    .price-item, .product-single__price { 
-      color: ${colorPalette.primary} !important; 
-      font-weight: 700 !important;
-    }
-    
-    /* Apply colors to footer */
-    .footer, .site-footer, [class*="footer"],
-    #shopify-section-footer { 
-      background-color: ${colorPalette.secondary} !important; 
-      color: white !important;
-    }
-    
-    /* Links in primary color */
-    a { color: ${colorPalette.primary} !important; }
-    
-    /* Navigation links */
-    .site-nav a, .main-nav a, nav a {
-      color: white !important;
-    }
-    
-    /* Immediate visual confirmation */
-    body {
-      border-top: 5px solid ${colorPalette.primary} !important;
-    }
-  \`;
-  document.head.appendChild(style);
-  
-  console.log('StoreScore: Colors applied successfully via script injection');
-  console.log('Applied colors:', ${JSON.stringify(colorPalette)});
-})();`;
 
-            // Create the script tag
+            // Create the new theme script tag
             const scriptTagPayload = {
               script_tag: {
                 event: 'onload',
-                src: `data:text/javascript;base64,${Buffer.from(colorInjectionScript).toString('base64')}`,
+                src: `data:text/javascript;base64,${Buffer.from(themeScript).toString('base64')}`,
                 display_scope: 'online_store'
               }
             };
             
-            console.log('Creating script tag for color injection...');
+            console.log('Creating AI theme script tag...');
             const scriptResponse = await fetch(
               `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
               {
@@ -2134,28 +2262,26 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
               }
             );
             
-            console.log('Script tag creation response status:', scriptResponse.status);
+            console.log('AI theme script creation response status:', scriptResponse.status);
             
             if (scriptResponse.ok) {
               const scriptResult = await scriptResponse.json();
-              console.log('Script tag created successfully!', scriptResult.script_tag?.id);
-              colorUpdateSuccess = true;
+              console.log('AI theme script created successfully!', scriptResult.script_tag?.id);
+              themeUpdateSuccess = true;
             } else {
               const scriptError = await scriptResponse.text();
-              console.error('Script tag creation failed:', scriptError);
+              console.error('AI theme script creation failed:', scriptError);
             }
-            
-          } catch (scriptError) {
-            console.error('Script tag injection failed:', scriptError);
           }
           
-          if (!colorUpdateSuccess) {
-            console.warn('Could not apply colors to theme via any method');
-          } else {
-            console.log('Colors successfully applied to store via script injection!');
-          }
+        } catch (themeError) {
+          console.error('AI theme generation failed:', themeError);
+        }
+        
+        if (!themeUpdateSuccess) {
+          console.warn('Could not apply AI-generated theme');
         } else {
-          console.warn('No color palette available to apply');
+          console.log('AI-generated theme successfully applied to store!');
         }
 
         console.log(`Successfully processed design changes for Shopify store: ${store.shopifyDomain}`);
