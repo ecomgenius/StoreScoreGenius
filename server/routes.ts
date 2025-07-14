@@ -1828,7 +1828,22 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
       try {
         // Check if we have theme permissions first
         console.log('Checking theme permissions for store:', store.shopifyDomain);
-        console.log('Store scope:', store.shopifyScope);
+        console.log('Store scope:', store.scope);
+
+        // Check if we have required permissions
+        const requiredScopes = ['write_themes', 'write_script_tags'];
+        const currentScopes = store.scope?.split(',') || [];
+        const missingScopes = requiredScopes.filter(scope => !currentScopes.includes(scope));
+        
+        if (missingScopes.length > 0) {
+          console.log('Missing required scopes:', missingScopes);
+          return res.status(400).json({ 
+            error: "Store needs additional permissions", 
+            message: `Your store connection is missing these permissions: ${missingScopes.join(', ')}. Please reconnect your store to grant these permissions.`,
+            needsReconnect: true,
+            missingScopes: missingScopes
+          });
+        }
         
         // Get active theme first
         const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
@@ -2322,7 +2337,7 @@ a { color: ${colorPalette.primary} !important; }
         const shopDomain = shop as string;
         const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
           `client_id=${process.env.SHOPIFY_API_KEY}&` +
-          `scope=read_products,write_products,read_themes,write_themes&` +
+          `scope=read_products,write_products,read_themes,write_themes,write_script_tags&` +
           `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
           `state=install_${Date.now()}`;
         
