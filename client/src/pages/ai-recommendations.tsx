@@ -573,7 +573,7 @@ export default function AIRecommendations() {
                     <p className="text-muted-foreground">Loading products...</p>
                   </div>
                 </div>
-              ) : productOptimizations[type]?.length > 0 ? (
+              ) : (
                 <>
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
@@ -621,8 +621,9 @@ export default function AIRecommendations() {
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
-                    {productOptimizations[type].map((product: Product) => (
+                  {productOptimizations[type]?.length > 0 ? (
+                    <div className="space-y-4">
+                      {productOptimizations[type].map((product: Product) => (
                       <Card key={product.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
@@ -720,32 +721,33 @@ export default function AIRecommendations() {
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  {productFilter === 'optimized' ? (
-                    <>
-                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No Optimized Products</h3>
-                      <p className="text-muted-foreground">
-                        No products have been optimized for {type} yet. Switch to "Need Optimization" to see available opportunities.
-                      </p>
-                    </>
+                      ))}
+                    </div>
                   ) : (
-                    <>
-                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
-                      <p className="text-muted-foreground">
-                        {products.length > 0 ? 
-                          `All ${products.length} products have optimal ${type} settings.` :
-                          'Connect your Shopify store to see product optimization opportunities.'
-                        }
-                      </p>
-                    </>
+                    <div className="text-center py-12">
+                      {productFilter === 'optimized' ? (
+                        <>
+                          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold mb-2">No Optimized Products</h3>
+                          <p className="text-muted-foreground">
+                            No products have been optimized for {type} yet. Switch to "Need Optimization" to see available opportunities.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
+                          <p className="text-muted-foreground">
+                            {products.length > 0 ? 
+                              `All ${products.length} products have optimal ${type} settings.` :
+                              'Connect your Shopify store to see product optimization opportunities.'
+                            }
+                          </p>
+                        </>
+                      )}
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </TabsContent>
           ))}
