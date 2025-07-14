@@ -89,11 +89,20 @@ export default function DesignRecommendations() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to Apply Design",
-        description: error.message || "Failed to update store design",
-        variant: "destructive",
-      });
+      // Check if it's a permission error
+      if (error.message?.includes('theme permissions') || error.message?.includes('needsReconnect')) {
+        toast({
+          title: "Permissions Required",
+          description: "Please reconnect your store to grant theme editing permissions. Go to Store Management and click 'Reconnect'.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to Apply Design",
+          description: error.message || "Failed to update store design",
+          variant: "destructive",
+        });
+      }
     },
   });
 

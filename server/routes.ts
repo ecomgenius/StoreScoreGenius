@@ -1817,6 +1817,10 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
 
       // Apply actual design changes to Shopify store
       try {
+        // Check if we have theme permissions first
+        console.log('Checking theme permissions for store:', store.shopifyDomain);
+        console.log('Store scope:', store.shopifyScope);
+        
         // Get active theme first
         const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
           headers: {
@@ -1826,6 +1830,17 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         });
 
         if (!themesResponse.ok) {
+          console.error(`Themes API error: ${themesResponse.status} ${themesResponse.statusText}`);
+          
+          // Check if it's a permission issue
+          if (themesResponse.status === 403) {
+            return res.status(400).json({ 
+              error: "Store needs theme permissions", 
+              message: "Please reconnect your store to grant theme editing permissions. Go to Store Management and click 'Reconnect' to update permissions.",
+              needsReconnect: true
+            });
+          }
+          
           throw new Error(`Failed to fetch themes: ${themesResponse.statusText}`);
         }
 
@@ -1838,87 +1853,146 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
 
         // Apply changes based on suggestion type
         if (changes.type === 'colors' && changes.colorPalette) {
-          // Update theme settings for color changes
-          const settingsResponse = await fetch(
-            `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=config/settings_data.json`,
-            {
-              headers: {
-                'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-
-          if (settingsResponse.ok) {
-            const settingsData = await settingsResponse.json();
-            let settings = {};
-            
-            try {
-              settings = JSON.parse(settingsData.asset.value);
-            } catch (e) {
-              console.warn('Could not parse existing settings, using defaults');
-            }
-
-            // Update color settings (common theme setting names)
-            const colorMappings = {
-              primary: ['color_primary', 'accent_color', 'brand_color'],
-              secondary: ['color_secondary', 'secondary_color'],
-              background: ['color_body_bg', 'background_color', 'body_color'],
-              text: ['color_body_text', 'text_color', 'body_text'],
-              accent: ['color_accent', 'accent_color_2', 'highlight_color']
-            };
-
-            // Try to apply colors to common theme setting names
-            Object.entries(changes.colorPalette).forEach(([colorType, hexColor]) => {
-              const possibleKeys = colorMappings[colorType as keyof typeof colorMappings] || [];
-              possibleKeys.forEach(key => {
-                if (settings.current && settings.current[key] !== undefined) {
-                  settings.current[key] = hexColor;
-                }
-              });
-            });
-
-            // Update the settings
-            const updateResponse = await fetch(
-              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+          let colorUpdateSuccess = false;
+          
+          // Try method 1: Update theme settings (requires write_themes permission)
+          try {
+            const settingsResponse = await fetch(
+              `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=config/settings_data.json`,
               {
-                method: 'PUT',
                 headers: {
                   'X-Shopify-Access-Token': store.shopifyAccessToken!,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  asset: {
-                    key: 'config/settings_data.json',
-                    value: JSON.stringify(settings)
-                  }
-                })
               }
             );
 
-            if (!updateResponse.ok) {
-              console.warn('Could not update theme settings, falling back to CSS injection');
+            if (settingsResponse.ok) {
+              const settingsData = await settingsResponse.json();
+              let settings = {};
               
-              // Fallback: Inject custom CSS
-              const customCSS = `
-/* StoreScore Design Optimization */
+              try {
+                settings = JSON.parse(settingsData.asset.value);
+              } catch (e) {
+                console.warn('Could not parse existing settings, using defaults');
+                settings = { current: {} };
+              }
+
+              // Update color settings (common theme setting names)
+              const colorMappings = {
+                primary: ['color_primary', 'accent_color', 'brand_color'],
+                secondary: ['color_secondary', 'secondary_color'],
+                background: ['color_body_bg', 'background_color', 'body_color'],
+                text: ['color_body_text', 'text_color', 'body_text'],
+                accent: ['color_accent', 'accent_color_2', 'highlight_color']
+              };
+
+              let colorsUpdated = false;
+              Object.entries(changes.colorPalette).forEach(([colorType, hexColor]) => {
+                const possibleKeys = colorMappings[colorType as keyof typeof colorMappings] || [];
+                possibleKeys.forEach(key => {
+                  if (settings.current && settings.current[key] !== undefined) {
+                    settings.current[key] = hexColor;
+                    colorsUpdated = true;
+                  }
+                });
+              });
+
+              // Update the settings if any colors were mapped
+              if (colorsUpdated) {
+                const updateResponse = await fetch(
+                  `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+                  {
+                    method: 'PUT',
+                    headers: {
+                      'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      asset: {
+                        key: 'config/settings_data.json',
+                        value: JSON.stringify(settings)
+                      }
+                    })
+                  }
+                );
+
+                if (updateResponse.ok) {
+                  console.log('Successfully updated theme settings');
+                  colorUpdateSuccess = true;
+                }
+              }
+            }
+          } catch (settingsError) {
+            console.warn('Theme settings update failed:', settingsError.message);
+          }
+
+          // Method 2: Inject custom CSS (works with existing permissions)
+          if (!colorUpdateSuccess) {
+            try {
+              console.log('Falling back to CSS injection method');
+              
+              const customCSS = `/* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
 :root {
-  --ss-primary: ${changes.colorPalette.primary} !important;
-  --ss-secondary: ${changes.colorPalette.secondary} !important;
-  --ss-background: ${changes.colorPalette.background} !important;
-  --ss-text: ${changes.colorPalette.text} !important;
-  --ss-accent: ${changes.colorPalette.accent} !important;
+  --storescore-primary: ${changes.colorPalette.primary} !important;
+  --storescore-secondary: ${changes.colorPalette.secondary} !important;
+  --storescore-background: ${changes.colorPalette.background} !important;
+  --storescore-text: ${changes.colorPalette.text} !important;
+  --storescore-accent: ${changes.colorPalette.accent} !important;
 }
 
-/* Apply new colors to common elements */
-.header, .site-header { background-color: var(--ss-primary) !important; }
-.btn, .button, input[type="submit"] { background-color: var(--ss-accent) !important; }
-body { background-color: var(--ss-background) !important; color: var(--ss-text) !important; }
-.product-price, .price { color: var(--ss-primary) !important; }
-`;
+/* Apply optimized colors to common Shopify elements */
+.site-header, .header, .page-header,
+.shopify-section-header,
+[class*="header"] { 
+  background-color: var(--storescore-primary) !important; 
+  color: white !important;
+}
 
-              // Try to update custom CSS file
-              await fetch(
+.btn, .button, 
+input[type="submit"], 
+input[type="button"],
+.btn-primary,
+[class*="button"],
+.product-form__cart-submit,
+.cart__submit,
+.shopify-payment-button__button { 
+  background-color: var(--storescore-accent) !important; 
+  border-color: var(--storescore-accent) !important;
+  color: white !important;
+}
+
+.btn:hover, .button:hover { 
+  background-color: var(--storescore-primary) !important; 
+}
+
+.price, .product__price, 
+[class*="price"], .money,
+.product-form__price { 
+  color: var(--storescore-primary) !important; 
+  font-weight: 600 !important;
+}
+
+.product-form__buttons .btn,
+.product__add-to-cart { 
+  background-color: var(--storescore-accent) !important; 
+  color: white !important;
+}
+
+/* Navigation and links */
+.site-nav__link, .nav-link,
+[class*="navigation"] a { 
+  color: var(--storescore-text) !important; 
+}
+
+/* Secondary elements */
+.badge, .label, .tag,
+[class*="badge"] { 
+  background-color: var(--storescore-secondary) !important; 
+  color: white !important;
+}`;
+
+              const cssUpdateResponse = await fetch(
                 `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
                 {
                   method: 'PUT',
@@ -1928,20 +2002,94 @@ body { background-color: var(--ss-background) !important; color: var(--ss-text) 
                   },
                   body: JSON.stringify({
                     asset: {
-                      key: 'assets/storescore-custom.css',
+                      key: 'assets/storescore-colors.css',
                       value: customCSS
                     }
                   })
                 }
               );
+
+              if (cssUpdateResponse.ok) {
+                console.log('Successfully injected custom CSS for color optimization');
+                colorUpdateSuccess = true;
+                
+                // Also try to add the CSS link to theme.liquid
+                try {
+                  const themeResponse = await fetch(
+                    `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=layout/theme.liquid`,
+                    {
+                      headers: {
+                        'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                        'Content-Type': 'application/json',
+                      },
+                    }
+                  );
+                  
+                  if (themeResponse.ok) {
+                    const themeData = await themeResponse.json();
+                    let themeContent = themeData.asset.value;
+                    
+                    // Check if our CSS is already linked
+                    if (!themeContent.includes('storescore-colors.css')) {
+                      // Add before closing </head>
+                      themeContent = themeContent.replace(
+                        '</head>',
+                        '  {{ "storescore-colors.css" | asset_url | stylesheet_tag }}\n</head>'
+                      );
+                      
+                      // Update theme.liquid
+                      const updateThemeResponse = await fetch(
+                        `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+                        {
+                          method: 'PUT',
+                          headers: {
+                            'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            asset: {
+                              key: 'layout/theme.liquid',
+                              value: themeContent
+                            }
+                          })
+                        }
+                      );
+                      
+                      if (updateThemeResponse.ok) {
+                        console.log('Successfully linked CSS to theme.liquid');
+                      }
+                    }
+                  }
+                } catch (linkError) {
+                  console.warn('Could not link CSS to theme.liquid:', linkError.message);
+                }
+              }
+            } catch (cssError) {
+              console.error('CSS injection failed:', cssError.message);
+              throw new Error('Failed to apply color changes - store may need theme permissions');
             }
+          }
+
+          if (!colorUpdateSuccess) {
+            throw new Error('Could not apply color changes to store theme');
           }
         }
 
-        console.log(`Applied design changes to Shopify store: ${store.shopifyDomain}`);
+        console.log(`Successfully applied design changes to Shopify store: ${store.shopifyDomain}`);
       } catch (shopifyError) {
         console.error('Shopify API error:', shopifyError);
-        // Continue with credit deduction even if Shopify update fails
+        
+        // If it's a permission error, inform the user they need to reconnect
+        if (shopifyError.message.includes('Forbidden') || shopifyError.message.includes('403')) {
+          return res.status(400).json({ 
+            error: "Store needs theme permissions", 
+            message: "Your store doesn't have theme editing permissions. Please reconnect your store to grant theme editing access.",
+            needsReconnect: true
+          });
+        }
+        
+        // For other errors, continue with credit deduction but inform user
+        console.warn('Design application failed but continuing with credit deduction');
       }
 
       // Deduct credits
