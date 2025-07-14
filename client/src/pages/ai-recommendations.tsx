@@ -51,6 +51,7 @@ export default function AIRecommendations() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkType, setBulkType] = useState<string>('');
   const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
+  const [productFilter, setProductFilter] = useState<'all' | 'optimized' | 'not-optimized'>('not-optimized');
   
   // State for AI suggestion previews
   const [previewingSuggestion, setPreviewingSuggestion] = useState<{
@@ -288,15 +289,29 @@ export default function AIRecommendations() {
     }
   };
 
-  // Helper function to check if a product is optimized for a specific type
-  const isProductOptimized = (productId: string, type: string) => {
-    return optimizedProducts[productId] && optimizedProducts[productId][type];
+  // Filter products based on optimization status
+  const getFilteredProducts = (type: string) => {
+    if (productFilter === 'all') {
+      return products;
+    } else if (productFilter === 'optimized') {
+      return products.filter((product: Product) => 
+        optimizedProducts[type]?.includes(product.id)
+      );
+    } else { // not-optimized
+      return products.filter((product: Product) => 
+        !optimizedProducts[type]?.includes(product.id)
+      );
+    }
   };
 
-  // Create product-based optimization opportunities for each tab, excluding already optimized products
+  // Helper function to check if a product is optimized for a specific type
+  const isProductOptimized = (productId: string, type: string) => {
+    return optimizedProducts[type]?.includes(productId) || false;
+  };
+
+  // Create product-based optimization opportunities for each tab, with filtering
   const productOptimizations = {
-    title: products.filter(p => 
-      !isProductOptimized(p.id, 'title') && // Filter out optimized products
+    title: getFilteredProducts('title').filter(p => 
       p.title && (
         p.title.length < 30 || 
         p.title.length > 70 || 
@@ -304,8 +319,7 @@ export default function AIRecommendations() {
         p.title === p.title.toUpperCase()
       )
     ),
-    description: products.filter(p => 
-      !isProductOptimized(p.id, 'description') && // Filter out optimized products
+    description: getFilteredProducts('description').filter(p => 
       (
         !p.body_html || 
         p.body_html.length < 100 || 
@@ -313,16 +327,14 @@ export default function AIRecommendations() {
         !p.body_html.includes('features')
       )
     ),
-    pricing: products.filter(p => 
-      !isProductOptimized(p.id, 'pricing') && // Filter out optimized products
+    pricing: getFilteredProducts('pricing').filter(p => 
       p.variants?.[0]?.price && // Must have a price
       (
         parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
         !p.variants[0].compare_at_price // Missing compare at price for discounts
       )
     ),
-    keywords: products.filter(p => 
-      !isProductOptimized(p.id, 'keywords') && // Filter out optimized products
+    keywords: getFilteredProducts('keywords').filter(p => 
       (
         !p.tags || // No tags at all
         p.tags.length < 5 || // Very few tags
@@ -564,20 +576,48 @@ export default function AIRecommendations() {
               ) : productOptimizations[type]?.length > 0 ? (
                 <>
                   <div className="mb-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold">Products Needing {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
+                        <h3 className="text-lg font-semibold">Products for {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
                         <p className="text-sm text-muted-foreground">
-                          {productOptimizations[type].length} products could benefit from AI-powered improvements
+                          {productOptimizations[type].length} products showing in current filter
                         </p>
                       </div>
                       <Button
                         onClick={() => handleBulkApply(type)}
-                        disabled={applyBulkMutation.isPending}
+                        disabled={applyBulkMutation.isPending || productOptimizations[type].filter(p => !isProductOptimized(p.id, type)).length === 0}
                         variant="outline"
                       >
-                        Optimize All ({productOptimizations[type].length} credits)
+                        Optimize All Non-Optimized ({productOptimizations[type].filter(p => !isProductOptimized(p.id, type)).length} credits)
                       </Button>
+                    </div>
+                    
+                    {/* Product Filter */}
+                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium">Show:</span>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant={productFilter === 'not-optimized' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setProductFilter('not-optimized')}
+                        >
+                          Need Optimization ({products.filter(p => !isProductOptimized(p.id, type)).length})
+                        </Button>
+                        <Button 
+                          variant={productFilter === 'optimized' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setProductFilter('optimized')}
+                        >
+                          AI Optimized ({products.filter(p => isProductOptimized(p.id, type)).length})
+                        </Button>
+                        <Button 
+                          variant={productFilter === 'all' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setProductFilter('all')}
+                        >
+                          All Products ({products.length})
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   

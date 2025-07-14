@@ -13,6 +13,11 @@ export interface StoreAnalysisData {
   storeType: 'shopify' | 'ebay';
   storeUrl?: string;
   ebayUsername?: string;
+  optimizationContext?: {
+    optimizedProductsCount: number;
+    totalOptimizations: number;
+    optimizationTypes: string[];
+  };
 }
 
 export async function analyzeStoreWithAI(data: StoreAnalysisData): Promise<any> {
@@ -27,6 +32,17 @@ ${data.storeContent}
 
 ${data.storeUrl ? `Store URL: ${data.storeUrl}` : ''}
 ${data.ebayUsername ? `eBay Username: ${data.ebayUsername}` : ''}
+
+${data.optimizationContext ? `
+IMPORTANT OPTIMIZATION CONTEXT:
+- This store has been optimized with StoreScore AI
+- ${data.optimizationContext.optimizedProductsCount} products have been optimized
+- ${data.optimizationContext.totalOptimizations} total optimizations applied
+- Optimization types: ${data.optimizationContext.optimizationTypes.join(', ')}
+- When scoring products, give higher scores for optimized titles, descriptions, and pricing
+- Increase product score and overall score to reflect these improvements
+- Mention the AI optimizations in your analysis
+` : ''}
 
 Return analysis in JSON format with:
 
@@ -52,12 +68,14 @@ Return analysis in JSON format with:
   },
   
   "productAnalysis": {
-    "productCount": number (estimated),
+    "productCount": number (estimated from content),
     "highQualityImages": boolean,
-    "detailedDescriptions": number (percentage 0-100),
-    "structuredTitles": boolean,
+    "detailedDescriptions": number (percentage 0-100, boost for AI optimizations),
+    "structuredTitles": boolean (boost for AI optimizations),
     "trendingProducts": boolean,
-    "score": number (same as productScore)
+    "aiOptimized": boolean (true if optimization context provided),
+    "optimizedProductsCount": number (from context, 0 if none),
+    "score": number (same as productScore, boost for optimizations)
   },
   
   "seoAnalysis": {

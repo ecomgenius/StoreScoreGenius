@@ -2369,10 +2369,28 @@ document.head.appendChild(s);
 
       console.log('📊 Analyzing store:', store.storeUrl);
 
-      // Perform store analysis
+      // Get optimization data to inform analysis
+      const optimizations = await storage.getProductOptimizations(store.id);
+      
+      // Group optimizations by product
+      const optimizedProducts: Record<string, string[]> = {};
+      optimizations.forEach(opt => {
+        if (!optimizedProducts[opt.shopifyProductId]) {
+          optimizedProducts[opt.shopifyProductId] = [];
+        }
+        optimizedProducts[opt.shopifyProductId].push(opt.optimizationType);
+      });
+
+      console.log('🔧 Found optimizations for', Object.keys(optimizedProducts).length, 'products');
+
+      // Perform store analysis with optimization context
       let result;
       if (store.storeType === 'shopify') {
-        result = await analyzeShopifyStore(store.storeUrl);
+        result = await analyzeShopifyStore(store.storeUrl, {
+          storeId: store.id,
+          optimizedProducts,
+          totalOptimizations: optimizations.length
+        });
       } else {
         return res.status(400).json({ error: "Unsupported store type for this endpoint" });
       }

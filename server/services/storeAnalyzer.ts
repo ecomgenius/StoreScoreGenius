@@ -3,7 +3,14 @@ import type { StoreAnalysisResult } from '@shared/schema';
 import { captureStoreScreenshot } from './screenshotService';
 import { createStoreFingerprint, hasStoreChanged, createEbayFingerprint } from './storeChangeDetector';
 
-export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalysisResult & { contentHash: string }> {
+export async function analyzeShopifyStore(
+  storeUrl: string, 
+  optimizationContext?: {
+    storeId: number;
+    optimizedProducts: Record<string, string[]>;
+    totalOptimizations: number;
+  }
+): Promise<StoreAnalysisResult & { contentHash: string }> {
   try {
     console.log(`Starting analysis for store: ${storeUrl}`);
     
@@ -152,7 +159,12 @@ Please provide realistic scoring based on Shopify best practices and common opti
     const analysisData: StoreAnalysisData = {
       storeContent: cleanContent,
       storeType: 'shopify',
-      storeUrl
+      storeUrl,
+      optimizationContext: optimizationContext ? {
+        optimizedProductsCount: Object.keys(optimizationContext.optimizedProducts).length,
+        totalOptimizations: optimizationContext.totalOptimizations,
+        optimizationTypes: Object.values(optimizationContext.optimizedProducts).flat()
+      } : undefined
     };
 
     // Capture screenshot in parallel with AI analysis
