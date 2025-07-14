@@ -162,6 +162,36 @@ export class SubscriptionService {
       expand: ['latest_invoice.payment_intent'],
     });
 
+    // Log subscription data for debugging
+    console.log('Subscription data:', {
+      current_period_start: subscription.current_period_start,
+      current_period_end: subscription.current_period_end,
+      trial_start: subscription.trial_start,
+      trial_end: subscription.trial_end,
+      status: subscription.status
+    });
+
+    // Validate dates before creating Date objects
+    const currentPeriodStart = subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date();
+    const currentPeriodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date();
+    const trialStartDate = subscription.trial_start ? new Date(subscription.trial_start * 1000) : null;
+    const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+
+    // Validate dates are not invalid
+    if (isNaN(currentPeriodStart.getTime()) || isNaN(currentPeriodEnd.getTime())) {
+      throw new Error('Invalid subscription period dates from Stripe');
+    }
+
+    if (trialStartDate && isNaN(trialStartDate.getTime())) {
+      console.warn('Invalid trial start date, setting to null');
+      trialStartDate = null;
+    }
+
+    if (trialEndDate && isNaN(trialEndDate.getTime())) {
+      console.warn('Invalid trial end date, setting to null');
+      trialEndDate = null;
+    }
+
     // Store subscription in database
     await db.insert(userSubscriptions).values({
       userId,
@@ -169,10 +199,10 @@ export class SubscriptionService {
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: stripeCustomer.id,
       status: subscription.status as any,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      trialStart: subscription.trial_start ? new Date(subscription.trial_start * 1000) : null,
-      trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+      currentPeriodStart,
+      currentPeriodEnd,
+      trialStart: trialStartDate,
+      trialEnd: trialEndDate,
     });
 
     // Update user status
