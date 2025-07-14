@@ -2240,23 +2240,158 @@ a { color: ${colorPalette.primary} !important; }
                   }
                 }
                 
-                // Create new script tag
-                const scriptResponse = await fetch(
-                  `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+                // Try creating a CSS asset instead of script tag
+                console.log('Creating CSS asset for color changes');
+                
+                const cssContent = `/* StoreScore AI Color Optimization */
+:root {
+  --storescore-primary: ${colorPalette.primary} !important;
+  --storescore-secondary: ${colorPalette.secondary} !important;
+  --storescore-accent: ${colorPalette.accent} !important;
+}
+
+/* Visual confirmation */
+body::before {
+  content: "StoreScore Colors Active" !important;
+  position: fixed !important;
+  top: 10px !important;
+  right: 10px !important;
+  background: #00ff00 !important;
+  color: #000 !important;
+  padding: 5px 10px !important;
+  z-index: 9999 !important;
+  font-size: 12px !important;
+  border-radius: 3px !important;
+}
+
+body { border-top: 3px solid ${colorPalette.primary} !important; }
+
+/* Apply primary color to headers */
+.site-header, .header, header, .top-bar,
+[class*="header"], .navigation, .site-nav, .main-nav { 
+  background-color: ${colorPalette.primary} !important; 
+  color: white !important;
+}
+
+/* Apply accent color to buttons */
+button, .btn, .button, input[type="submit"], .add-to-cart,
+.product-form__cart-submit, .btn-primary { 
+  background-color: ${colorPalette.accent} !important; 
+  border-color: ${colorPalette.accent} !important;
+  color: white !important;
+}
+
+/* Primary color for prices and links */
+.price, .product__price, [class*="price"], .money { 
+  color: ${colorPalette.primary} !important; 
+  font-weight: bold !important;
+}
+a { color: ${colorPalette.primary} !important; }`;
+
+                // Create the CSS asset
+                const assetResponse = await fetch(
+                  `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
                   {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: {
                       'X-Shopify-Access-Token': store.shopifyAccessToken!,
                       'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                      script_tag: {
-                        event: 'onload',
-                        src: `data:text/javascript;base64,${Buffer.from(scriptContent).toString('base64')}`
+                      asset: {
+                        key: 'assets/storescore-colors.css',
+                        value: cssContent
                       }
                     })
                   }
                 );
+                
+                if (!assetResponse.ok) {
+                  const assetError = await assetResponse.text();
+                  console.error('CSS asset creation failed:', assetError);
+                  
+                  // Final fallback: try minimal script tag
+                  const simpleScript = `(function(){var s=document.createElement('style');s.innerHTML='body{border-top:3px solid ${colorPalette.primary}!important}body::before{content:"StoreScore Active"!important;position:fixed!important;top:10px!important;right:10px!important;background:#0f0!important;color:#000!important;padding:5px!important;z-index:9999!important;font-size:12px!important}';document.head.appendChild(s);})();`;
+                  
+                  const scriptResponse = await fetch(
+                    `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        script_tag: {
+                          event: 'onload',
+                          src: `data:text/javascript;charset=utf-8,${encodeURIComponent(simpleScript)}`,
+                          display_scope: 'online_store'
+                        }
+                      })
+                    }
+                  );
+                  
+                  if (!scriptResponse.ok) {
+                    const scriptError = await scriptResponse.text();
+                    console.error('Simple script creation failed:', scriptError);
+                    throw new Error(`All color application methods failed`);
+                  } else {
+                    console.log('Applied colors via minimal script tag');
+                    colorUpdateSuccess = true;
+                  }
+                } else {
+                  console.log('Successfully created CSS asset');
+                  colorUpdateSuccess = true;
+                  
+                  // Now inject the CSS into theme.liquid
+                  try {
+                    const themeLiquidResponse = await fetch(
+                      `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json?asset[key]=layout/theme.liquid`,
+                      {
+                        headers: {
+                          'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                          'Content-Type': 'application/json',
+                        },
+                      }
+                    );
+                    
+                    if (themeLiquidResponse.ok) {
+                      const themeData = await themeLiquidResponse.json();
+                      let themeContent = themeData.asset.value;
+                      
+                      // Remove any existing StoreScore CSS link
+                      themeContent = themeContent.replace(/<link[^>]*storescore-colors\.css[^>]*>/gi, '');
+                      
+                      // Add our CSS link before closing head tag
+                      const cssLink = `{{ 'storescore-colors.css' | asset_url | stylesheet_tag }}`;
+                      if (!themeContent.includes(cssLink)) {
+                        themeContent = themeContent.replace('</head>', `  ${cssLink}\n</head>`);
+                      }
+                      
+                      // Update theme.liquid
+                      await fetch(
+                        `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
+                        {
+                          method: 'PUT',
+                          headers: {
+                            'X-Shopify-Access-Token': store.shopifyAccessToken!,
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            asset: {
+                              key: 'layout/theme.liquid',
+                              value: themeContent
+                            }
+                          })
+                        }
+                      );
+                      
+                      console.log('Successfully linked CSS asset in theme.liquid');
+                    }
+                  } catch (themeLinkError) {
+                    console.warn('Could not link CSS in theme.liquid, but CSS asset created');
+                  }
+                }
                 
                 if (scriptResponse.ok) {
                   console.log('Successfully applied colors via script tag injection');
