@@ -2240,11 +2240,21 @@ a:hover {
               console.warn('Could not clean up existing scripts:', cleanupError);
             }
 
+            // Create optimized theme script that fits Shopify's 255 char limit
+            const optimizedThemeScript = `
+(function(){
+var s=document.createElement('style');
+s.id='storescore-theme';
+if(document.getElementById('storescore-theme'))document.getElementById('storescore-theme').remove();
+s.innerHTML='body{border-top:5px solid ${themeDesign.colorPalette?.primary||'#1A73E8'}!important}body::before{content:"✓ StoreScore AI"!important;position:fixed!important;top:10px!important;right:10px!important;background:${themeDesign.colorPalette?.primary||'#1A73E8'}!important;color:#fff!important;padding:4px 8px!important;font-size:10px!important;z-index:99999!important;border-radius:3px!important}header,.site-header{background:${themeDesign.colorPalette?.primary||'#1A73E8'}!important;color:#fff!important}button,.btn{background:${themeDesign.colorPalette?.accent||'#FF6F61'}!important;border:none!important;color:#fff!important}';
+document.head.appendChild(s);
+})();`;
+
             // Create the new theme script tag
             const scriptTagPayload = {
               script_tag: {
                 event: 'onload',
-                src: `data:text/javascript;base64,${Buffer.from(themeScript).toString('base64')}`,
+                src: `data:text/javascript;base64,${Buffer.from(optimizedThemeScript).toString('base64')}`,
                 display_scope: 'online_store'
               }
             };
@@ -2324,6 +2334,88 @@ a:hover {
     } catch (error) {
       console.error("Error applying design changes:", error);
       res.status(500).json({ error: "Failed to apply design changes" });
+    }
+  });
+
+  // ================ SHOPIFY ANALYSIS ROUTES ================
+  
+  // Analyze a specific connected Shopify store
+  app.post("/api/shopify/analyze/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const storeId = parseInt(req.params.storeId);
+      const { user } = req;
+
+      console.log('🔄 Shopify store analysis request:', { storeId, userId: user.id });
+
+      // Check user credits
+      const userCredits = await storage.getUserCredits(user.id);
+      if (userCredits < 1) {
+        return res.status(402).json({ 
+          error: 'Insufficient credits', 
+          creditsRequired: 1,
+          creditsAvailable: userCredits
+        });
+      }
+
+      // Get the user's store
+      const store = await storage.getUserStore(storeId);
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!store.storeUrl) {
+        return res.status(400).json({ error: "Store URL not available" });
+      }
+
+      console.log('📊 Analyzing store:', store.storeUrl);
+
+      // Perform store analysis
+      let result;
+      if (store.storeType === 'shopify') {
+        result = await analyzeShopifyStore(store.storeUrl);
+      } else {
+        return res.status(400).json({ error: "Unsupported store type for this endpoint" });
+      }
+      
+      console.log('✅ Analysis completed for store:', store.storeUrl);
+
+      // Store the analysis result
+      const storedAnalysis = await storage.createStoreAnalysis({
+        userId: user.id,
+        userStoreId: store.id,
+        storeUrl: store.storeUrl,
+        storeType: store.storeType || 'shopify',
+        ebayUsername: null,
+        overallScore: result.overallScore,
+        strengths: result.strengths,
+        warnings: result.warnings,
+        critical: result.critical,
+        designScore: result.designScore,
+        productScore: result.productScore,
+        seoScore: result.seoScore,
+        trustScore: result.trustScore,
+        pricingScore: result.pricingScore,
+        conversionScore: result.conversionScore,
+        analysisData: result,
+        suggestions: result.suggestions,
+        summary: result.summary,
+        storeRecap: result.storeRecap,
+        creditsUsed: 1,
+        contentHash: (result as any).contentHash || null
+      });
+
+      // Deduct credits
+      await storage.deductCredits(user.id, 1, "Shopify store analysis", storedAnalysis.id);
+
+      console.log('💾 Analysis stored with ID:', storedAnalysis.id);
+
+      res.json(storedAnalysis);
+    } catch (error) {
+      console.error("❌ Error analyzing Shopify store:", error);
+      res.status(500).json({ 
+        error: "Failed to analyze store", 
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
