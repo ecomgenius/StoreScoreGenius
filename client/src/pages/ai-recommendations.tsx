@@ -311,36 +311,44 @@ export default function AIRecommendations() {
 
   // Create product-based optimization opportunities for each tab, with filtering
   const productOptimizations = {
-    title: productFilter === 'optimized' ? getFilteredProducts('title') : getFilteredProducts('title').filter(p => 
-      p.title && (
-        p.title.length < 30 || 
-        p.title.length > 70 || 
-        !p.title.includes(p.product_type || '') ||
-        p.title === p.title.toUpperCase()
-      )
-    ),
-    description: productFilter === 'optimized' ? getFilteredProducts('description') : getFilteredProducts('description').filter(p => 
-      (
-        !p.body_html || 
-        p.body_html.length < 100 || 
-        !p.body_html.includes('benefits') ||
-        !p.body_html.includes('features')
-      )
-    ),
-    pricing: productFilter === 'optimized' ? getFilteredProducts('pricing') : getFilteredProducts('pricing').filter(p => 
-      p.variants?.[0]?.price && // Must have a price
-      (
-        parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
-        !p.variants[0].compare_at_price // Missing compare at price for discounts
-      )
-    ),
-    keywords: productFilter === 'optimized' ? getFilteredProducts('keywords') : getFilteredProducts('keywords').filter(p => 
-      (
-        !p.tags || // No tags at all
-        p.tags.length < 5 || // Very few tags
-        !p.tags.includes(',') // Single tag without commas
-      )
-    )
+    title: productFilter === 'optimized' ? getFilteredProducts('title') : 
+           productFilter === 'not-optimized' ? getFilteredProducts('title') :
+           getFilteredProducts('title').filter(p => 
+             p.title && (
+               p.title.length < 30 || 
+               p.title.length > 70 || 
+               !p.title.includes(p.product_type || '') ||
+               p.title === p.title.toUpperCase()
+             )
+           ),
+    description: productFilter === 'optimized' ? getFilteredProducts('description') : 
+                 productFilter === 'not-optimized' ? getFilteredProducts('description') :
+                 getFilteredProducts('description').filter(p => 
+                   (
+                     !p.body_html || 
+                     p.body_html.length < 100 || 
+                     !p.body_html.includes('benefits') ||
+                     !p.body_html.includes('features')
+                   )
+                 ),
+    pricing: productFilter === 'optimized' ? getFilteredProducts('pricing') : 
+             productFilter === 'not-optimized' ? getFilteredProducts('pricing') :
+             getFilteredProducts('pricing').filter(p => 
+               p.variants?.[0]?.price && // Must have a price
+               (
+                 parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
+                 !p.variants[0].compare_at_price // Missing compare at price for discounts
+               )
+             ),
+    keywords: productFilter === 'optimized' ? getFilteredProducts('keywords') : 
+              productFilter === 'not-optimized' ? getFilteredProducts('keywords') :
+              getFilteredProducts('keywords').filter(p => 
+                (
+                  !p.tags || // No tags at all
+                  p.tags.length < 5 || // Very few tags
+                  !p.tags.includes(',') // Single tag without commas
+                )
+              )
   };
 
 
