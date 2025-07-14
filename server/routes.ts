@@ -1854,11 +1854,19 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         }
 
         const themesData = await themesResponse.json();
-        const activeTheme = themesData.themes.find((theme: any) => theme.role === 'main');
+        console.log('Available themes:', themesData.themes.map((t: any) => ({ id: t.id, name: t.name, role: t.role })));
+        
+        // Try to find main theme first, then published as fallback
+        let activeTheme = themesData.themes.find((theme: any) => theme.role === 'main');
+        if (!activeTheme) {
+          activeTheme = themesData.themes.find((theme: any) => theme.role === 'published');
+        }
 
         if (!activeTheme) {
           throw new Error('No active theme found');
         }
+        
+        console.log('Using theme:', { id: activeTheme.id, name: activeTheme.name, role: activeTheme.role });
 
         // Apply changes based on suggestion type
         // Handle different data structures - frontend sends suggestion.suggestions
@@ -2075,6 +2083,9 @@ input[type="submit"], input[type="button"],
   color: white !important;
 }`;
 
+              console.log('Attempting to create CSS asset for theme:', activeTheme.id);
+              console.log('CSS content length:', customCSS.length);
+              
               const cssUpdateResponse = await fetch(
                 `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`,
                 {
@@ -2091,6 +2102,15 @@ input[type="submit"], input[type="button"],
                   })
                 }
               );
+              
+              console.log('CSS Update Response Status:', cssUpdateResponse.status);
+              console.log('CSS Update Response Headers:', Object.fromEntries(cssUpdateResponse.headers.entries()));
+              
+              if (!cssUpdateResponse.ok) {
+                const errorBody = await cssUpdateResponse.text();
+                console.error('CSS Update Error Body:', errorBody);
+                throw new Error(`CSS update failed: ${cssUpdateResponse.status} ${cssUpdateResponse.statusText} - ${errorBody}`);
+              }
 
               if (cssUpdateResponse.ok) {
                 console.log('Successfully injected custom CSS for color optimization');
@@ -2150,8 +2170,10 @@ input[type="submit"], input[type="button"],
                 }
               }
             } catch (cssError) {
-              console.error('CSS injection failed:', cssError.message);
-              throw new Error('Failed to apply color changes - store may need theme permissions');
+              console.error('CSS injection failed:', cssError);
+              console.error('CSS update response status:', cssError.status || 'Unknown');
+              console.error('CSS update response body:', cssError.message || 'No message');
+              throw new Error(`Failed to apply color changes: ${cssError.message || 'Unknown error'}`);
             }
           }
 
