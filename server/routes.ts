@@ -1878,28 +1878,27 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         console.log('Raw themes data:', JSON.stringify(themesData, null, 2));
         console.log('Available themes:', themesData.themes?.map((t: any) => ({ id: t.id, name: t.name, role: t.role })));
         
-        // Use the specific theme ID from the Shopify admin URL
-        const targetThemeId = '153209241820';
-        let activeTheme = themesData.themes?.find((theme: any) => theme.id.toString() === targetThemeId);
-        
-        // Fallback to main/published theme if specific ID not found
+        // Find the active theme (main or published)
+        let activeTheme = themesData.themes?.find((theme: any) => theme.role === 'main');
         if (!activeTheme) {
-          console.log(`Target theme ${targetThemeId} not found, falling back to main/published theme`);
-          activeTheme = themesData.themes?.find((theme: any) => theme.role === 'main');
-          if (!activeTheme) {
-            activeTheme = themesData.themes?.find((theme: any) => theme.role === 'published');
-          }
-          if (!activeTheme) {
-            activeTheme = themesData.themes?.[0]; // Use first theme as last resort
-          }
+          activeTheme = themesData.themes?.find((theme: any) => theme.role === 'published');
+        }
+        if (!activeTheme) {
+          // If no main/published theme, use the first available theme
+          activeTheme = themesData.themes?.[0];
         }
 
         if (!activeTheme) {
           throw new Error('No themes found in store');
         }
         
-        console.log('Selected theme for modification:', { id: activeTheme.id, name: activeTheme.name, role: activeTheme.role });
-        console.log('Using theme ID:', activeTheme.id, 'Type:', typeof activeTheme.id);
+        console.log('Selected theme for modification:', { 
+          id: activeTheme.id, 
+          name: activeTheme.name, 
+          role: activeTheme.role,
+          store: store.shopifyDomain 
+        });
+        console.log('Using dynamic theme ID:', activeTheme.id, 'for store:', store.shopifyDomain);
         
         // Test theme assets endpoint first with the correct theme ID
         console.log('Testing theme assets access with theme ID:', activeTheme.id);
