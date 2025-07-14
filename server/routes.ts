@@ -1918,8 +1918,10 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
                 );
 
                 if (updateResponse.ok) {
-                  console.log('Successfully updated theme settings');
+                  console.log('Successfully updated theme settings with colors:', changes.colorPalette);
                   colorUpdateSuccess = true;
+                } else {
+                  console.warn('Theme settings update failed:', updateResponse.status, updateResponse.statusText);
                 }
               }
             }
@@ -1931,6 +1933,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
           if (!colorUpdateSuccess) {
             try {
               console.log('Falling back to CSS injection method');
+              console.log('Will create CSS with colors:', changes.colorPalette);
               
               const customCSS = `/* StoreScore AI Color Optimization - Applied ${new Date().toLocaleString()} */
 :root {
@@ -1941,24 +1944,41 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
   --storescore-accent: ${changes.colorPalette.accent} !important;
 }
 
+/* DEBUG: Test if CSS is loading */
+body::before {
+  content: "StoreScore CSS Active";
+  position: fixed;
+  top: 0;
+  right: 0;
+  background: #4CAF50;
+  color: white;
+  padding: 5px 10px;
+  font-size: 12px;
+  z-index: 9999;
+}
+
+/* Test border for immediate visibility */
+body {
+  border-top: 5px solid ${changes.colorPalette.primary} !important;
+}
+
 /* Apply optimized colors to common Shopify elements */
 .site-header, .header, .page-header,
-.shopify-section-header,
-[class*="header"] { 
-  background-color: var(--storescore-primary) !important; 
+.shopify-section-header, .top-bar,
+[class*="header"], header, nav, .navigation { 
+  background-color: ${changes.colorPalette.primary} !important; 
+  background: ${changes.colorPalette.primary} !important;
   color: white !important;
 }
 
-.btn, .button, 
-input[type="submit"], 
-input[type="button"],
-.btn-primary,
-[class*="button"],
-.product-form__cart-submit,
-.cart__submit,
-.shopify-payment-button__button { 
-  background-color: var(--storescore-accent) !important; 
-  border-color: var(--storescore-accent) !important;
+button, .btn, .button, 
+input[type="submit"], input[type="button"],
+.btn-primary, [class*="button"], [class*="btn"],
+.product-form__cart-submit, .cart__submit,
+.shopify-payment-button__button, .add-to-cart { 
+  background-color: ${changes.colorPalette.accent} !important; 
+  background: ${changes.colorPalette.accent} !important;
+  border-color: ${changes.colorPalette.accent} !important;
   color: white !important;
 }
 
@@ -1966,11 +1986,12 @@ input[type="button"],
   background-color: var(--storescore-primary) !important; 
 }
 
-.price, .product__price, 
-[class*="price"], .money,
-.product-form__price { 
-  color: var(--storescore-primary) !important; 
-  font-weight: 600 !important;
+.price, .product__price, .product-price,
+[class*="price"], .money, .currency,
+.product-form__price, span[class*="price"] { 
+  color: ${changes.colorPalette.primary} !important; 
+  font-weight: 700 !important;
+  font-size: 1.1em !important;
 }
 
 .product-form__buttons .btn,
@@ -2011,6 +2032,8 @@ input[type="button"],
 
               if (cssUpdateResponse.ok) {
                 console.log('Successfully injected custom CSS for color optimization');
+                console.log('CSS file created: assets/storescore-colors.css');
+                console.log('Colors applied:', changes.colorPalette);
                 colorUpdateSuccess = true;
                 
                 // Also try to add the CSS link to theme.liquid
@@ -2076,6 +2099,7 @@ input[type="button"],
         }
 
         console.log(`Successfully applied design changes to Shopify store: ${store.shopifyDomain}`);
+        console.log('Applied color palette:', JSON.stringify(changes.colorPalette, null, 2));
       } catch (shopifyError) {
         console.error('Shopify API error:', shopifyError);
         
