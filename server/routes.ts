@@ -32,9 +32,15 @@ import {
 import { analyzeStoreWithAI } from "./services/openai";
 import { subscriptionService } from "./services/subscriptionService";
 import Stripe from "stripe";
+import OpenAI from "openai";
 
 // Initialize Stripe if key is available
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+// Initialize OpenAI client
+const openaiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -1860,24 +1866,49 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         if (changes.colorPalette) {
           colorPalette = changes.colorPalette;
         } else if (changes.recommended && typeof changes.recommended === 'string') {
-          // Try to parse colors from the recommended text
+          // Generate actual colors using AI since recommendation is just text
+          console.log('Generating actual colors for recommendation:', changes.recommended);
+          
           try {
-            const recommendedText = changes.recommended;
-            // Extract hex colors from text using regex
-            const hexColorRegex = /#[0-9A-Fa-f]{6}/g;
-            const extractedColors = recommendedText.match(hexColorRegex) || [];
+            const colorGenerationPrompt = `Based on this design recommendation: "${changes.recommended}"
             
-            if (extractedColors.length >= 4) {
-              colorPalette = {
-                primary: extractedColors[0],
-                secondary: extractedColors[1],
-                accent: extractedColors[2],
-                background: extractedColors[3],
-                text: extractedColors[4] || '#333333'
-              };
+            Generate a specific color palette with actual hex colors. Return ONLY a JSON object with this exact structure:
+            {
+              "primary": "#hexcolor",
+              "secondary": "#hexcolor", 
+              "accent": "#hexcolor",
+              "background": "#hexcolor",
+              "text": "#hexcolor"
+            }
+            
+            Make the colors:
+            - Professional and modern
+            - High contrast for readability
+            - Suitable for e-commerce
+            - Cohesive as a palette`;
+
+            const aiResponse = await openaiClient.chat.completions.create({
+              model: "gpt-4o",
+              messages: [{ role: "user", content: colorGenerationPrompt }],
+              response_format: { type: "json_object" },
+              max_tokens: 200,
+            });
+
+            const generatedColors = JSON.parse(aiResponse.choices[0].message.content || '{}');
+            if (generatedColors.primary && generatedColors.secondary) {
+              colorPalette = generatedColors;
+              console.log('Generated color palette from AI:', colorPalette);
             }
           } catch (e) {
-            console.warn('Could not parse colors from recommended text');
+            console.warn('Could not generate colors from AI, using fallback colors');
+            // Fallback to a professional color scheme
+            colorPalette = {
+              primary: '#2563eb',
+              secondary: '#64748b', 
+              accent: '#10b981',
+              background: '#ffffff',
+              text: '#1f2937'
+            };
           }
         }
         
