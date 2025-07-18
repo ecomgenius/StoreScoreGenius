@@ -67,8 +67,13 @@ export default function AIRecommendations() {
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      // Redirect to Shopify OAuth page (same way as original working implementation)
-      window.location.href = data.authUrl;
+      console.log('OAuth URL received:', data.authUrl);
+      console.log('Attempting redirect in same window...');
+      
+      // Use the exact same approach as working user-stores.tsx
+      setTimeout(() => {
+        window.location.href = data.authUrl;
+      }, 100);
     },
     onError: (error: any) => {
       toast({
@@ -535,13 +540,18 @@ export default function AIRecommendations() {
                   Your Shopify store connection has expired. Please reconnect to access your products and continue optimizations.
                 </p>
                 <Button
-                  onClick={() => connectShopifyMutation.mutate({ 
-                    shopDomain: store?.shopifyDomain || '', 
-                    userStoreId: store?.id 
-                  })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    connectShopifyMutation.mutate({ 
+                      shopDomain: store?.shopifyDomain || '', 
+                      userStoreId: store?.id 
+                    });
+                  }}
                   disabled={connectShopifyMutation.isPending}
                   className="mt-3"
                   size="sm"
+                  type="button"
                 >
                   {connectShopifyMutation.isPending ? (
                     <>
