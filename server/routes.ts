@@ -2255,6 +2255,74 @@ Provide actionable, specific recommendations that can be implemented.`;
     }
   });
 
+  // Calculate time savings for optimization
+  app.post("/api/calculate-time-savings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { optimizationType, productData, bulkCount = 1 } = req.body;
+      
+      if (!optimizationType) {
+        return res.status(400).json({ error: "Optimization type is required" });
+      }
+
+      // Use OpenAI to calculate realistic time savings
+      const openai = await import('openai');
+      const openaiClient = new openai.default({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+
+      const timeSavingsPrompt = `You are an e-commerce efficiency expert. Calculate the realistic manual time savings for the following optimization task.
+
+Optimization Type: ${optimizationType}
+Number of Products: ${bulkCount}
+Product Context: ${productData ? JSON.stringify(productData).slice(0, 500) : 'Standard e-commerce products'}
+
+For ${optimizationType} optimization, consider:
+- Research time (competitor analysis, keyword research, market analysis)
+- Writing/content creation time
+- Testing and iteration
+- Quality review and approval process
+- Implementation time
+
+Provide ONLY a JSON response with this exact format:
+{
+  "timePerProduct": "X minutes",
+  "totalTimeSaved": "X hours Y minutes",
+  "breakdown": {
+    "research": "X minutes",
+    "creation": "X minutes", 
+    "review": "X minutes",
+    "implementation": "X minutes"
+  },
+  "efficiency": "Saves XX% of manual work"
+}
+
+Base your calculations on realistic e-commerce workflows and industry standards.`;
+
+      const completion = await openaiClient.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert e-commerce consultant specializing in workflow optimization and time management. Provide accurate time savings calculations based on real industry data."
+          },
+          {
+            role: "user",
+            content: timeSavingsPrompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3
+      });
+
+      const timeSavings = JSON.parse(completion.choices[0].message.content || '{}');
+      
+      res.json(timeSavings);
+    } catch (error) {
+      console.error("Error calculating time savings:", error);
+      res.status(500).json({ error: "Failed to calculate time savings" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

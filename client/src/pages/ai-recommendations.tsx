@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import DashboardLayout from '@/components/DashboardLayout';
+import { TimeSavingsCard } from '@/components/TimeSavingsCard';
 
 interface AIRecommendation {
   id: string;
@@ -518,6 +519,16 @@ export default function AIRecommendations() {
                 <p className="text-xs text-muted-foreground mb-3">
                   {products.length} products need optimization
                 </p>
+                {products.length > 0 && (
+                  <div className="mb-3">
+                    <TimeSavingsCard
+                      optimizationType={type}
+                      productCount={products.length}
+                      productData={products[0]}
+                      className="text-xs"
+                    />
+                  </div>
+                )}
                 <Button
                   size="sm"
                   className="w-full"
@@ -612,6 +623,15 @@ export default function AIRecommendations() {
                         Optimize All ({productOptimizations[type].length} credits)
                       </Button>
                     </div>
+                    
+                    {/* Time Savings Card */}
+                    <div className="mt-4">
+                      <TimeSavingsCard
+                        optimizationType={type}
+                        productCount={productOptimizations[type].length}
+                        productData={productOptimizations[type][0]}
+                      />
+                    </div>
                   </div>
                   
                   <div className="space-y-4">
@@ -679,6 +699,16 @@ export default function AIRecommendations() {
                                     {type === 'description' && 'Description could be more detailed and compelling'}
                                     {type === 'pricing' && 'Pricing strategy could be optimized for conversions'}
                                     {type === 'keywords' && 'Tags and keywords need improvement for better categorization'}
+                                  </div>
+                                  
+                                  {/* Time Savings Preview */}
+                                  <div className="mb-3">
+                                    <TimeSavingsCard
+                                      optimizationType={type}
+                                      productCount={1}
+                                      productData={product}
+                                      className="text-xs"
+                                    />
                                   </div>
                                 </div>
                                 
