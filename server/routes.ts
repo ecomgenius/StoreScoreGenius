@@ -1626,16 +1626,11 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       let userId: number;
       let userStoreId: number | null = null;
 
-      if (stateParts[0] === 'manual_reconnect') {
-        // Handle manual reconnection from AI recommendations page
-        userId = parseInt(stateParts[2]);
+      // Handle normal OAuth flow (server-generated state)
+      // Format: randomHash:userId or randomHash:userId:userStoreId
+      userId = parseInt(stateParts[1]);
+      if (stateParts[2]) {
         userStoreId = parseInt(stateParts[2]);
-      } else {
-        // Handle normal OAuth flow
-        userId = parseInt(stateParts[1]);
-        if (stateParts[2]) {
-          userStoreId = parseInt(stateParts[2]);
-        }
       }
 
       if (!userId || isNaN(userId)) {

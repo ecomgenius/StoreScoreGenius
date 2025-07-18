@@ -65,25 +65,17 @@ export default function AIRecommendations() {
   // Track manual reconnection state
   const [isReconnecting, setIsReconnecting] = useState(false);
 
-  // Handle reconnection with synchronous redirect to avoid popup blocking
+  // Handle reconnection using EXACT SAME server flow as working connection
   const handleReconnectStore = () => {
     if (!store?.shopifyDomain || !store?.id) return;
     
-    setIsReconnecting(true);
+    console.log('🔄 Reconnecting store using server OAuth flow:', store.shopifyDomain);
     
-    // Create the OAuth URL immediately in the click handler (synchronous)
-    const authUrl = `https://${store.shopifyDomain}/admin/oauth/authorize?` + new URLSearchParams({
-      client_id: '7f12eed32ba81113c670c4c40b00bddb', // Your Shopify API key
-      scope: 'read_products,write_products,read_themes,write_themes,write_script_tags,read_content,write_content,read_customers,write_customers,read_orders,read_inventory,write_inventory,read_locations,read_price_rules,write_price_rules,read_discounts,write_discounts,read_marketing_events,write_marketing_events,read_product_listings,write_product_listings,read_resource_feedbacks,write_resource_feedbacks,read_shipping,write_shipping,read_translations,write_translations',
-      redirect_uri: `${window.location.origin}/api/shopify/callback`,
-      state: `manual_reconnect:${Date.now()}:${store.id}`,
-      'grant_options[]': 'per-user'
-    }).toString();
-    
-    console.log('🚀 Direct OAuth URL redirect:', authUrl);
-    
-    // Immediate redirect in same window (synchronous with user click)
-    window.location.href = authUrl;
+    // Use the EXACT SAME mutation as the working "Connect to Shopify" button
+    connectShopifyMutation.mutate({ 
+      shopDomain: store.shopifyDomain,
+      userStoreId: store.id 
+    });
   };
 
   // Keep the mutation for other potential uses
@@ -559,11 +551,11 @@ export default function AIRecommendations() {
                 </p>
                 <Button
                   onClick={handleReconnectStore}
-                  disabled={isReconnecting}
+                  disabled={connectShopifyMutation.isPending}
                   className="mt-3"
                   size="sm"
                 >
-                  {isReconnecting ? (
+                  {connectShopifyMutation.isPending ? (
                     <>
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
                       Connecting...
