@@ -62,12 +62,62 @@ export default function AIRecommendations() {
     product: any;
   } | null>(null);
 
-  // Connect to Shopify mutation - EXACT COPY from working user-stores.tsx
+  // Track manual reconnection state
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
+  // Handle reconnection manually to avoid browser popup blocking
+  const handleReconnectStore = async () => {
+    if (!store?.shopifyDomain || !store?.id) return;
+    
+    setIsReconnecting(true);
+    
+    try {
+      console.log('🔄 Starting reconnection for store:', store.shopifyDomain);
+      
+      // Make the API call directly
+      const response = await apiRequest('POST', '/api/shopify/connect', { 
+        shopDomain: store.shopifyDomain,
+        userStoreId: store.id 
+      });
+      
+      console.log('✅ OAuth URL received:', response.authUrl);
+      console.log('🌍 Current location:', window.location.href);
+      console.log('🎯 Target URL:', response.authUrl);
+      
+      // Check if URL is valid
+      const targetUrl = new URL(response.authUrl);
+      console.log('🔍 URL parsed successfully:', targetUrl.toString());
+      
+      // Check browser location capabilities
+      console.log('🔧 Browser location methods available:', {
+        href: typeof window.location.href,
+        replace: typeof window.location.replace,
+        assign: typeof window.location.assign
+      });
+      
+      // Try different redirect methods to avoid popup blocking
+      console.log('🚀 Attempting immediate redirect...');
+      
+      // Method 1: window.location.href (most compatible)
+      console.log('Using window.location.href assignment...');
+      window.location.href = response.authUrl;
+      
+    } catch (error: any) {
+      console.error('❌ Reconnection failed:', error);
+      setIsReconnecting(false);
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to initiate Shopify connection.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Keep the mutation for other potential uses
   const connectShopifyMutation = useMutation({
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      // Direct redirect to Shopify OAuth page - EXACT SAME as user-stores.tsx
       window.location.href = data.authUrl;
     },
     onError: (error: any) => {
@@ -535,20 +585,12 @@ export default function AIRecommendations() {
                   Your Shopify store connection has expired. Please reconnect to access your products and continue optimizations.
                 </p>
                 <Button
-                  onClick={() => {
-                    if (store?.shopifyDomain && store?.id) {
-                      // Use exact same pattern as working user-stores.tsx handleReconnectStore
-                      connectShopifyMutation.mutate({ 
-                        shopDomain: store.shopifyDomain,
-                        userStoreId: store.id 
-                      });
-                    }
-                  }}
-                  disabled={connectShopifyMutation.isPending}
+                  onClick={handleReconnectStore}
+                  disabled={isReconnecting}
                   className="mt-3"
                   size="sm"
                 >
-                  {connectShopifyMutation.isPending ? (
+                  {isReconnecting ? (
                     <>
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
                       Connecting...
