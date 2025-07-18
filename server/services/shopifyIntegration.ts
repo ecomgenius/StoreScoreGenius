@@ -157,7 +157,7 @@ export async function exchangeCodeForToken(
  * Get shop information using access token
  */
 export async function getShopInfo(shopDomain: string, accessToken: string): Promise<ShopifyStore> {
-  const shopUrl = `https://${shopDomain}/admin/api/2023-10/shop.json`;
+  const shopUrl = `https://${shopDomain}/admin/api/2024-10/shop.json`;
   
   const response = await fetch(shopUrl, {
     headers: {
@@ -178,7 +178,7 @@ export async function getShopInfo(shopDomain: string, accessToken: string): Prom
  * Get store products for analysis
  */
 export async function getStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
-  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
+  const productsUrl = `https://${shopDomain}/admin/api/2024-10/products.json?limit=${limit}`;
   
   const response = await fetch(productsUrl, {
     headers: {
@@ -263,7 +263,7 @@ This is a comprehensive Shopify store that should be analyzed for:
  * Fetch store products for AI recommendations
  */
 export async function fetchStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
-  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
+  const productsUrl = `https://${shopDomain}/admin/api/2024-10/products.json?limit=${limit}`;
   
   console.log(`Fetching products from: ${productsUrl}`);
   console.log(`Using access token length: ${accessToken.length}`);
@@ -290,7 +290,7 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
  * Update a product via Shopify API
  */
 export async function updateProduct(shopDomain: string, accessToken: string, productId: string, updateData: any) {
-  const productUrl = `https://${shopDomain}/admin/api/2023-10/products/${productId}.json`;
+  const productUrl = `https://${shopDomain}/admin/api/2024-10/products/${productId}.json`;
   
   const response = await fetch(productUrl, {
     method: 'PUT',

@@ -576,7 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // First, fetch the current product data
-      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
+      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/products/${productId}.json`, {
         headers: {
           'X-Shopify-Access-Token': store.shopifyAccessToken,
           'Content-Type': 'application/json',
@@ -863,7 +863,7 @@ Generate ONLY the comma-separated list of optimized keywords, nothing else:`;
       }
 
       // Fetch the current product data
-      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
+      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/products/${productId}.json`, {
         headers: {
           'X-Shopify-Access-Token': store.shopifyAccessToken,
           'Content-Type': 'application/json',
@@ -1018,7 +1018,7 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
       for (const productId of productIds) {
         try {
           // Fetch current product data for AI optimization
-          const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
+          const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/products/${productId}.json`, {
             headers: {
               'X-Shopify-Access-Token': store.shopifyAccessToken,
               'Content-Type': 'application/json',
@@ -1996,8 +1996,8 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         }
         
         // Get active theme first with detailed debugging
-        console.log('Fetching themes from:', `https://${store.shopifyDomain}/admin/api/2023-10/themes.json`);
-        const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
+        console.log('Fetching themes from:', `https://${store.shopifyDomain}/admin/api/2024-10/themes.json`);
+        const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/themes.json`, {
           headers: {
             'X-Shopify-Access-Token': store.shopifyAccessToken!,
             'Content-Type': 'application/json',
@@ -2052,7 +2052,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         
         // Test theme assets endpoint first with the correct theme ID
         console.log('Testing theme assets access with theme ID:', activeTheme.id);
-        const testAssetsResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`, {
+        const testAssetsResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/themes/${activeTheme.id}/assets.json`, {
           headers: {
             'X-Shopify-Access-Token': store.shopifyAccessToken!,
             'Content-Type': 'application/json',
@@ -2060,7 +2060,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         });
         
         console.log('Assets endpoint status:', testAssetsResponse.status);
-        console.log('Assets URL:', `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`);
+        console.log('Assets URL:', `https://${store.shopifyDomain}/admin/api/2024-10/themes/${activeTheme.id}/assets.json`);
         
         if (!testAssetsResponse.ok) {
           const assetsError = await testAssetsResponse.text();
@@ -2357,7 +2357,7 @@ a:hover {
             // First, clean up any existing StoreScore scripts
             try {
               const existingScriptsResponse = await fetch(
-                `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+                `https://${store.shopifyDomain}/admin/api/2024-10/script_tags.json`,
                 {
                   headers: {
                     'X-Shopify-Access-Token': store.shopifyAccessToken!,
@@ -2375,7 +2375,7 @@ a:hover {
                       script.src?.includes('data:text/javascript')) {
                     console.log('Removing existing StoreScore script:', script.id);
                     await fetch(
-                      `https://${store.shopifyDomain}/admin/api/2023-10/script_tags/${script.id}.json`,
+                      `https://${store.shopifyDomain}/admin/api/2024-10/script_tags/${script.id}.json`,
                       {
                         method: 'DELETE',
                         headers: {
@@ -2411,7 +2411,7 @@ document.head.appendChild(s);
             
             console.log('Creating AI theme script tag...');
             const scriptResponse = await fetch(
-              `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
+              `https://${store.shopifyDomain}/admin/api/2024-10/script_tags.json`,
               {
                 method: 'POST',
                 headers: {
