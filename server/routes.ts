@@ -1543,6 +1543,26 @@ Return ONLY a JSON object with this exact format:
       // For development stores, check if they're properly configured
       console.log('Debug - Attempting OAuth for development store:', domain);
       
+      // Test if store is accessible and not password protected
+      try {
+        const testResponse = await fetch(`https://${domain}`, { 
+          method: 'HEAD',
+          redirect: 'manual'
+        });
+        
+        if (testResponse.status === 302) {
+          const location = testResponse.headers.get('location');
+          if (location?.includes('/password')) {
+            return res.status(400).json({ 
+              error: "Store is password protected",
+              details: "Please remove the password protection from your Shopify store before connecting. Go to Online Store > Preferences > Password protection and disable it temporarily."
+            });
+          }
+        }
+      } catch (error) {
+        console.log('Store accessibility check failed, continuing with OAuth:', error);
+      }
+      
       // Generate OAuth URL for SaaS application
       const { authUrl, state } = await generateShopifyAuthUrl(domain, req.user!.id);
       
