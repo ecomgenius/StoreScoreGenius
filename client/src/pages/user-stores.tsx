@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,30 @@ export default function UserStores() {
   });
 
   const queryClient = useQueryClient();
+
+  // Listen for popup messages from Shopify OAuth callback
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === 'shopify-connected') {
+        queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
+        setIsShopifyDialogOpen(false);
+        setShopifyDomain('');
+        toast({
+          title: "Store Connected",
+          description: "Your Shopify store has been successfully connected!",
+        });
+      } else if (event.data === 'shopify-error') {
+        toast({
+          title: "Connection Failed",
+          description: "There was an error connecting your Shopify store.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [queryClient]);
 
   const { data: stores = [], isLoading } = useQuery({
     queryKey: ['/api/stores'],
@@ -122,8 +146,19 @@ export default function UserStores() {
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      // Redirect to Shopify OAuth page
-      window.location.href = data.authUrl;
+      // Open OAuth in a popup window to avoid iframe restrictions and connection refused errors
+      const popup = window.open(
+        data.authUrl,
+        'shopify-oauth',
+        'width=600,height=700,scrollbars=yes,resizable=yes'
+      );
+      
+      // Close popup if it doesn't close automatically after 5 minutes
+      setTimeout(() => {
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+      }, 300000);
     },
     onError: (error: any) => {
       toast({

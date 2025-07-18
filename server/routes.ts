@@ -1881,11 +1881,52 @@ Provide actionable, specific recommendations that can be implemented.`;
         });
       }
       
-      // Redirect to dashboard with success message
-      res.redirect(`/dashboard/stores?connected=true&shop=${encodeURIComponent(shopInfo.name)}`);
+      // Check if this is from a popup window (has opener)
+      // If so, close the popup; otherwise redirect normally
+      res.send(`
+        <html>
+          <head><title>Connection Successful</title></head>
+          <body>
+            <script>
+              if (window.opener) {
+                // Close popup and refresh parent window
+                window.opener.postMessage('shopify-connected', '*');
+                window.close();
+              } else {
+                // Regular redirect for non-popup flows
+                window.location.href = '/dashboard/stores?connected=true&shop=${encodeURIComponent(shopInfo.name)}';
+              }
+            </script>
+            <div style="text-align: center; font-family: Arial, sans-serif; margin-top: 50px;">
+              <h2>Successfully Connected!</h2>
+              <p>Your Shopify store "${shopInfo.name}" has been connected.</p>
+              <p><em>This window will close automatically...</em></p>
+            </div>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error("Error in Shopify OAuth callback:", error);
-      res.redirect('/dashboard/stores?error=connection_failed');
+      res.send(`
+        <html>
+          <head><title>Connection Failed</title></head>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage('shopify-error', '*');
+                window.close();
+              } else {
+                window.location.href = '/dashboard/stores?error=connection_failed';
+              }
+            </script>
+            <div style="text-align: center; font-family: Arial, sans-serif; margin-top: 50px;">
+              <h2>Connection Failed</h2>
+              <p>There was an error connecting your Shopify store.</p>
+              <p><em>This window will close automatically...</em></p>
+            </div>
+          </body>
+        </html>
+      `);
     }
   });
   
