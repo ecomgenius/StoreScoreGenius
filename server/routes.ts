@@ -1597,6 +1597,143 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       });
     }
   });
+
+  // Shopify OAuth callback handler
+  app.get("/api/shopify/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, state, shop, hmac, timestamp } = req.query;
+      
+      console.log('Debug - Shopify callback received:', {
+        shop,
+        code: code ? 'present' : 'missing',
+        state: state ? 'present' : 'missing',
+        hmac: hmac ? 'present' : 'missing'
+      });
+
+      if (!code || !state || !shop) {
+        console.error('Missing required OAuth parameters');
+        return res.status(400).send(`
+          <html><body>
+            <h1>OAuth Error</h1>
+            <p>Missing required parameters. Please try connecting again.</p>
+            <script>window.close();</script>
+          </body></html>
+        `);
+      }
+
+      // Parse state to get user ID and optional store ID
+      const stateParts = (state as string).split(':');
+      let userId: number;
+      let userStoreId: number | null = null;
+
+      if (stateParts[0] === 'manual_reconnect') {
+        // Handle manual reconnection from AI recommendations page
+        userId = parseInt(stateParts[2]);
+        userStoreId = parseInt(stateParts[2]);
+      } else {
+        // Handle normal OAuth flow
+        userId = parseInt(stateParts[1]);
+        if (stateParts[2]) {
+          userStoreId = parseInt(stateParts[2]);
+        }
+      }
+
+      if (!userId || isNaN(userId)) {
+        console.error('Invalid user ID in state');
+        return res.status(400).send(`
+          <html><body>
+            <h1>OAuth Error</h1>
+            <p>Invalid state parameter. Please try connecting again.</p>
+            <script>window.close();</script>
+          </body></html>
+        `);
+      }
+
+      // Exchange code for access token
+      const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: process.env.SHOPIFY_API_KEY,
+          client_secret: process.env.SHOPIFY_API_SECRET,
+          code,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        console.error('Failed to exchange code for token:', tokenResponse.statusText);
+        return res.status(500).send(`
+          <html><body>
+            <h1>Connection Failed</h1>
+            <p>Failed to complete Shopify connection. Please try again.</p>
+            <script>window.close();</script>
+          </body></html>
+        `);
+      }
+
+      const tokenData = await tokenResponse.json();
+      const { access_token, scope } = tokenData;
+
+      console.log('Debug - Token exchange successful, scope:', scope);
+
+      // Get shop info
+      const shopInfo = await getShopInfo(shop as string, access_token);
+      
+      if (userStoreId) {
+        // Update existing store
+        await storage.updateUserStore(userStoreId, {
+          shopifyAccessToken: access_token,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date(),
+          shopifyDomain: shop as string
+        });
+        console.log('Debug - Updated existing store:', userStoreId);
+      } else {
+        // Create new store
+        await storage.createUserStore({
+          userId,
+          name: shopInfo.name,
+          storeUrl: `https://${shop}`,
+          storeType: 'shopify',
+          description: shopInfo.description || `Shopify store: ${shopInfo.name}`,
+          shopifyDomain: shop as string,
+          shopifyAccessToken: access_token,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date()
+        });
+        console.log('Debug - Created new store for shop:', shop);
+      }
+
+      // Redirect to dashboard with success message
+      res.send(`
+        <html><body>
+          <h1>Successfully Connected!</h1>
+          <p>Your Shopify store has been connected. Redirecting to dashboard...</p>
+          <script>
+            setTimeout(() => {
+              window.location.href = '/dashboard/stores';
+            }, 2000);
+          </script>
+        </body></html>
+      `);
+
+    } catch (error) {
+      console.error('Error in Shopify OAuth callback:', error);
+      res.status(500).send(`
+        <html><body>
+          <h1>Connection Error</h1>
+          <p>An error occurred while connecting your store. Please try again.</p>
+          <script>window.close();</script>
+        </body></html>
+      `);
+    }
+  });
   
   // Get design recommendations for a store
   app.get("/api/design-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
