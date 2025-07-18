@@ -39,20 +39,12 @@ export function TimeSavingsCard({
         setLoading(true);
         setError(null);
 
-        const response = await apiRequest('/api/calculate-time-savings', {
-          method: 'POST',
-          body: JSON.stringify({
-            optimizationType,
-            productData,
-            bulkCount: productCount
-          })
+        const data = await apiRequest('POST', '/api/calculate-time-savings', {
+          optimizationType,
+          productData,
+          bulkCount: productCount
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to calculate time savings');
-        }
-
-        const data = await response.json();
         setTimeSavings(data);
       } catch (err) {
         console.error('Error calculating time savings:', err);
