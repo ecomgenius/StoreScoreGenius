@@ -1,10 +1,24 @@
-# Shopify OAuth Troubleshooting Guide
+# Shopify App Connection Guide
 
-## Current Issue Analysis
+## Development vs Public Apps
 
-Based on the error pattern where Shopify returns `hmac`, `host`, `shop`, and `timestamp` but **no `code` or `state`**, this indicates that the OAuth authorization step failed before Shopify could generate an authorization code.
+There are two main approaches for connecting Shopify stores:
 
-### Error Pattern Detected:
+### Option 1: Development Apps (Manual Installation)
+- App stays in "Development" mode in Partners Dashboard
+- Must be manually installed to each development store
+- Uses access tokens instead of OAuth flow
+- **Recommended for testing and development**
+
+### Option 2: Public Apps (OAuth Flow)  
+- App must be set to "Public distribution" in Partners Dashboard
+- Uses standard OAuth authorization flow
+- Works automatically with any Shopify store
+- **Required for production/published apps**
+
+## Current Error Analysis
+
+When you see this error pattern:
 ```
 shop: testscorestore.myshopify.com
 code: missing ❌
@@ -14,55 +28,53 @@ timestamp: present ✅
 host: present ✅
 ```
 
-## Root Cause
+This indicates that OAuth authorization failed, which happens when:
+1. **App is in Development mode** (not Public)
+2. **User denied the OAuth request**
+3. **Redirect URI mismatch**
+4. **App configuration issues**
 
-This specific error pattern occurs when:
+## Solution Options
 
-1. **App is not set to Public Distribution** - App is still in development mode
-2. **Redirect URI Mismatch** - The configured redirect URI doesn't match the actual callback URL
-3. **User Denied OAuth Request** - User clicked "Cancel" during authorization
-4. **App Configuration Issues** - Missing or incorrect app settings
+### Option A: Keep Development Mode (Recommended)
 
-## Solution Steps
+**Use Manual Token Connection:**
 
-### Step 1: Fix App Distribution Settings
+1. **In Shopify Partners Dashboard:**
+   - Go to Apps → Your App Name
+   - Click "Test on development store"
+   - Select your development store (testscorestore)
+   - Click "Install app"
 
-In Shopify Partners Dashboard:
+2. **In Your StoreScore App:**
+   - Go to Store Management
+   - Click "Development App Token" button
+   - Fill in:
+     - Store Name: testscorestore
+     - Shop Domain: testscorestore.myshopify.com
+     - Access Token: (from Partners Dashboard installation)
 
-1. Go to **Apps** → **Your App Name**
-2. Click **Distribution** in the left sidebar
-3. **Enable "Public distribution"** 
-   - This is CRITICAL - the app must be public for OAuth to work
-   - Even for development stores, the app needs public distribution
-4. Click **Save**
+3. **Get Access Token:**
+   - After installing in Partners Dashboard, you'll get an access token
+   - Copy this token to the app connection form
 
-### Step 2: Configure App URLs
+### Option B: Switch to Public Mode (Advanced)
 
-In Shopify Partners Dashboard:
+**For OAuth Flow:**
 
-1. Go to **Apps** → **Your App Name** → **App setup**
-2. Under **URLs** section, set:
-   - **App URL**: `https://3bd3348e-17b1-48bd-835c-9952a869ec8e-00-13wub5ckt6d04.janeway.replit.dev`
-   - **Allowed redirection URL(s)**: `https://3bd3348e-17b1-48bd-835c-9952a869ec8e-00-13wub5ckt6d04.janeway.replit.dev/api/shopify/callback`
-3. Click **Save**
+1. **In Shopify Partners Dashboard:**
+   - Go to Apps → Your App Name → Distribution
+   - Enable "Public distribution"
+   - Go to App setup → URLs
+   - Set redirect URI: `https://3bd3348e-17b1-48bd-835c-9952a869ec8e-00-13wub5ckt6d04.janeway.replit.dev/api/shopify/callback`
 
-### Step 3: Verify App Permissions
+2. **Configure App Permissions:**
+   - Enable all required scopes in App setup
+   - Save changes
 
-In Shopify Partners Dashboard:
-
-1. Go to **Apps** → **Your App Name** → **App setup**
-2. Under **App permissions**, ensure these are enabled:
-   - Products (read_products, write_products)
-   - Themes (read_themes, write_themes) 
-   - Script tags (write_script_tags)
-   - Content (read_content, write_content)
-   - All other required scopes
-
-### Step 4: Test OAuth Flow
-
-1. Try the OAuth connection again
-2. Make sure to **click "Install app"** when prompted
-3. **Do not click "Cancel"** during the authorization screen
+3. **Test OAuth:**
+   - Use "Connect Shopify (OAuth)" button
+   - Click "Install app" when prompted
 
 ## Expected Behavior After Fix
 

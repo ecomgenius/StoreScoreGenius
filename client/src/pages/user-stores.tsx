@@ -15,7 +15,13 @@ import { apiRequest } from '@/lib/queryClient';
 export default function UserStores() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isShopifyDialogOpen, setIsShopifyDialogOpen] = useState(false);
+  const [isManualTokenDialogOpen, setIsManualTokenDialogOpen] = useState(false);
   const [shopifyDomain, setShopifyDomain] = useState('');
+  const [manualTokenData, setManualTokenData] = useState({
+    shopDomain: '',
+    accessToken: '',
+    storeName: ''
+  });
 
   const [newStore, setNewStore] = useState({
     name: '',
@@ -134,6 +140,27 @@ export default function UserStores() {
     },
   });
 
+  const connectManualTokenMutation = useMutation({
+    mutationFn: (data: { shopDomain: string; accessToken: string; storeName: string }) => 
+      apiRequest('POST', '/api/shopify/connect-token', data),
+    onSuccess: (data: { success: boolean; shopName: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
+      setIsManualTokenDialogOpen(false);
+      setManualTokenData({ shopDomain: '', accessToken: '', storeName: '' });
+      toast({
+        title: "Store Connected",
+        description: `${data.shopName} has been successfully connected via access token.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to connect store with access token.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddStore = () => {
     if (!newStore.name || !newStore.storeUrl) {
       toast({
@@ -177,6 +204,18 @@ export default function UserStores() {
       return;
     }
     connectShopifyMutation.mutate({ shopDomain: shopifyDomain });
+  };
+
+  const handleManualTokenConnect = () => {
+    if (!manualTokenData.shopDomain || !manualTokenData.accessToken || !manualTokenData.storeName) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    connectManualTokenMutation.mutate(manualTokenData);
   };
 
   const getStoreTypeColor = (storeType: string) => {
@@ -252,7 +291,11 @@ export default function UserStores() {
             <div className="flex space-x-3">
               <Button onClick={() => setIsShopifyDialogOpen(true)}>
                 <Store className="mr-2 h-4 w-4" />
-                Connect Shopify
+                Connect Shopify (OAuth)
+              </Button>
+              <Button variant="outline" onClick={() => setIsManualTokenDialogOpen(true)}>
+                <LinkIcon className="mr-2 h-4 w-4" />
+                Development App Token
               </Button>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -528,6 +571,78 @@ export default function UserStores() {
                   disabled={createStoreMutation.isPending}
                 >
                   {createStoreMutation.isPending ? 'Adding...' : 'Add Store'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manual Token Connection Dialog */}
+        <Dialog open={isManualTokenDialogOpen} onOpenChange={setIsManualTokenDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Connect Development App with Access Token</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">For Development Apps Only</h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  If your Shopify app is in development mode, you need to manually install it from Partners Dashboard first:
+                </p>
+                <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
+                  <li>Go to Shopify Partners Dashboard → Apps → Your App</li>
+                  <li>Click "Test on development store"</li>
+                  <li>Select your development store and install the app</li>
+                  <li>Copy the access token from the installation</li>
+                </ol>
+              </div>
+              
+              <div>
+                <Label htmlFor="tokenStoreName">Store Name</Label>
+                <Input
+                  id="tokenStoreName"
+                  value={manualTokenData.storeName}
+                  onChange={(e) => setManualTokenData({ ...manualTokenData, storeName: e.target.value })}
+                  placeholder="My Test Store"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="tokenShopDomain">Shop Domain</Label>
+                <Input
+                  id="tokenShopDomain"
+                  value={manualTokenData.shopDomain}
+                  onChange={(e) => setManualTokenData({ ...manualTokenData, shopDomain: e.target.value })}
+                  placeholder="teststore.myshopify.com"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="accessToken">Access Token</Label>
+                <Input
+                  id="accessToken"
+                  type="password"
+                  value={manualTokenData.accessToken}
+                  onChange={(e) => setManualTokenData({ ...manualTokenData, accessToken: e.target.value })}
+                  placeholder="shpat_..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Get this from your Shopify Partners Dashboard after installing the app
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsManualTokenDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleManualTokenConnect}
+                  disabled={connectManualTokenMutation.isPending}
+                >
+                  {connectManualTokenMutation.isPending ? 'Connecting...' : 'Connect Store'}
                 </Button>
               </div>
             </div>

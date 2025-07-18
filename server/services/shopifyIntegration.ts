@@ -78,34 +78,42 @@ export interface ShopifyStore {
 
 /**
  * Generate Shopify OAuth authorization URL
+ * For development apps, uses manual installation flow
+ * For public apps, uses standard OAuth flow
  */
 export async function generateShopifyAuthUrl(shopDomain: string, userId: number, userStoreId?: number): Promise<ShopifyAuthUrl> {
   const state = crypto.randomBytes(32).toString('hex');
-  const nonce = crypto.randomBytes(16).toString('hex');
   
-  // Store state for validation (in production, use Redis or database)
-  // Include userStoreId in state for store updates/reconnections
+  // Store state for validation
   const stateWithUser = userStoreId ? `${state}:${userId}:${userStoreId}` : `${state}:${userId}`;
   
-  // Use comprehensive scopes for full e-commerce optimization platform
-  const publicAppScopes = SHOPIFY_SCOPES;
+  // Check if this is a development app (based on environment or configuration)
+  const isDevelopmentApp = !process.env.SHOPIFY_IS_PUBLIC_APP || process.env.SHOPIFY_IS_PUBLIC_APP === 'false';
   
-  // Standard OAuth URL for public Shopify apps (like AutoDS)
-  const baseUrl = `https://${shopDomain}`;
-  const authUrl = `${baseUrl}/admin/oauth/authorize?` +
-    `client_id=${SHOPIFY_API_KEY}&` +
-    `scope=${publicAppScopes}&` +
-    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-    `state=${stateWithUser}&` +
-    `grant_options[]=per-user`;
+  let authUrl: string;
+  
+  if (isDevelopmentApp) {
+    // For development apps, redirect to manual installation guide
+    console.log('Debug - Development app mode: directing to manual installation');
+    authUrl = `${REDIRECT_URI}?dev_install=true&shop=${shopDomain}&state=${stateWithUser}`;
+  } else {
+    // Standard OAuth URL for public Shopify apps
+    const baseUrl = `https://${shopDomain}`;
+    authUrl = `${baseUrl}/admin/oauth/authorize?` +
+      `client_id=${SHOPIFY_API_KEY}&` +
+      `scope=${SHOPIFY_SCOPES}&` +
+      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+      `state=${stateWithUser}&` +
+      `grant_options[]=per-user`;
+  }
     
   console.log('Debug - Generated OAuth URL:', authUrl);
-  console.log('Debug - Base store URL test:', baseUrl);
+  console.log('Debug - Development mode:', isDevelopmentApp);
   console.log('Debug - API Key format:', SHOPIFY_API_KEY?.length, 'characters');
   
   // Test if this is a valid development store
   try {
-    const storeTest = await fetch(baseUrl, { method: 'HEAD' });
+    const storeTest = await fetch(`https://${shopDomain}`, { method: 'HEAD' });
     console.log('Debug - Store accessibility test:', storeTest.status, storeTest.statusText);
   } catch (error) {
     console.log('Debug - Store test error:', error.message);
