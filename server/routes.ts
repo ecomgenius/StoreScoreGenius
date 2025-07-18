@@ -409,29 +409,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
-      console.log(`Fetching products for store: ${store.name}, domain: ${store.shopifyDomain}`);
-
       // Fetch products from Shopify
       const products = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
       res.json(products);
     } catch (error) {
       console.error("Error fetching Shopify products:", error);
-      
-      // Check if it's an authentication error
-      if (error.message && error.message.includes('Unauthorized')) {
-        // Mark store as disconnected and require re-authentication
-        await storage.updateUserStore(parseInt(req.params.storeId), { 
-          connectionStatus: 'error',
-          isConnected: false 
-        });
-        
-        return res.status(401).json({ 
-          error: "Shopify authentication expired", 
-          code: "AUTH_EXPIRED",
-          message: "Your Shopify connection has expired. Please reconnect your store." 
-        });
-      }
-      
       res.status(500).json({ error: "Failed to fetch products" });
     }
   });
@@ -576,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // First, fetch the current product data
-      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/products/${productId}.json`, {
+      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
         headers: {
           'X-Shopify-Access-Token': store.shopifyAccessToken,
           'Content-Type': 'application/json',
@@ -863,7 +845,7 @@ Generate ONLY the comma-separated list of optimized keywords, nothing else:`;
       }
 
       // Fetch the current product data
-      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/products/${productId}.json`, {
+      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
         headers: {
           'X-Shopify-Access-Token': store.shopifyAccessToken,
           'Content-Type': 'application/json',
@@ -1018,7 +1000,7 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
       for (const productId of productIds) {
         try {
           // Fetch current product data for AI optimization
-          const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/products/${productId}.json`, {
+          const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
             headers: {
               'X-Shopify-Access-Token': store.shopifyAccessToken,
               'Content-Type': 'application/json',
@@ -1540,72 +1522,6 @@ Return ONLY a JSON object with this exact format:
 
   // ================ SHOPIFY INTEGRATION ROUTES ================
   
-  // Manual access token connection for development apps
-  app.post("/api/shopify/connect-token", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { shopDomain, accessToken, storeName, userStoreId } = req.body;
-      const { user } = req;
-
-      if (!shopDomain || !accessToken) {
-        return res.status(400).json({ error: "Shop domain and access token are required" });
-      }
-
-      // Clean shop domain format
-      let domain = shopDomain.replace('https://', '').replace('http://', '');
-      domain = domain.replace(/\/$/, '');
-
-      console.log('Debug - Manual token connection for:', domain);
-
-      // Test the access token by fetching shop info
-      try {
-        const shopInfo = await getShopInfo(domain, accessToken);
-        console.log('Debug - Shop info retrieved:', shopInfo.name);
-
-        // Create or update user store
-        if (userStoreId) {
-          // Update existing store
-          await storage.updateUserStore(userStoreId, {
-            shopifyAccessToken: accessToken,
-            shopifyScope: 'manual_install', // Mark as manually installed
-            isConnected: true,
-            lastSyncAt: new Date()
-          });
-          console.log('Debug - Updated existing store:', userStoreId);
-        } else {
-          // Create new store
-          await storage.createUserStore({
-            userId: user.id,
-            name: storeName || shopInfo.name,
-            storeUrl: `https://${domain}`,
-            shopifyDomain: domain,
-            shopifyAccessToken: accessToken,
-            shopifyScope: 'manual_install',
-            isConnected: true,
-            lastSyncAt: new Date()
-          });
-          console.log('Debug - Created new store:', domain);
-        }
-
-        res.json({ 
-          success: true, 
-          message: "Store connected successfully via manual token",
-          shopName: shopInfo.name 
-        });
-
-      } catch (error) {
-        console.error('Debug - Token validation failed:', error);
-        res.status(400).json({ 
-          error: "Invalid access token", 
-          details: "The access token could not be validated. Please check that it's correct and has the required permissions." 
-        });
-      }
-
-    } catch (error) {
-      console.error("Error in manual token connection:", error);
-      res.status(500).json({ error: "Failed to connect store" });
-    }
-  });
-
   // Initiate Shopify OAuth (Proper SaaS approach)
   app.post("/api/shopify/connect", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -1661,197 +1577,6 @@ Return ONLY a JSON object with this exact format:
 3. App must be PUBLIC for any store to use OAuth (like AutoDS works)
 Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
       });
-    }
-  });
-
-  // Shopify OAuth callback handler
-  app.get("/api/shopify/callback", async (req: Request, res: Response) => {
-    try {
-      const { code, state, shop, hmac, timestamp, host, error, error_description } = req.query;
-      
-      console.log('Debug - Shopify callback received:', {
-        shop,
-        code: code ? 'present' : 'missing',
-        state: state ? 'present' : 'missing',
-        hmac: hmac ? 'present' : 'missing',
-        timestamp: timestamp ? 'present' : 'missing',
-        host: host ? 'present' : 'missing',
-        error: error ? error : 'none',
-        error_description: error_description ? error_description : 'none'
-      });
-
-      // Handle OAuth errors from Shopify
-      if (error) {
-        console.error('Shopify OAuth error:', error, error_description);
-        return res.status(400).send(`
-          <html><body>
-            <h1>Shopify OAuth Error</h1>
-            <p><strong>Error:</strong> ${error}</p>
-            <p><strong>Description:</strong> ${error_description || 'No description provided'}</p>
-            <p>This usually indicates an issue with the app configuration in Shopify Partners Dashboard.</p>
-            <script>window.close();</script>
-          </body></html>
-        `);
-      }
-
-      // Handle case where we get shop/hmac but no code/state (common pattern for app config issues)
-      if (!code || !state) {
-        if (shop && hmac) {
-          console.error('OAuth authorization failed - received shop and hmac but no code/state');
-          const debugInfo = `
-            Shop: ${shop}
-            HMAC: ${hmac ? 'present' : 'missing'}
-            Timestamp: ${timestamp || 'missing'}
-            Host: ${host || 'missing'}
-            Expected redirect URI: ${process.env.REPLIT_DEV_DOMAIN 
-              ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
-              : 'http://localhost:5000/api/shopify/callback'}
-          `;
-          
-          return res.status(400).send(`
-            <html><body>
-              <h1>OAuth Configuration Error</h1>
-              <p>Shopify returned without authorization code. This typically means:</p>
-              <ul>
-                <li>User denied the OAuth request</li>
-                <li>App is not properly configured in Shopify Partners Dashboard</li>
-                <li>App distribution settings need to be updated to "Public"</li>
-                <li>Redirect URI mismatch in app settings</li>
-              </ul>
-              <h3>Debug Information:</h3>
-              <pre>${debugInfo}</pre>
-              <script>window.close();</script>
-            </body></html>
-          `);
-        }
-        
-        console.error('Missing required OAuth parameters - no code, state, or shop');
-        return res.status(400).send(`
-          <html><body>
-            <h1>OAuth Error</h1>
-            <p>Missing required parameters. Please try connecting again.</p>
-            <script>window.close();</script>
-          </body></html>
-        `);
-      }
-
-      if (!shop) {
-        console.error('Missing shop parameter');
-        return res.status(400).send(`
-          <html><body>
-            <h1>OAuth Error</h1>
-            <p>Missing shop parameter. Please try connecting again.</p>
-            <script>window.close();</script>
-          </body></html>
-        `);
-      }
-
-      // Parse state to get user ID and optional store ID
-      const stateParts = (state as string).split(':');
-      let userId: number;
-      let userStoreId: number | null = null;
-
-      // Handle normal OAuth flow (server-generated state)
-      // Format: randomHash:userId or randomHash:userId:userStoreId
-      userId = parseInt(stateParts[1]);
-      if (stateParts[2]) {
-        userStoreId = parseInt(stateParts[2]);
-      }
-
-      if (!userId || isNaN(userId)) {
-        console.error('Invalid user ID in state');
-        return res.status(400).send(`
-          <html><body>
-            <h1>OAuth Error</h1>
-            <p>Invalid state parameter. Please try connecting again.</p>
-            <script>window.close();</script>
-          </body></html>
-        `);
-      }
-
-      // Exchange code for access token
-      const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: process.env.SHOPIFY_API_KEY,
-          client_secret: process.env.SHOPIFY_API_SECRET,
-          code,
-        }),
-      });
-
-      if (!tokenResponse.ok) {
-        console.error('Failed to exchange code for token:', tokenResponse.statusText);
-        return res.status(500).send(`
-          <html><body>
-            <h1>Connection Failed</h1>
-            <p>Failed to complete Shopify connection. Please try again.</p>
-            <script>window.close();</script>
-          </body></html>
-        `);
-      }
-
-      const tokenData = await tokenResponse.json();
-      const { access_token, scope } = tokenData;
-
-      console.log('Debug - Token exchange successful, scope:', scope);
-
-      // Get shop info
-      const shopInfo = await getShopInfo(shop as string, access_token);
-      
-      if (userStoreId) {
-        // Update existing store
-        await storage.updateUserStore(userStoreId, {
-          shopifyAccessToken: access_token,
-          shopifyScope: scope,
-          isConnected: true,
-          connectionStatus: 'connected',
-          lastSyncAt: new Date(),
-          shopifyDomain: shop as string
-        });
-        console.log('Debug - Updated existing store:', userStoreId);
-      } else {
-        // Create new store
-        await storage.createUserStore({
-          userId,
-          name: shopInfo.name,
-          storeUrl: `https://${shop}`,
-          storeType: 'shopify',
-          description: shopInfo.description || `Shopify store: ${shopInfo.name}`,
-          shopifyDomain: shop as string,
-          shopifyAccessToken: access_token,
-          shopifyScope: scope,
-          isConnected: true,
-          connectionStatus: 'connected',
-          lastSyncAt: new Date()
-        });
-        console.log('Debug - Created new store for shop:', shop);
-      }
-
-      // Redirect to dashboard with success message
-      res.send(`
-        <html><body>
-          <h1>Successfully Connected!</h1>
-          <p>Your Shopify store has been connected. Redirecting to dashboard...</p>
-          <script>
-            setTimeout(() => {
-              window.location.href = '/dashboard/stores';
-            }, 2000);
-          </script>
-        </body></html>
-      `);
-
-    } catch (error) {
-      console.error('Error in Shopify OAuth callback:', error);
-      res.status(500).send(`
-        <html><body>
-          <h1>Connection Error</h1>
-          <p>An error occurred while connecting your store. Please try again.</p>
-          <script>window.close();</script>
-        </body></html>
-      `);
     }
   });
   
@@ -2121,8 +1846,8 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         }
         
         // Get active theme first with detailed debugging
-        console.log('Fetching themes from:', `https://${store.shopifyDomain}/admin/api/2024-10/themes.json`);
-        const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/themes.json`, {
+        console.log('Fetching themes from:', `https://${store.shopifyDomain}/admin/api/2023-10/themes.json`);
+        const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
           headers: {
             'X-Shopify-Access-Token': store.shopifyAccessToken!,
             'Content-Type': 'application/json',
@@ -2177,7 +1902,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         
         // Test theme assets endpoint first with the correct theme ID
         console.log('Testing theme assets access with theme ID:', activeTheme.id);
-        const testAssetsResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2024-10/themes/${activeTheme.id}/assets.json`, {
+        const testAssetsResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`, {
           headers: {
             'X-Shopify-Access-Token': store.shopifyAccessToken!,
             'Content-Type': 'application/json',
@@ -2185,7 +1910,7 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         });
         
         console.log('Assets endpoint status:', testAssetsResponse.status);
-        console.log('Assets URL:', `https://${store.shopifyDomain}/admin/api/2024-10/themes/${activeTheme.id}/assets.json`);
+        console.log('Assets URL:', `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`);
         
         if (!testAssetsResponse.ok) {
           const assetsError = await testAssetsResponse.text();
@@ -2482,7 +2207,7 @@ a:hover {
             // First, clean up any existing StoreScore scripts
             try {
               const existingScriptsResponse = await fetch(
-                `https://${store.shopifyDomain}/admin/api/2024-10/script_tags.json`,
+                `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
                 {
                   headers: {
                     'X-Shopify-Access-Token': store.shopifyAccessToken!,
@@ -2500,7 +2225,7 @@ a:hover {
                       script.src?.includes('data:text/javascript')) {
                     console.log('Removing existing StoreScore script:', script.id);
                     await fetch(
-                      `https://${store.shopifyDomain}/admin/api/2024-10/script_tags/${script.id}.json`,
+                      `https://${store.shopifyDomain}/admin/api/2023-10/script_tags/${script.id}.json`,
                       {
                         method: 'DELETE',
                         headers: {
@@ -2536,7 +2261,7 @@ document.head.appendChild(s);
             
             console.log('Creating AI theme script tag...');
             const scriptResponse = await fetch(
-              `https://${store.shopifyDomain}/admin/api/2024-10/script_tags.json`,
+              `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
               {
                 method: 'POST',
                 headers: {

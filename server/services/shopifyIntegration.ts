@@ -78,10 +78,10 @@ export interface ShopifyStore {
 
 /**
  * Generate Shopify OAuth authorization URL
- * Works for both development and public apps
  */
 export async function generateShopifyAuthUrl(shopDomain: string, userId: number, userStoreId?: number): Promise<ShopifyAuthUrl> {
   const state = crypto.randomBytes(32).toString('hex');
+  const nonce = crypto.randomBytes(16).toString('hex');
   
   // Store state for validation (in production, use Redis or database)
   // Include userStoreId in state for store updates/reconnections
@@ -90,7 +90,7 @@ export async function generateShopifyAuthUrl(shopDomain: string, userId: number,
   // Use comprehensive scopes for full e-commerce optimization platform
   const publicAppScopes = SHOPIFY_SCOPES;
   
-  // Standard OAuth URL for Shopify apps (works for both dev and public apps)
+  // Standard OAuth URL for public Shopify apps (like AutoDS)
   const baseUrl = `https://${shopDomain}`;
   const authUrl = `${baseUrl}/admin/oauth/authorize?` +
     `client_id=${SHOPIFY_API_KEY}&` +
@@ -102,7 +102,6 @@ export async function generateShopifyAuthUrl(shopDomain: string, userId: number,
   console.log('Debug - Generated OAuth URL:', authUrl);
   console.log('Debug - Base store URL test:', baseUrl);
   console.log('Debug - API Key format:', SHOPIFY_API_KEY?.length, 'characters');
-  console.log('Debug - Redirect URI:', REDIRECT_URI);
   
   // Test if this is a valid development store
   try {
@@ -158,7 +157,7 @@ export async function exchangeCodeForToken(
  * Get shop information using access token
  */
 export async function getShopInfo(shopDomain: string, accessToken: string): Promise<ShopifyStore> {
-  const shopUrl = `https://${shopDomain}/admin/api/2024-10/shop.json`;
+  const shopUrl = `https://${shopDomain}/admin/api/2023-10/shop.json`;
   
   const response = await fetch(shopUrl, {
     headers: {
@@ -179,7 +178,7 @@ export async function getShopInfo(shopDomain: string, accessToken: string): Prom
  * Get store products for analysis
  */
 export async function getStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
-  const productsUrl = `https://${shopDomain}/admin/api/2024-10/products.json?limit=${limit}`;
+  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
   
   const response = await fetch(productsUrl, {
     headers: {
@@ -264,10 +263,7 @@ This is a comprehensive Shopify store that should be analyzed for:
  * Fetch store products for AI recommendations
  */
 export async function fetchStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
-  const productsUrl = `https://${shopDomain}/admin/api/2024-10/products.json?limit=${limit}`;
-  
-  console.log(`Fetching products from: ${productsUrl}`);
-  console.log(`Using access token length: ${accessToken.length}`);
+  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
   
   const response = await fetch(productsUrl, {
     headers: {
@@ -277,10 +273,7 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Shopify API Error: ${response.status} ${response.statusText}`);
-    console.error(`Error response body: ${errorText}`);
-    throw new Error(`Failed to fetch products: ${response.statusText} - ${errorText}`);
+    throw new Error(`Failed to fetch products: ${response.statusText}`);
   }
 
   const data = await response.json();
@@ -291,7 +284,7 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
  * Update a product via Shopify API
  */
 export async function updateProduct(shopDomain: string, accessToken: string, productId: string, updateData: any) {
-  const productUrl = `https://${shopDomain}/admin/api/2024-10/products/${productId}.json`;
+  const productUrl = `https://${shopDomain}/admin/api/2023-10/products/${productId}.json`;
   
   const response = await fetch(productUrl, {
     method: 'PUT',

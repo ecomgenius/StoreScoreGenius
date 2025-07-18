@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Zap, AlertCircle, CheckCircle, Clock, ShoppingBag, DollarSign, Tag, FileText, ExternalLink, Link } from 'lucide-react';
+import { ArrowLeft, Zap, AlertCircle, CheckCircle, Clock, ShoppingBag, DollarSign, Tag, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,53 +62,13 @@ export default function AIRecommendations() {
     product: any;
   } | null>(null);
 
-  // Track manual reconnection state
-  const [isReconnecting, setIsReconnecting] = useState(false);
-
-  // Handle reconnection using EXACT SAME server flow as working connection
-  const handleReconnectStore = () => {
-    if (!store?.shopifyDomain || !store?.id) return;
-    
-    console.log('🔄 Reconnecting store using server OAuth flow:', store.shopifyDomain);
-    
-    // Use the EXACT SAME mutation as the working "Connect to Shopify" button
-    connectShopifyMutation.mutate({ 
-      shopDomain: store.shopifyDomain,
-      userStoreId: store.id 
-    });
-  };
-
-  // Connect to Shopify mutation with enhanced redirect strategies
+  // Connect to Shopify mutation
   const connectShopifyMutation = useMutation({
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      console.log('OAuth URL received, attempting redirect...', data.authUrl);
-      
-      // Try multiple redirect strategies to bypass popup blockers
-      try {
-        // Strategy 1: Direct window.location.href (same as working version)
-        console.log('Strategy 1: Direct window.location.href');
-        window.location.href = data.authUrl;
-      } catch (error) {
-        console.log('Strategy 1 failed, trying strategy 2:', error);
-        
-        // Strategy 2: window.location.replace
-        try {
-          window.location.replace(data.authUrl);
-        } catch (error2) {
-          console.log('Strategy 2 failed, trying strategy 3:', error2);
-          
-          // Strategy 3: Create invisible link and click it
-          const link = document.createElement('a');
-          link.href = data.authUrl;
-          link.target = '_self';
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      }
+      // Redirect to Shopify OAuth page
+      window.location.href = data.authUrl;
     },
     onError: (error: any) => {
       toast({
@@ -130,20 +90,19 @@ export default function AIRecommendations() {
   });
 
   // Fetch store products (remove dependency on recommendations)
-  const { data: products = [], isLoading: productsLoading, error: productsError } = useQuery({
+  const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['/api/shopify/products', storeId],
     queryFn: async () => {
       try {
         return await apiRequest('GET', `/api/shopify/products/${storeId}`);
       } catch (error: any) {
-        if (error.message?.includes('Store not connected') || error.message?.includes('authentication expired')) {
+        if (error.message?.includes('Store not connected')) {
           return []; // Return empty array if store not connected
         }
         throw error;
       }
     },
     enabled: !!storeId,
-    retry: false, // Don't retry on auth errors
   });
 
   // Generate AI recommendations based on products
@@ -349,11 +308,6 @@ export default function AIRecommendations() {
   const isProductOptimized = (productId: string, type: string) => {
     return optimizedProducts[productId]?.[type] || false;
   };
-
-  // Check if we have an authentication error
-  const hasAuthError = productsError?.message?.includes('authentication expired') || 
-                      productsError?.message?.includes('AUTH_EXPIRED') ||
-                      (products.length === 0 && !productsLoading && store?.isConnected);
 
   // Create product-based optimization opportunities for each tab, with filtering
   const productOptimizations = {
@@ -563,39 +517,6 @@ export default function AIRecommendations() {
             </Card>
           ))}
         </div>
-
-        {/* Authentication Error Banner */}
-        {hasAuthError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="text-red-800 font-medium">Shopify Connection Expired</h3>
-                <p className="text-red-700 text-sm mt-1">
-                  Your Shopify store connection has expired. Please reconnect to access your products and continue optimizations.
-                </p>
-                <Button
-                  onClick={handleReconnectStore}
-                  disabled={connectShopifyMutation.isPending}
-                  className="mt-3"
-                  size="sm"
-                >
-                  {connectShopifyMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Link className="h-3 w-3 mr-2" />
-                      Reconnect to Shopify
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Detailed Recommendations */}
         <Tabs defaultValue="all" className="w-full">
