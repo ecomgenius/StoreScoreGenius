@@ -1667,42 +1667,7 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
   // Shopify OAuth callback handler
   app.get("/api/shopify/callback", async (req: Request, res: Response) => {
     try {
-      const { code, state, shop, hmac, timestamp, host, error, error_description, dev_install } = req.query;
-      
-      // Handle development app manual installation flow
-      if (dev_install === 'true') {
-        return res.send(`
-          <html><head><title>Development App Installation</title></head><body style="font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
-            <h1>🔧 Development App Manual Installation</h1>
-            <p>Since you're using a development app, you need to manually install it to your store:</p>
-            
-            <h2>Steps to Install:</h2>
-            <ol>
-              <li><strong>Go to Shopify Partners Dashboard</strong></li>
-              <li><strong>Navigate to Apps → Your App Name</strong></li>
-              <li><strong>Click "Test on development store"</strong></li>
-              <li><strong>Select "${shop || 'your development store'}"</strong></li>
-              <li><strong>Click "Install app"</strong></li>
-            </ol>
-            
-            <h2>Alternative Method:</h2>
-            <ol>
-              <li><strong>In your Shopify admin (${shop || 'your store'})</strong></li>
-              <li><strong>Go to Apps → Develop apps</strong></li>
-              <li><strong>Find your app and click "Install"</strong></li>
-            </ol>
-            
-            <div style="background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <strong>💡 Note:</strong> Development apps cannot use standard OAuth. They must be manually installed from Partners Dashboard.
-            </div>
-            
-            <h2>After Installation:</h2>
-            <p>Once installed, you'll get an access token that you can enter manually in the app connection form.</p>
-            
-            <button onclick="window.close()" style="background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Close Window</button>
-          </body></html>
-        `);
-      }
+      const { code, state, shop, hmac, timestamp, host, error, error_description } = req.query;
       
       console.log('Debug - Shopify callback received:', {
         shop,

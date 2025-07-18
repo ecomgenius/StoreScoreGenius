@@ -289,13 +289,13 @@ export default function UserStores() {
               </p>
             </div>
             <div className="flex space-x-3">
-              <Button onClick={() => setIsManualTokenDialogOpen(true)}>
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Connect Development Store
-              </Button>
-              <Button variant="outline" onClick={() => setIsShopifyDialogOpen(true)}>
+              <Button onClick={() => setIsShopifyDialogOpen(true)}>
                 <Store className="mr-2 h-4 w-4" />
-                Connect Public App (OAuth)
+                Connect Shopify Store
+              </Button>
+              <Button variant="outline" onClick={() => setIsManualTokenDialogOpen(true)}>
+                <LinkIcon className="mr-2 h-4 w-4" />
+                Manual Token (Backup)
               </Button>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -305,19 +305,15 @@ export default function UserStores() {
           </div>
         </div>
 
-        {/* Development Mode Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Development Mode Setup</h3>
-          <p className="text-blue-800 mb-4">
-            For development apps, use the "Connect Development Store" button above and follow these steps:
+        {/* Quick Setup Instructions */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold text-green-900 mb-2">Connect Your Store</h3>
+          <p className="text-green-800 mb-4">
+            Click "Connect Shopify Store" above and follow the OAuth flow to authorize your store. Works for both development and production stores.
           </p>
-          <ol className="list-decimal list-inside text-blue-800 space-y-2">
-            <li>Go to your Shopify Partners Dashboard</li>
-            <li>Navigate to Apps → Your App Name</li>
-            <li>Click "Test on development store"</li>
-            <li>Select your development store and install</li>
-            <li>Copy the access token and use it in the connection form</li>
-          </ol>
+          <p className="text-sm text-green-700">
+            If OAuth fails, you can use the "Manual Token" option as a backup method.
+          </p>
         </div>
 
         {stores.length === 0 ? (
