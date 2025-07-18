@@ -118,7 +118,12 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Build Scripts**: Separate development and production build processes
 - **Database Migrations**: Drizzle Kit handles schema changes and migrations
 
-### Recent Changes (July 13, 2025)
+### Recent Changes (July 18, 2025)
+- **Fixed Critical Shopify API Deprecation Issue**: Updated all Shopify API calls from deprecated 2023-10 version to current 2024-10 version, resolving OAuth connection failures for both new store connections and reconnections
+- **Enhanced OAuth Error Handling**: Improved callback handler to provide detailed debugging information for OAuth configuration issues, helping users identify Shopify Partners Dashboard misconfigurations
+- **Created Comprehensive OAuth Troubleshooting Guide**: Added detailed documentation for resolving common Shopify app configuration issues including distribution settings, redirect URI setup, and permission configuration
+
+### Previous Changes (July 13, 2025)
 - **Fixed Critical Authentication Bug**: Resolved database connection issues causing empty responses for authenticated users
 - **Implemented Real-time Dashboard**: Added dynamic credit tracking, analysis counting, and store management
 - **Completed SaaS Functionality**: Full user account system with credit deduction and transaction logging

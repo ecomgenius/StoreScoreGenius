@@ -1601,21 +1601,80 @@ Domain: ${domain} | API Key: ${process.env.SHOPIFY_API_KEY}`
   // Shopify OAuth callback handler
   app.get("/api/shopify/callback", async (req: Request, res: Response) => {
     try {
-      const { code, state, shop, hmac, timestamp } = req.query;
+      const { code, state, shop, hmac, timestamp, host, error, error_description } = req.query;
       
       console.log('Debug - Shopify callback received:', {
         shop,
         code: code ? 'present' : 'missing',
         state: state ? 'present' : 'missing',
-        hmac: hmac ? 'present' : 'missing'
+        hmac: hmac ? 'present' : 'missing',
+        timestamp: timestamp ? 'present' : 'missing',
+        host: host ? 'present' : 'missing',
+        error: error ? error : 'none',
+        error_description: error_description ? error_description : 'none'
       });
 
-      if (!code || !state || !shop) {
-        console.error('Missing required OAuth parameters');
+      // Handle OAuth errors from Shopify
+      if (error) {
+        console.error('Shopify OAuth error:', error, error_description);
+        return res.status(400).send(`
+          <html><body>
+            <h1>Shopify OAuth Error</h1>
+            <p><strong>Error:</strong> ${error}</p>
+            <p><strong>Description:</strong> ${error_description || 'No description provided'}</p>
+            <p>This usually indicates an issue with the app configuration in Shopify Partners Dashboard.</p>
+            <script>window.close();</script>
+          </body></html>
+        `);
+      }
+
+      // Handle case where we get shop/hmac but no code/state (common pattern for app config issues)
+      if (!code || !state) {
+        if (shop && hmac) {
+          console.error('OAuth authorization failed - received shop and hmac but no code/state');
+          const debugInfo = `
+            Shop: ${shop}
+            HMAC: ${hmac ? 'present' : 'missing'}
+            Timestamp: ${timestamp || 'missing'}
+            Host: ${host || 'missing'}
+            Expected redirect URI: ${process.env.REPLIT_DEV_DOMAIN 
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback`
+              : 'http://localhost:5000/api/shopify/callback'}
+          `;
+          
+          return res.status(400).send(`
+            <html><body>
+              <h1>OAuth Configuration Error</h1>
+              <p>Shopify returned without authorization code. This typically means:</p>
+              <ul>
+                <li>User denied the OAuth request</li>
+                <li>App is not properly configured in Shopify Partners Dashboard</li>
+                <li>App distribution settings need to be updated to "Public"</li>
+                <li>Redirect URI mismatch in app settings</li>
+              </ul>
+              <h3>Debug Information:</h3>
+              <pre>${debugInfo}</pre>
+              <script>window.close();</script>
+            </body></html>
+          `);
+        }
+        
+        console.error('Missing required OAuth parameters - no code, state, or shop');
         return res.status(400).send(`
           <html><body>
             <h1>OAuth Error</h1>
             <p>Missing required parameters. Please try connecting again.</p>
+            <script>window.close();</script>
+          </body></html>
+        `);
+      }
+
+      if (!shop) {
+        console.error('Missing shop parameter');
+        return res.status(400).send(`
+          <html><body>
+            <h1>OAuth Error</h1>
+            <p>Missing shop parameter. Please try connecting again.</p>
             <script>window.close();</script>
           </body></html>
         `);
