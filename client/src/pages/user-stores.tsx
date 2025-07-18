@@ -305,14 +305,20 @@ export default function UserStores() {
           </div>
         </div>
 
-        {/* Quick Setup Instructions */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-green-900 mb-2">Connect Your Store</h3>
-          <p className="text-green-800 mb-4">
-            Click "Connect Shopify Store" above and follow the OAuth flow to authorize your store. Works for both development and production stores.
+        {/* OAuth Configuration Help */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold text-yellow-900 mb-2">OAuth Configuration Required</h3>
+          <p className="text-yellow-800 mb-4">
+            If OAuth fails with "missing authorization code", you need to configure your app in Shopify Partners Dashboard:
           </p>
-          <p className="text-sm text-green-700">
-            If OAuth fails, you can use the "Manual Token" option as a backup method.
+          <ol className="text-sm text-yellow-800 list-decimal list-inside space-y-1 mb-4">
+            <li><strong>Distribution:</strong> Enable "Public distribution" (required even for development)</li>
+            <li><strong>URLs:</strong> Set redirect URI to your callback URL</li>
+            <li><strong>Permissions:</strong> Enable all required app scopes</li>
+            <li><strong>Save:</strong> Click save after each change</li>
+          </ol>
+          <p className="text-sm text-yellow-700">
+            See the configuration guide in scripts/fix-shopify-oauth.md for detailed instructions.
           </p>
         </div>
 
