@@ -289,13 +289,13 @@ export default function UserStores() {
               </p>
             </div>
             <div className="flex space-x-3">
-              <Button onClick={() => setIsShopifyDialogOpen(true)}>
-                <Store className="mr-2 h-4 w-4" />
-                Connect Shopify (OAuth)
-              </Button>
-              <Button variant="outline" onClick={() => setIsManualTokenDialogOpen(true)}>
+              <Button onClick={() => setIsManualTokenDialogOpen(true)}>
                 <LinkIcon className="mr-2 h-4 w-4" />
-                Development App Token
+                Connect Development Store
+              </Button>
+              <Button variant="outline" onClick={() => setIsShopifyDialogOpen(true)}>
+                <Store className="mr-2 h-4 w-4" />
+                Connect Public App (OAuth)
               </Button>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -303,6 +303,21 @@ export default function UserStores() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Development Mode Instructions */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">Development Mode Setup</h3>
+          <p className="text-blue-800 mb-4">
+            For development apps, use the "Connect Development Store" button above and follow these steps:
+          </p>
+          <ol className="list-decimal list-inside text-blue-800 space-y-2">
+            <li>Go to your Shopify Partners Dashboard</li>
+            <li>Navigate to Apps → Your App Name</li>
+            <li>Click "Test on development store"</li>
+            <li>Select your development store and install</li>
+            <li>Copy the access token and use it in the connection form</li>
+          </ol>
         </div>
 
         {stores.length === 0 ? (
@@ -581,19 +596,19 @@ export default function UserStores() {
         <Dialog open={isManualTokenDialogOpen} onOpenChange={setIsManualTokenDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Connect Development App with Access Token</DialogTitle>
+              <DialogTitle>Connect Development Store</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">For Development Apps Only</h4>
-                <p className="text-sm text-gray-600 mb-3">
-                  If your Shopify app is in development mode, you need to manually install it from Partners Dashboard first:
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <h4 className="font-semibold text-green-900 mb-2">✅ Recommended for Development</h4>
+                <p className="text-sm text-green-800 mb-3">
+                  This method works with development apps without requiring public distribution:
                 </p>
-                <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
-                  <li>Go to Shopify Partners Dashboard → Apps → Your App</li>
-                  <li>Click "Test on development store"</li>
-                  <li>Select your development store and install the app</li>
-                  <li>Copy the access token from the installation</li>
+                <ol className="text-sm text-green-800 list-decimal list-inside space-y-1">
+                  <li><strong>Partners Dashboard:</strong> Go to Apps → Your App → "Test on development store"</li>
+                  <li><strong>Install:</strong> Select testscorestore.myshopify.com and click "Install app"</li>
+                  <li><strong>Token:</strong> Copy the access token provided after installation</li>
+                  <li><strong>Connect:</strong> Paste the token below and click "Connect Store"</li>
                 </ol>
               </div>
               
