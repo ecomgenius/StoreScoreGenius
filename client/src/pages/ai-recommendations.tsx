@@ -519,16 +519,6 @@ export default function AIRecommendations() {
                 <p className="text-xs text-muted-foreground mb-3">
                   {products.length} products need optimization
                 </p>
-                {products.length > 0 && (
-                  <div className="mb-3">
-                    <TimeSavingsCard
-                      optimizationType={type}
-                      productCount={products.length}
-                      productData={products[0]}
-                      className="text-xs"
-                    />
-                  </div>
-                )}
                 <Button
                   size="sm"
                   className="w-full"
@@ -622,15 +612,6 @@ export default function AIRecommendations() {
                       >
                         Optimize All ({productOptimizations[type].length} credits)
                       </Button>
-                    </div>
-                    
-                    {/* Time Savings Card */}
-                    <div className="mt-4">
-                      <TimeSavingsCard
-                        optimizationType={type}
-                        productCount={productOptimizations[type].length}
-                        productData={productOptimizations[type][0]}
-                      />
                     </div>
                   </div>
                   
