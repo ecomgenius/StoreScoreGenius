@@ -420,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if it's an authentication error
       if (error.message && error.message.includes('Unauthorized')) {
         // Mark store as disconnected and require re-authentication
-        await storage.updateUserStore(storeId, { 
+        await storage.updateUserStore(parseInt(req.params.storeId), { 
           connectionStatus: 'error',
           isConnected: false 
         });
