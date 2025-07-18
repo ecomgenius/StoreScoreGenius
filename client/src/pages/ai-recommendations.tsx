@@ -67,8 +67,12 @@ export default function AIRecommendations() {
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      // Redirect to Shopify OAuth page
-      window.location.href = data.authUrl;
+      // Open OAuth in new tab to avoid iframe restrictions
+      const newWindow = window.open(data.authUrl, '_blank', 'noopener,noreferrer');
+      if (!newWindow) {
+        // Fallback to direct redirect if popup blocked
+        window.location.href = data.authUrl;
+      }
     },
     onError: (error: any) => {
       toast({
@@ -532,29 +536,33 @@ export default function AIRecommendations() {
               <div className="flex-1">
                 <h3 className="text-red-800 font-medium">Shopify Connection Expired</h3>
                 <p className="text-red-700 text-sm mt-1">
-                  Your Shopify store connection has expired. Please reconnect to access your products and continue optimizations.
+                  Your Shopify store connection has expired. Click below to reconnect (opens in new tab).
                 </p>
-                <Button
-                  onClick={() => connectShopifyMutation.mutate({ 
-                    shopDomain: store?.shopifyDomain || '', 
-                    userStoreId: store?.id 
-                  })}
-                  disabled={connectShopifyMutation.isPending}
-                  className="mt-3"
-                  size="sm"
-                >
-                  {connectShopifyMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Link className="h-3 w-3 mr-2" />
-                      Reconnect to Shopify
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    onClick={() => connectShopifyMutation.mutate({ 
+                      shopDomain: store?.shopifyDomain || '', 
+                      userStoreId: store?.id 
+                    })}
+                    disabled={connectShopifyMutation.isPending}
+                    size="sm"
+                  >
+                    {connectShopifyMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="h-3 w-3 mr-2" />
+                        Reconnect to Shopify
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-red-600 self-center">
+                    After connecting, refresh this page to see your products.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
