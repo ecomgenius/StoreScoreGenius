@@ -416,6 +416,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(products);
     } catch (error) {
       console.error("Error fetching Shopify products:", error);
+      
+      // Check if it's an authentication error
+      if (error.message && error.message.includes('Unauthorized')) {
+        // Mark store as disconnected and require re-authentication
+        await storage.updateUserStore(storeId, { 
+          connectionStatus: 'error',
+          isConnected: false 
+        });
+        
+        return res.status(401).json({ 
+          error: "Shopify authentication expired", 
+          code: "AUTH_EXPIRED",
+          message: "Your Shopify connection has expired. Please reconnect your store." 
+        });
+      }
+      
       res.status(500).json({ error: "Failed to fetch products" });
     }
   });
