@@ -1536,8 +1536,38 @@ Return ONLY a JSON object with this exact format:
       // Remove trailing slash if present
       domain = domain.replace(/\/$/, '');
       
-      if (!domain.includes('.myshopify.com') && !domain.includes('.')) {
-        return res.status(400).json({ error: "Invalid shop domain format" });
+      // Validate that this is actually a Shopify store
+      if (!domain.includes('.myshopify.com')) {
+        // Check if it's a custom domain that might be connected to Shopify
+        try {
+          const shopifyCheckUrl = `https://${domain}/.well-known/shopify/monorail`;
+          const monorailResponse = await fetch(shopifyCheckUrl, { 
+            method: 'HEAD',
+            timeout: 5000
+          });
+          
+          if (!monorailResponse.ok) {
+            // Try checking for Shopify admin path
+            const adminCheckUrl = `https://${domain}/admin`;
+            const adminResponse = await fetch(adminCheckUrl, { 
+              method: 'HEAD',
+              timeout: 5000,
+              redirect: 'manual'
+            });
+            
+            if (adminResponse.status !== 302 && adminResponse.status !== 200) {
+              return res.status(400).json({ 
+                error: "Not a Shopify store",
+                details: "This domain doesn't appear to be a Shopify store. Please use your .myshopify.com domain (e.g., yourstore.myshopify.com) or verify that this custom domain is connected to Shopify."
+              });
+            }
+          }
+        } catch (error) {
+          return res.status(400).json({ 
+            error: "Invalid Shopify store",
+            details: "Unable to verify this is a Shopify store. Please use your .myshopify.com domain (e.g., yourstore.myshopify.com)."
+          });
+        }
       }
       
       // For development stores, check if they're properly configured
