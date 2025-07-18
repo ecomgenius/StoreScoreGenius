@@ -265,6 +265,9 @@ This is a comprehensive Shopify store that should be analyzed for:
 export async function fetchStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
   const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
   
+  console.log(`Fetching products from: ${productsUrl}`);
+  console.log(`Using access token length: ${accessToken.length}`);
+  
   const response = await fetch(productsUrl, {
     headers: {
       'X-Shopify-Access-Token': accessToken,
@@ -273,7 +276,10 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch products: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error(`Shopify API Error: ${response.status} ${response.statusText}`);
+    console.error(`Error response body: ${errorText}`);
+    throw new Error(`Failed to fetch products: ${response.statusText} - ${errorText}`);
   }
 
   const data = await response.json();

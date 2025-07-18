@@ -409,6 +409,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
+      console.log(`Fetching products for store: ${store.name}, domain: ${store.shopifyDomain}`);
+
       // Fetch products from Shopify
       const products = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
       res.json(products);
