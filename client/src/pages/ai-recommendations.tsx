@@ -62,18 +62,13 @@ export default function AIRecommendations() {
     product: any;
   } | null>(null);
 
-  // Connect to Shopify mutation
+  // Connect to Shopify mutation - EXACT COPY from working user-stores.tsx
   const connectShopifyMutation = useMutation({
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      console.log('OAuth URL received:', data.authUrl);
-      console.log('Attempting redirect in same window...');
-      
-      // Use the exact same approach as working user-stores.tsx
-      setTimeout(() => {
-        window.location.href = data.authUrl;
-      }, 100);
+      // Direct redirect to Shopify OAuth page - EXACT SAME as user-stores.tsx
+      window.location.href = data.authUrl;
     },
     onError: (error: any) => {
       toast({
@@ -540,18 +535,18 @@ export default function AIRecommendations() {
                   Your Shopify store connection has expired. Please reconnect to access your products and continue optimizations.
                 </p>
                 <Button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    connectShopifyMutation.mutate({ 
-                      shopDomain: store?.shopifyDomain || '', 
-                      userStoreId: store?.id 
-                    });
+                  onClick={() => {
+                    if (store?.shopifyDomain && store?.id) {
+                      // Use exact same pattern as working user-stores.tsx handleReconnectStore
+                      connectShopifyMutation.mutate({ 
+                        shopDomain: store.shopifyDomain,
+                        userStoreId: store.id 
+                      });
+                    }
                   }}
                   disabled={connectShopifyMutation.isPending}
                   className="mt-3"
                   size="sm"
-                  type="button"
                 >
                   {connectShopifyMutation.isPending ? (
                     <>
