@@ -78,12 +78,37 @@ export default function AIRecommendations() {
     });
   };
 
-  // Keep the mutation for other potential uses
+  // Connect to Shopify mutation with enhanced redirect strategies
   const connectShopifyMutation = useMutation({
     mutationFn: (data: { shopDomain: string; userStoreId?: number }) => 
       apiRequest('POST', '/api/shopify/connect', data),
     onSuccess: (data: { authUrl: string }) => {
-      window.location.href = data.authUrl;
+      console.log('OAuth URL received, attempting redirect...', data.authUrl);
+      
+      // Try multiple redirect strategies to bypass popup blockers
+      try {
+        // Strategy 1: Direct window.location.href (same as working version)
+        console.log('Strategy 1: Direct window.location.href');
+        window.location.href = data.authUrl;
+      } catch (error) {
+        console.log('Strategy 1 failed, trying strategy 2:', error);
+        
+        // Strategy 2: window.location.replace
+        try {
+          window.location.replace(data.authUrl);
+        } catch (error2) {
+          console.log('Strategy 2 failed, trying strategy 3:', error2);
+          
+          // Strategy 3: Create invisible link and click it
+          const link = document.createElement('a');
+          link.href = data.authUrl;
+          link.target = '_self';
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
     },
     onError: (error: any) => {
       toast({
