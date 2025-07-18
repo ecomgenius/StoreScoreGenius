@@ -32,15 +32,9 @@ import {
 import { analyzeStoreWithAI } from "./services/openai";
 import { subscriptionService } from "./services/subscriptionService";
 import Stripe from "stripe";
-import OpenAI from "openai";
 
 // Initialize Stripe if key is available
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
-
-// Initialize OpenAI client
-const openaiClient = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -1536,62 +1530,12 @@ Return ONLY a JSON object with this exact format:
       // Remove trailing slash if present
       domain = domain.replace(/\/$/, '');
       
-      // Validate that this is actually a Shopify store
-      if (!domain.includes('.myshopify.com')) {
-        // Check if it's a custom domain that might be connected to Shopify
-        try {
-          const shopifyCheckUrl = `https://${domain}/.well-known/shopify/monorail`;
-          const monorailResponse = await fetch(shopifyCheckUrl, { 
-            method: 'HEAD',
-            timeout: 5000
-          });
-          
-          if (!monorailResponse.ok) {
-            // Try checking for Shopify admin path
-            const adminCheckUrl = `https://${domain}/admin`;
-            const adminResponse = await fetch(adminCheckUrl, { 
-              method: 'HEAD',
-              timeout: 5000,
-              redirect: 'manual'
-            });
-            
-            if (adminResponse.status !== 302 && adminResponse.status !== 200) {
-              return res.status(400).json({ 
-                error: "Not a Shopify store",
-                details: "This domain doesn't appear to be a Shopify store. Please use your .myshopify.com domain (e.g., yourstore.myshopify.com) or verify that this custom domain is connected to Shopify."
-              });
-            }
-          }
-        } catch (error) {
-          return res.status(400).json({ 
-            error: "Invalid Shopify store",
-            details: "Unable to verify this is a Shopify store. Please use your .myshopify.com domain (e.g., yourstore.myshopify.com)."
-          });
-        }
+      if (!domain.includes('.myshopify.com') && !domain.includes('.')) {
+        return res.status(400).json({ error: "Invalid shop domain format" });
       }
       
       // For development stores, check if they're properly configured
       console.log('Debug - Attempting OAuth for development store:', domain);
-      
-      // Test if store is accessible and not password protected
-      try {
-        const testResponse = await fetch(`https://${domain}`, { 
-          method: 'HEAD',
-          redirect: 'manual'
-        });
-        
-        if (testResponse.status === 302) {
-          const location = testResponse.headers.get('location');
-          if (location?.includes('/password')) {
-            return res.status(400).json({ 
-              error: "Store is password protected",
-              details: "Please remove the password protection from your Shopify store before connecting. Go to Online Store > Preferences > Password protection and disable it temporarily."
-            });
-          }
-        }
-      } catch (error) {
-        console.log('Store accessibility check failed, continuing with OAuth:', error);
-      }
       
       // Generate OAuth URL for SaaS application
       const { authUrl, state } = await generateShopifyAuthUrl(domain, req.user!.id);
@@ -1751,108 +1695,11 @@ Provide actionable, specific recommendations that can be implemented.`;
     }
   });
 
-  // Generate new color palette suggestions
-  app.post("/api/design-recommendations/generate-colors", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { storeId } = req.body;
-      const { user } = req;
-
-      // Get the user's store
-      const store = await storage.getUserStore(storeId);
-      if (!store || store.userId !== user.id) {
-        return res.status(404).json({ error: "Store not found" });
-      }
-
-      // Get recent analysis for this store to extract design insights
-      const analyses = await storage.getUserAnalyses(user.id, 50);
-      let storeAnalysis = analyses.find(a => a.userStoreId === storeId);
-      
-      if (!storeAnalysis && store.storeUrl) {
-        storeAnalysis = analyses.find(a => a.storeUrl === store.storeUrl);
-      }
-
-      if (!storeAnalysis) {
-        return res.status(400).json({ 
-          error: "No analysis available. Please run a store analysis first." 
-        });
-      }
-
-      // Generate new color palette using OpenAI
-      const openai = await import('openai');
-      const openaiClient = new openai.default({ 
-        apiKey: process.env.OPENAI_API_KEY 
-      });
-
-      const colorPrompt = `You are an expert brand designer and color theory specialist. Generate a fresh, modern color palette for this e-commerce store.
-
-Store Analysis Data:
-- Store URL: ${storeAnalysis.storeUrl}
-- Store Type: ${storeAnalysis.storeType}
-- Current Design Score: ${storeAnalysis.designScore}/20
-
-Create a new professional color palette with exactly 5 colors:
-1. Primary brand color (for headers, CTAs, branding)
-2. Secondary color (for accents, highlights)  
-3. Background color (main page background)
-4. Text color (readable on background)
-5. Accent color (for buttons, links, highlights)
-
-Provide the response in this exact JSON format:
-{
-  "id": "colors-new-${Date.now()}",
-  "type": "colors",
-  "title": "Modern Color Palette Update",
-  "description": "Fresh color scheme designed to improve brand recognition and conversion rates",
-  "impact": "Enhanced visual hierarchy and professional appearance",
-  "priority": "medium",
-  "suggestions": {
-    "current": "Current color scheme lacks cohesion and modern appeal",
-    "recommended": "Implement this carefully selected color palette: Primary: [COLOR1], Secondary: [COLOR2], Background: [COLOR3], Text: [COLOR4], Accent: [COLOR5]",
-    "cssChanges": "Update CSS custom properties: --primary-color: [COLOR1]; --secondary-color: [COLOR2]; --bg-color: [COLOR3]; --text-color: [COLOR4]; --accent-color: [COLOR5];",
-    "colorPalette": {
-      "primary": "[HEX_COLOR1]",
-      "secondary": "[HEX_COLOR2]", 
-      "background": "[HEX_COLOR3]",
-      "text": "[HEX_COLOR4]",
-      "accent": "[HEX_COLOR5]"
-    }
-  }
-}
-
-Generate colors that:
-- Work well together and have good contrast
-- Suit the store's industry and target audience
-- Follow modern design trends
-- Are accessible (WCAG compliant)
-- Create a professional, trustworthy appearance
-
-Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
-
-      const aiResponse = await openaiClient.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [{ role: "user", content: colorPrompt }],
-        response_format: { type: "json_object" },
-        max_tokens: 800,
-        temperature: 0.8, // Higher temperature for more creative color combinations
-      });
-
-      const newColorSuggestion = JSON.parse(aiResponse.choices[0].message.content || '{}');
-      
-      res.json(newColorSuggestion);
-    } catch (error) {
-      console.error("Error generating new colors:", error);
-      res.status(500).json({ error: "Failed to generate new color palette" });
-    }
-  });
-
   // Apply design changes to Shopify store
   app.post("/api/shopify/apply-design", requireAuth, async (req: Request, res: Response) => {
     try {
       const { storeId, suggestionId, changes } = req.body;
       const { user } = req;
-      
-      console.log('Apply design request:', { storeId, suggestionId, changes });
-      console.log('Changes received:', JSON.stringify(changes, null, 2));
 
       // Check if user has enough credits
       const userCredits = await storage.getUserCredits(user.id);
@@ -1874,493 +1721,12 @@ Replace [COLOR1], [COLOR2], etc. with actual hex color codes like #3B82F6.`;
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
-      // Apply actual design changes to Shopify store
-      try {
-        // Check if we have theme permissions first
-        console.log('Checking theme permissions for store:', store.shopifyDomain);
-        console.log('Store scope:', store.shopifyScope);
-
-        // Check if we have required permissions  
-        const requiredScopes = ['write_themes', 'write_script_tags'];
-        const currentScopes = store.shopifyScope?.split(',') || [];
-        const missingScopes = requiredScopes.filter(scope => !currentScopes.includes(scope));
-        
-        if (missingScopes.length > 0) {
-          console.log('Missing required scopes:', missingScopes);
-          return res.status(400).json({ 
-            error: "Store needs additional permissions", 
-            message: `Your store connection is missing these permissions: ${missingScopes.join(', ')}. Please reconnect your store to grant these permissions.`,
-            needsReconnect: true,
-            missingScopes: missingScopes
-          });
-        }
-        
-        // Get active theme first with detailed debugging
-        console.log('Fetching themes from:', `https://${store.shopifyDomain}/admin/api/2023-10/themes.json`);
-        const themesResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes.json`, {
-          headers: {
-            'X-Shopify-Access-Token': store.shopifyAccessToken!,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log('Themes response status:', themesResponse.status);
-        console.log('Themes response headers:', Object.fromEntries(themesResponse.headers));
-
-        if (!themesResponse.ok) {
-          const errorText = await themesResponse.text();
-          console.error(`Themes API error: ${themesResponse.status} ${themesResponse.statusText}`);
-          console.error('Error body:', errorText);
-          
-          // Check if it's a permission issue
-          if (themesResponse.status === 403) {
-            return res.status(400).json({ 
-              error: "Store needs theme permissions", 
-              message: "Please reconnect your store to grant theme editing permissions. Go to Store Management and click 'Reconnect' to update permissions.",
-              needsReconnect: true
-            });
-          }
-          
-          throw new Error(`Failed to fetch themes: ${themesResponse.statusText}`);
-        }
-
-        const themesData = await themesResponse.json();
-        console.log('Raw themes data:', JSON.stringify(themesData, null, 2));
-        console.log('Available themes:', themesData.themes?.map((t: any) => ({ id: t.id, name: t.name, role: t.role })));
-        
-        // Find the active theme (main or published)
-        let activeTheme = themesData.themes?.find((theme: any) => theme.role === 'main');
-        if (!activeTheme) {
-          activeTheme = themesData.themes?.find((theme: any) => theme.role === 'published');
-        }
-        if (!activeTheme) {
-          // If no main/published theme, use the first available theme
-          activeTheme = themesData.themes?.[0];
-        }
-
-        if (!activeTheme) {
-          throw new Error('No themes found in store');
-        }
-        
-        console.log('Selected theme for modification:', { 
-          id: activeTheme.id, 
-          name: activeTheme.name, 
-          role: activeTheme.role,
-          store: store.shopifyDomain 
-        });
-        console.log('Using dynamic theme ID:', activeTheme.id, 'for store:', store.shopifyDomain);
-        
-        // Test theme assets endpoint first with the correct theme ID
-        console.log('Testing theme assets access with theme ID:', activeTheme.id);
-        const testAssetsResponse = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`, {
-          headers: {
-            'X-Shopify-Access-Token': store.shopifyAccessToken!,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        console.log('Assets endpoint status:', testAssetsResponse.status);
-        console.log('Assets URL:', `https://${store.shopifyDomain}/admin/api/2023-10/themes/${activeTheme.id}/assets.json`);
-        
-        if (!testAssetsResponse.ok) {
-          const assetsError = await testAssetsResponse.text();
-          console.error('Assets endpoint error:', assetsError);
-          console.error('Assets response headers:', Object.fromEntries(testAssetsResponse.headers));
-        } else {
-          const assetsData = await testAssetsResponse.json();
-          console.log('Assets access SUCCESS! Sample assets:', assetsData.assets?.slice(0, 5)?.map((a: any) => a.key));
-          
-          // Check if theme.liquid exists
-          const hasThemeLiquid = assetsData.assets?.some((a: any) => a.key === 'layout/theme.liquid');
-          console.log('Theme has theme.liquid file:', hasThemeLiquid);
-        }
-
-        // Apply changes based on suggestion type  
-        // Handle different data structures - frontend sends suggestion.suggestions
-        let colorPalette;
-        if (changes.colorPalette) {
-          colorPalette = changes.colorPalette;
-        } else if (changes.recommended && typeof changes.recommended === 'string') {
-          // Generate actual colors using AI since recommendation is just text
-          console.log('Generating actual colors for recommendation:', changes.recommended);
-          
-          try {
-            const colorGenerationPrompt = `Based on this design recommendation: "${changes.recommended}"
-            
-            Generate a specific color palette with actual hex colors. Return ONLY a JSON object with this exact structure:
-            {
-              "primary": "#hexcolor",
-              "secondary": "#hexcolor", 
-              "accent": "#hexcolor",
-              "background": "#hexcolor",
-              "text": "#hexcolor"
-            }
-            
-            Make the colors:
-            - Professional and modern
-            - High contrast for readability
-            - Suitable for e-commerce
-            - Cohesive as a palette`;
-
-            const aiResponse = await openaiClient.chat.completions.create({
-              model: "gpt-4o",
-              messages: [{ role: "user", content: colorGenerationPrompt }],
-              response_format: { type: "json_object" },
-              max_tokens: 200,
-            });
-
-            const generatedColors = JSON.parse(aiResponse.choices[0].message.content || '{}');
-            if (generatedColors.primary && generatedColors.secondary) {
-              colorPalette = generatedColors;
-              console.log('Generated color palette from AI:', colorPalette);
-            }
-          } catch (e) {
-            console.warn('Could not generate colors from AI, using fallback colors');
-            // Fallback to a professional color scheme
-            colorPalette = {
-              primary: '#2563eb',
-              secondary: '#64748b', 
-              accent: '#10b981',
-              background: '#ffffff',
-              text: '#1f2937'
-            };
-          }
-        }
-        
-        console.log('Extracted color palette:', colorPalette);
-        
-        // Generate a complete new theme using OpenAI
-        let themeUpdateSuccess = false;
-        
-        try {
-          console.log('Generating complete new theme with OpenAI for store:', store.shopifyDomain);
-          
-          // First, analyze the current store to understand its structure
-          const storeAnalysisPrompt = `Analyze this Shopify store and create a comprehensive theme redesign recommendation.
-
-Store URL: ${store.storeUrl}
-Current theme ID: ${activeTheme.id}
-Design recommendation: ${changes.recommended}
-
-Based on the design recommendation, generate a complete theme overhaul that includes:
-1. A modern, professional color palette
-2. Typography recommendations
-3. Layout improvements
-4. Mobile-first responsive design
-5. E-commerce conversion optimizations
-
-Return ONLY a JSON object with this structure:
-{
-  "themeName": "StoreScore Optimized Theme",
-  "colorPalette": {
-    "primary": "#hexcolor",
-    "secondary": "#hexcolor", 
-    "accent": "#hexcolor",
-    "background": "#hexcolor",
-    "text": "#hexcolor",
-    "success": "#hexcolor",
-    "warning": "#hexcolor",
-    "error": "#hexcolor"
-  },
-  "typography": {
-    "headingFont": "font family name",
-    "bodyFont": "font family name",
-    "headingSizes": ["h1 size", "h2 size", "h3 size"],
-    "lineHeight": "1.6"
-  },
-  "layout": {
-    "headerStyle": "description",
-    "navigationStyle": "description", 
-    "productGridColumns": 3,
-    "footerStyle": "description"
-  },
-  "customCSS": "/* Complete CSS that transforms the theme */",
-  "designNotes": "Brief explanation of the design decisions"
-}`;
-
-          const themeResponse = await openaiClient.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "user", content: storeAnalysisPrompt }],
-            response_format: { type: "json_object" },
-            max_tokens: 2000,
-          });
-
-          const themeDesign = JSON.parse(themeResponse.choices[0].message.content || '{}');
-          console.log('Generated theme design:', JSON.stringify(themeDesign, null, 2));
-          
-          if (themeDesign.customCSS) {
-            // Create a comprehensive CSS override
-            const fullThemeCSS = `
-/* StoreScore AI-Generated Theme - Applied ${new Date().toLocaleString()} */
-/* Theme: ${themeDesign.themeName || 'StoreScore Optimized'} */
-
-/* Visual confirmation indicator */
-body::before {
-  content: "✓ StoreScore AI Theme Active" !important;
-  position: fixed !important;
-  top: 10px !important;
-  right: 10px !important;
-  background: ${themeDesign.colorPalette?.primary || '#1A73E8'} !important;
-  color: white !important;
-  padding: 8px 12px !important;
-  font-size: 12px !important;
-  font-weight: bold !important;
-  z-index: 99999 !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-}
-
-/* Apply generated color palette */
-:root {
-  --storescore-primary: ${themeDesign.colorPalette?.primary || '#1A73E8'};
-  --storescore-secondary: ${themeDesign.colorPalette?.secondary || '#185ABC'};
-  --storescore-accent: ${themeDesign.colorPalette?.accent || '#FF6F61'};
-  --storescore-background: ${themeDesign.colorPalette?.background || '#FFFFFF'};
-  --storescore-text: ${themeDesign.colorPalette?.text || '#333333'};
-  --storescore-success: ${themeDesign.colorPalette?.success || '#10b981'};
-  --storescore-warning: ${themeDesign.colorPalette?.warning || '#f59e0b'};
-  --storescore-error: ${themeDesign.colorPalette?.error || '#ef4444'};
-}
-
-/* Typography improvements */
-body {
-  font-family: ${themeDesign.typography?.bodyFont || 'system-ui, -apple-system, sans-serif'} !important;
-  line-height: ${themeDesign.typography?.lineHeight || '1.6'} !important;
-  color: var(--storescore-text) !important;
-}
-
-h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
-  font-family: ${themeDesign.typography?.headingFont || 'system-ui, -apple-system, sans-serif'} !important;
-  color: var(--storescore-text) !important;
-}
-
-/* Generated custom CSS */
-${themeDesign.customCSS}
-
-/* Enhanced header styling */
-.site-header, .header, .page-header,
-.shopify-section-header, .top-bar, .header-wrapper,
-[class*="header"], header, nav, .navigation,
-.site-nav, .main-nav, #shopify-section-header { 
-  background-color: var(--storescore-primary) !important; 
-  background: var(--storescore-primary) !important;
-  color: white !important;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-}
-
-/* Modern button styling */
-button, .btn, .button, 
-input[type="submit"], input[type="button"],
-.btn-primary, [class*="button"], [class*="btn"],
-.product-form__cart-submit, .cart__submit,
-.shopify-payment-button__button, .add-to-cart,
-.btn--add-to-cart, .product-single__add-to-cart { 
-  background-color: var(--storescore-accent) !important; 
-  background: var(--storescore-accent) !important;
-  border-color: var(--storescore-accent) !important;
-  color: white !important;
-  border-radius: 6px !important;
-  padding: 12px 24px !important;
-  font-weight: 600 !important;
-  transition: all 0.3s ease !important;
-}
-
-button:hover, .btn:hover, .button:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-}
-
-/* Enhanced price styling */
-.price, .product__price, .product-price,
-[class*="price"], .money, .currency,
-.product-form__price, span[class*="price"],
-.price-item, .product-single__price { 
-  color: var(--storescore-primary) !important; 
-  font-weight: 700 !important;
-  font-size: 1.2em !important;
-}
-
-/* Modern footer */
-.footer, .site-footer, [class*="footer"],
-#shopify-section-footer { 
-  background-color: var(--storescore-secondary) !important; 
-  color: white !important;
-  padding: 40px 0 !important;
-}
-
-/* Improved links */
-a { 
-  color: var(--storescore-primary) !important;
-  text-decoration: none !important;
-  transition: color 0.3s ease !important;
-}
-
-a:hover {
-  color: var(--storescore-accent) !important;
-}
-
-/* Navigation improvements */
-.site-nav a, .main-nav a, nav a {
-  color: white !important;
-  font-weight: 500 !important;
-  padding: 8px 16px !important;
-  border-radius: 4px !important;
-  transition: background-color 0.3s ease !important;
-}
-
-.site-nav a:hover, .main-nav a:hover, nav a:hover {
-  background-color: rgba(255,255,255,0.1) !important;
-}
-
-/* Product grid improvements */
-.product-item, .product-card, [class*="product"] {
-  border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
-}
-
-.product-item:hover, .product-card:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  body::before {
-    font-size: 10px !important;
-    padding: 6px 10px !important;
-  }
-  
-  button, .btn, .button {
-    padding: 10px 20px !important;
-    font-size: 14px !important;
-  }
-}`;
-
-            // Create script tag to inject the complete theme
-            const themeScript = `
-(function() {
-  // Remove any existing StoreScore styles
-  var existing = document.getElementById('storescore-ai-theme');
-  if (existing) existing.remove();
-  
-  // Create and inject new complete theme
-  var style = document.createElement('style');
-  style.id = 'storescore-ai-theme';
-  style.innerHTML = \`${fullThemeCSS.replace(/`/g, '\\`')}\`;
-  document.head.appendChild(style);
-  
-  console.log('StoreScore: AI-generated theme applied successfully');
-  console.log('Theme design:', ${JSON.stringify(themeDesign)});
-})();`;
-
-            // First, clean up any existing StoreScore scripts
-            try {
-              const existingScriptsResponse = await fetch(
-                `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
-                {
-                  headers: {
-                    'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
-              
-              if (existingScriptsResponse.ok) {
-                const scripts = await existingScriptsResponse.json();
-                console.log('Found existing script tags:', scripts.script_tags?.length || 0);
-                
-                for (const script of scripts.script_tags || []) {
-                  if (script.display_scope === 'online_store' && 
-                      script.src?.includes('data:text/javascript')) {
-                    console.log('Removing existing StoreScore script:', script.id);
-                    await fetch(
-                      `https://${store.shopifyDomain}/admin/api/2023-10/script_tags/${script.id}.json`,
-                      {
-                        method: 'DELETE',
-                        headers: {
-                          'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                        },
-                      }
-                    );
-                  }
-                }
-              }
-            } catch (cleanupError) {
-              console.warn('Could not clean up existing scripts:', cleanupError);
-            }
-
-            // Create optimized theme script that fits Shopify's 255 char limit
-            const optimizedThemeScript = `
-(function(){
-var s=document.createElement('style');
-s.id='storescore-theme';
-if(document.getElementById('storescore-theme'))document.getElementById('storescore-theme').remove();
-s.innerHTML='body{border-top:5px solid ${themeDesign.colorPalette?.primary||'#1A73E8'}!important}body::before{content:"✓ StoreScore AI"!important;position:fixed!important;top:10px!important;right:10px!important;background:${themeDesign.colorPalette?.primary||'#1A73E8'}!important;color:#fff!important;padding:4px 8px!important;font-size:10px!important;z-index:99999!important;border-radius:3px!important}header,.site-header{background:${themeDesign.colorPalette?.primary||'#1A73E8'}!important;color:#fff!important}button,.btn{background:${themeDesign.colorPalette?.accent||'#FF6F61'}!important;border:none!important;color:#fff!important}';
-document.head.appendChild(s);
-})();`;
-
-            // Create the new theme script tag
-            const scriptTagPayload = {
-              script_tag: {
-                event: 'onload',
-                src: `data:text/javascript;base64,${Buffer.from(optimizedThemeScript).toString('base64')}`,
-                display_scope: 'online_store'
-              }
-            };
-            
-            console.log('Creating AI theme script tag...');
-            const scriptResponse = await fetch(
-              `https://${store.shopifyDomain}/admin/api/2023-10/script_tags.json`,
-              {
-                method: 'POST',
-                headers: {
-                  'X-Shopify-Access-Token': store.shopifyAccessToken!,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(scriptTagPayload)
-              }
-            );
-            
-            console.log('AI theme script creation response status:', scriptResponse.status);
-            
-            if (scriptResponse.ok) {
-              const scriptResult = await scriptResponse.json();
-              console.log('AI theme script created successfully!', scriptResult.script_tag?.id);
-              themeUpdateSuccess = true;
-            } else {
-              const scriptError = await scriptResponse.text();
-              console.error('AI theme script creation failed:', scriptError);
-            }
-          }
-          
-        } catch (themeError) {
-          console.error('AI theme generation failed:', themeError);
-        }
-        
-        if (!themeUpdateSuccess) {
-          console.warn('Could not apply AI-generated theme');
-        } else {
-          console.log('AI-generated theme successfully applied to store!');
-        }
-
-        console.log(`Successfully processed design changes for Shopify store: ${store.shopifyDomain}`);
-        console.log('Applied color palette:', JSON.stringify(colorPalette, null, 2));
-      } catch (shopifyError) {
-        console.error('Shopify API error:', shopifyError);
-        
-        // If it's a permission error, inform the user they need to reconnect
-        if (shopifyError.message.includes('Forbidden') || shopifyError.message.includes('403')) {
-          return res.status(400).json({ 
-            error: "Store needs theme permissions", 
-            message: "Your store doesn't have theme editing permissions. Please reconnect your store to grant theme editing access.",
-            needsReconnect: true
-          });
-        }
-        
-        // For other errors, continue with credit deduction but inform user
-        console.warn('Design application failed but continuing with credit deduction');
-      }
+      // For now, we'll simulate design application since Shopify theme customization
+      // requires more complex API calls and theme asset management
+      // In a real implementation, this would:
+      // 1. Update theme settings via Admin API
+      // 2. Modify theme assets (CSS, liquid files)
+      // 3. Update theme customizations
 
       // Deduct credits
       await storage.deductCredits(user.id, 1, `Design optimization applied: ${suggestionId}`);
@@ -2387,18 +1753,158 @@ document.head.appendChild(s);
     }
   });
 
-  // ================ SHOPIFY ANALYSIS ROUTES ================
+  // Shopify OAuth callback (handles both installation and authorization)
+  app.get("/api/shopify/callback", async (req: Request, res: Response) => {
+    try {
+      console.log('Debug - Shopify callback received:', req.query);
+      const { code, state, shop, hmac, host, timestamp } = req.query;
+      
+      // Handle app installation (when redirected without code)
+      if (!code && shop && hmac) {
+        console.log('Debug - App installation detected, redirecting to OAuth');
+        // This is an app installation, redirect to proper OAuth flow
+        const shopDomain = shop as string;
+        const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
+          `client_id=${process.env.SHOPIFY_API_KEY}&` +
+          `scope=read_products,read_orders,read_themes,read_content&` +
+          `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
+          `state=install_${Date.now()}`;
+        
+        return res.redirect(installUrl);
+      }
+      
+      // Handle OAuth authorization (when code is present)
+      if (!code || !shop) {
+        console.log('Debug - Missing required OAuth parameters:', { code: !!code, shop: !!shop });
+        return res.status(400).send("Missing required OAuth parameters");
+      }
+      
+      // Parse state to get userId and optionally userStoreId
+      const stateParts = (state as string).split(':');
+      let userId: number;
+      let userStoreId: number | null = null;
+      
+      // Handle installation state (install_timestamp) vs regular OAuth state (hash:userId)
+      if ((state as string).startsWith('install_')) {
+        console.log('Debug - Installation flow detected, using session user');
+        // For installation flow, we need to get the current user from session
+        if (!req.user?.id) {
+          console.log('Debug - Installation without authenticated user');
+          return res.redirect('/login?error=auth_required&message=' + encodeURIComponent('Please log in to connect your Shopify store.'));
+        }
+        userId = req.user.id;
+        console.log('Debug - Using session userId:', userId);
+      } else {
+        console.log('Debug - Regular OAuth flow detected');
+        // Regular OAuth state parsing
+        userId = stateParts.length >= 3 ? parseInt(stateParts[2]) : parseInt(stateParts[1]);
+        userStoreId = stateParts.length >= 4 ? parseInt(stateParts[3]) : null;
+        
+        if (!userId || isNaN(userId)) {
+          console.log('Debug - State parsing failed:', { state, stateParts, userId, userStoreId });
+          return res.status(400).send("Invalid state parameter");
+        }
+      }
+      
+      // Exchange code for access token
+      let access_token, scope;
+      try {
+        const tokenResponse = await exchangeCodeForToken(
+          shop as string, 
+          code as string, 
+          state as string
+        );
+        access_token = tokenResponse.access_token;
+        scope = tokenResponse.scope;
+      } catch (error) {
+        console.error('Token exchange failed:', error);
+        return res.redirect('/dashboard/stores?error=oauth_failed&message=' + encodeURIComponent('Failed to authenticate with Shopify. Please check your store settings and try again.'));
+      }
+      
+      // Get shop information
+      let shopInfo;
+      try {
+        shopInfo = await getShopInfo(shop as string, access_token);
+      } catch (error) {
+        console.error('Failed to get shop info:', error);
+        return res.redirect('/dashboard/stores?error=shop_info_failed&message=' + encodeURIComponent('Connected to Shopify but failed to get store information.'));
+      }
+      
+      // Check if store already exists for this user and shop domain
+      const existingStores = await storage.getUserStores(userId);
+      const existingStore = existingStores.find(store => 
+        store.shopifyDomain === shop || 
+        store.storeUrl?.includes(shop as string) ||
+        store.name === shopInfo.name
+      );
+
+      if (existingStore) {
+        // Update existing store with new token and permissions
+        console.log('Debug - Updating existing store:', existingStore.id);
+        await storage.updateUserStore(existingStore.id, {
+          shopifyAccessToken: access_token,
+          shopifyDomain: shop as string,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date(),
+          name: shopInfo.name,
+          storeUrl: `https://${shopInfo.domain}`
+        });
+      } else if (userStoreId) {
+        // Update specific store (from reconnection)
+        console.log('Debug - Updating specified store:', userStoreId);
+        await storage.updateUserStore(userStoreId, {
+          shopifyAccessToken: access_token,
+          shopifyDomain: shop as string,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date(),
+          name: shopInfo.name,
+          storeUrl: `https://${shopInfo.domain}`
+        });
+      } else {
+        // Create new store only if none exists
+        console.log('Debug - Creating new store for:', shopInfo.name);
+        await storage.createUserStore({
+          userId,
+          name: shopInfo.name,
+          storeUrl: `https://${shopInfo.domain}`,
+          storeType: 'shopify',
+          shopifyAccessToken: access_token,
+          shopifyDomain: shop as string,
+          shopifyScope: scope,
+          isConnected: true,
+          connectionStatus: 'connected',
+          lastSyncAt: new Date()
+        });
+      }
+      
+      // Redirect to dashboard with success message
+      res.redirect(`/dashboard/stores?connected=true&shop=${encodeURIComponent(shopInfo.name)}`);
+    } catch (error) {
+      console.error("Error in Shopify OAuth callback:", error);
+      res.redirect('/dashboard/stores?error=connection_failed');
+    }
+  });
   
-  // Analyze a specific connected Shopify store
+  // Trigger automatic analysis for connected Shopify store
   app.post("/api/shopify/analyze/:storeId", requireAuth, async (req: Request, res: Response) => {
     try {
       const storeId = parseInt(req.params.storeId);
-      const { user } = req;
-
-      console.log('🔄 Shopify store analysis request:', { storeId, userId: user.id });
-
+      const store = await storage.getUserStore(storeId);
+      
+      if (!store || store.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+      
+      if (!store.isConnected || !store.shopifyAccessToken) {
+        return res.status(400).json({ error: "Store not connected to Shopify" });
+      }
+      
       // Check user credits
-      const userCredits = await storage.getUserCredits(user.id);
+      const userCredits = await storage.getUserCredits(req.user!.id);
       if (userCredits < 1) {
         return res.status(402).json({ 
           error: 'Insufficient credits', 
@@ -2406,54 +1912,38 @@ document.head.appendChild(s);
           creditsAvailable: userCredits
         });
       }
-
-      // Get the user's store
-      const store = await storage.getUserStore(storeId);
-      if (!store || store.userId !== user.id) {
-        return res.status(404).json({ error: "Store not found" });
-      }
-
-      if (!store.storeUrl) {
-        return res.status(400).json({ error: "Store URL not available" });
-      }
-
-      console.log('📊 Analyzing store:', store.storeUrl);
-
-      // Get optimization data to inform analysis
-      const optimizations = await storage.getProductOptimizations(store.id);
       
-      // Group optimizations by product
-      const optimizedProducts: Record<string, string[]> = {};
-      optimizations.forEach(opt => {
-        if (!optimizedProducts[opt.shopifyProductId]) {
-          optimizedProducts[opt.shopifyProductId] = [];
-        }
-        optimizedProducts[opt.shopifyProductId].push(opt.optimizationType);
-      });
-
-      console.log('🔧 Found optimizations for', Object.keys(optimizedProducts).length, 'products');
-
-      // Perform store analysis with optimization context
-      let result;
-      if (store.storeType === 'shopify') {
-        result = await analyzeShopifyStore(store.storeUrl, {
-          storeId: store.id,
-          optimizedProducts,
-          totalOptimizations: optimizations.length
-        });
-      } else {
-        return res.status(400).json({ error: "Unsupported store type for this endpoint" });
-      }
+      // Get store products for comprehensive analysis
+      const products = await getStoreProducts(
+        store.shopifyDomain!, 
+        store.shopifyAccessToken, 
+        100
+      );
       
-      console.log('✅ Analysis completed for store:', store.storeUrl);
-
-      // Store the analysis result
+      // Get shop info
+      const shopInfo = await getShopInfo(
+        store.shopifyDomain!, 
+        store.shopifyAccessToken
+      );
+      
+      // Create analysis content from Shopify data
+      const analysisContent = createShopifyAnalysisContent(shopInfo, products);
+      
+      // Run AI analysis with real Shopify data
+      const analysisData = {
+        storeContent: analysisContent,
+        storeType: 'shopify' as const,
+        storeUrl: store.storeUrl!
+      };
+      
+      const result = await analyzeStoreWithAI(analysisData);
+      
+      // Store the analysis
       const storedAnalysis = await storage.createStoreAnalysis({
-        userId: user.id,
+        userId: req.user!.id,
         userStoreId: store.id,
         storeUrl: store.storeUrl,
-        storeType: store.storeType || 'shopify',
-        ebayUsername: null,
+        storeType: 'shopify',
         overallScore: result.overallScore,
         strengths: result.strengths,
         warnings: result.warnings,
@@ -2469,21 +1959,258 @@ document.head.appendChild(s);
         summary: result.summary,
         storeRecap: result.storeRecap,
         creditsUsed: 1,
-        contentHash: (result as any).contentHash || null
+        contentHash: null // Shopify API data changes frequently
       });
-
+      
       // Deduct credits
-      await storage.deductCredits(user.id, 1, "Shopify store analysis", storedAnalysis.id);
-
-      console.log('💾 Analysis stored with ID:', storedAnalysis.id);
-
+      await storage.deductCredits(req.user!.id, 1, "Shopify store analysis", storedAnalysis.id);
+      
+      // Update store with analysis results
+      await storage.updateUserStore(store.id, { 
+        lastAnalyzedAt: new Date(),
+        lastAnalysisScore: result.overallScore,
+        aiRecommendationsCount: result.suggestions?.length || 0
+      });
+      
       res.json(storedAnalysis);
     } catch (error) {
-      console.error("❌ Error analyzing Shopify store:", error);
-      res.status(500).json({ 
-        error: "Failed to analyze store", 
-        details: error instanceof Error ? error.message : "Unknown error"
+      console.error("Error analyzing Shopify store:", error);
+      res.status(500).json({ error: "Failed to analyze store" });
+    }
+  });
+
+  // Categories & SEO recommendations
+  app.get("/api/seo-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateSEORecommendations } = await import("./services/openai");
+      const seoAnalysis = await generateSEORecommendations(store.storeUrl, store.storeType);
+      res.json(seoAnalysis);
+    } catch (error) {
+      console.error("Error fetching SEO recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch SEO recommendations" });
+    }
+  });
+
+  // Legal pages recommendations
+  app.get("/api/legal-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateLegalRecommendations } = await import("./services/openai");
+      const legalAnalysis = await generateLegalRecommendations(store.storeUrl, store.storeType);
+      res.json(legalAnalysis);
+    } catch (error) {
+      console.error("Error fetching legal recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch legal recommendations" });
+    }
+  });
+
+  // Conversion optimization recommendations
+  app.get("/api/conversion-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateConversionRecommendations } = await import("./services/openai");
+      const conversionAnalysis = await generateConversionRecommendations(store.storeUrl, store.storeType);
+      res.json(conversionAnalysis);
+    } catch (error) {
+      console.error("Error fetching conversion recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch conversion recommendations" });
+    }
+  });
+
+  // Reviews and trust recommendations
+  app.get("/api/trust-recommendations/:storeId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { storeId } = req.params;
+      const userId = (req as any).user.id;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== userId) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      const { generateTrustRecommendations } = await import("./services/openai");
+      const trustAnalysis = await generateTrustRecommendations(store.storeUrl, store.storeType);
+      res.json(trustAnalysis);
+    } catch (error) {
+      console.error("Error fetching trust recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch trust recommendations" });
+    }
+  });
+
+  // Apply recommendation endpoints with credit deduction
+  app.post("/api/apply-seo-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      // Deduct credits
+      await storage.deductCredits(user.id, 1, `SEO optimization applied: ${suggestionId}`);
+
+      // Record the optimization
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'seo-optimization',
+        optimizationType: 'seo',
+        originalValue: changes.current || 'Current SEO',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
       });
+
+      res.json({ 
+        success: true, 
+        message: "SEO optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying SEO recommendation:", error);
+      res.status(500).json({ error: "Failed to apply SEO recommendation" });
+    }
+  });
+
+  app.post("/api/apply-legal-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      console.log("Legal recommendation apply request:", {
+        body: req.body,
+        user: req.user ? { id: req.user.id, email: req.user.email } : null
+      });
+
+      const { storeId, suggestionId, changes } = req.body;
+      const user = req.user;
+
+      if (!user) {
+        console.error("No user found in request");
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!storeId || !suggestionId || !changes) {
+        console.error("Missing required fields:", { storeId, suggestionId, changes: !!changes });
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      console.log("Found store:", store ? { id: store.id, userId: store.userId } : null);
+      
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      console.log("Deducting credits for user:", user.id);
+      await storage.deductCredits(user.id, 1, `Legal page optimization applied: ${suggestionId}`);
+
+      console.log("Recording product optimization");
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'legal-page',
+        optimizationType: 'legal',
+        originalValue: changes.current || 'Current legal page',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      console.log("Legal recommendation applied successfully");
+      res.json({ 
+        success: true, 
+        message: "Legal page optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying legal recommendation:", error);
+      res.status(500).json({ error: "Failed to apply legal recommendation", details: error.message });
+    }
+  });
+
+  app.post("/api/apply-conversion-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      await storage.deductCredits(user.id, 1, `Conversion optimization applied: ${suggestionId}`);
+
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'conversion-optimization',
+        optimizationType: 'conversion',
+        originalValue: changes.current || 'Current conversion element',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Conversion optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying conversion recommendation:", error);
+      res.status(500).json({ error: "Failed to apply conversion recommendation" });
+    }
+  });
+
+  app.post("/api/apply-trust-recommendation", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, suggestionId, changes } = req.body;
+      const { user } = req;
+
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      await storage.deductCredits(user.id, 1, `Trust optimization applied: ${suggestionId}`);
+
+      await storage.recordProductOptimization({
+        userId: user.id,
+        userStoreId: store.id,
+        shopifyProductId: 'trust-optimization',
+        optimizationType: 'trust',
+        originalValue: changes.current || 'Current trust element',
+        optimizedValue: changes.recommended,
+        creditsUsed: 1,
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Trust optimization has been applied",
+        suggestion: changes.recommended
+      });
+    } catch (error) {
+      console.error("Error applying trust recommendation:", error);
+      res.status(500).json({ error: "Failed to apply trust recommendation" });
     }
   });
 

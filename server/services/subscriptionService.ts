@@ -174,8 +174,8 @@ export class SubscriptionService {
     // Validate dates before creating Date objects
     const currentPeriodStart = subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : new Date();
     const currentPeriodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : new Date();
-    let trialStartDate = subscription.trial_start ? new Date(subscription.trial_start * 1000) : null;
-    let trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+    const trialStartDate = subscription.trial_start ? new Date(subscription.trial_start * 1000) : null;
+    const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
 
     // Validate dates are not invalid
     if (isNaN(currentPeriodStart.getTime()) || isNaN(currentPeriodEnd.getTime())) {

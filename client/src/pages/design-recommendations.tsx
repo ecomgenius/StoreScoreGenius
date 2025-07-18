@@ -21,8 +21,7 @@ import {
   Type,
   Image,
   Layout,
-  CheckCircle,
-  RefreshCw
+  CheckCircle
 } from "lucide-react";
 
 interface DesignSuggestion {
@@ -46,7 +45,6 @@ export default function DesignRecommendations() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [previewingSuggestion, setPreviewingSuggestion] = useState<DesignSuggestion | null>(null);
-  const [regeneratingColors, setRegeneratingColors] = useState(false);
 
   // Fetch store details
   const { data: stores = [] } = useQuery({
@@ -89,46 +87,11 @@ export default function DesignRecommendations() {
       });
     },
     onError: (error: any) => {
-      // Check if it's a permission error
-      if (error.message?.includes('theme permissions') || error.message?.includes('needsReconnect')) {
-        toast({
-          title: "Permissions Required",
-          description: "Please reconnect your store to grant theme editing permissions. Go to Store Management and click 'Reconnect'.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Failed to Apply Design",
-          description: error.message || "Failed to update store design",
-          variant: "destructive",
-        });
-      }
-    },
-  });
-
-  // Generate new color palette mutation
-  const generateNewColorsMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('POST', '/api/design-recommendations/generate-colors', {
-        storeId,
-      });
-    },
-    onSuccess: (newColorSuggestion) => {
-      // Update the color suggestion in the current data
-      queryClient.invalidateQueries({ queryKey: ['/api/design-recommendations', storeId] });
       toast({
-        title: "New Colors Generated",
-        description: "Fresh color palette suggestions have been created",
-      });
-      setRegeneratingColors(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to Generate Colors",
-        description: error.message || "Failed to generate new color palette",
+        title: "Failed to Apply Design",
+        description: error.message || "Failed to update store design",
         variant: "destructive",
       });
-      setRegeneratingColors(false);
     },
   });
 
@@ -333,30 +296,6 @@ export default function DesignRecommendations() {
                           </div>
                           
                           <div className="flex items-center space-x-2">
-                            {/* Show generate new colors button only for color suggestions */}
-                            {suggestion.type === 'colors' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => {
-                                  setRegeneratingColors(true);
-                                  generateNewColorsMutation.mutate();
-                                }}
-                                disabled={generateNewColorsMutation.isPending || regeneratingColors}
-                              >
-                                {generateNewColorsMutation.isPending || regeneratingColors ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></div>
-                                    Generating...
-                                  </>
-                                ) : (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    New Colors
-                                  </>
-                                )}
-                              </Button>
-                            )}
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -493,54 +432,14 @@ export default function DesignRecommendations() {
                         <div className="mt-3">
                           <div className="text-xs text-green-600 mb-2">Improved color scheme:</div>
                           <div className="space-y-2">
-                            {/* Show actual color palette if available */}
-                            {(previewingSuggestion.suggestions as any).colorPalette ? (
-                              <div className="space-y-3">
-                                <div className="flex space-x-2">
-                                  {Object.entries((previewingSuggestion.suggestions as any).colorPalette).map(([colorType, hexColor]: [string, any]) => (
-                                    <div key={colorType} className="text-center">
-                                      <div 
-                                        className="w-12 h-12 rounded border shadow-sm mb-1" 
-                                        style={{ backgroundColor: hexColor }}
-                                      ></div>
-                                      <div className="text-xs text-gray-600 capitalize">{colorType}</div>
-                                      <div className="text-xs text-gray-500 font-mono">{hexColor}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="p-3 border rounded bg-white">
-                                  <div className="space-y-2">
-                                    <div 
-                                      className="text-white px-4 py-2 rounded text-sm font-medium text-center"
-                                      style={{ backgroundColor: (previewingSuggestion.suggestions as any).colorPalette.primary }}
-                                    >
-                                      Add to Cart
-                                    </div>
-                                    <div 
-                                      className="px-4 py-2 rounded text-sm text-center border"
-                                      style={{ 
-                                        color: (previewingSuggestion.suggestions as any).colorPalette.accent,
-                                        borderColor: (previewingSuggestion.suggestions as any).colorPalette.accent
-                                      }}
-                                    >
-                                      View Details
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              // Fallback generic color preview
-                              <div className="space-y-2">
-                                <div className="flex space-x-2">
-                                  <div className="w-8 h-8 bg-blue-600 rounded border shadow-sm"></div>
-                                  <div className="w-8 h-8 bg-blue-500 rounded border shadow-sm"></div>
-                                  <div className="w-8 h-8 bg-blue-400 rounded border shadow-sm"></div>
-                                </div>
-                                <div className="p-2 border rounded bg-white">
-                                  <div className="bg-blue-600 text-white px-3 py-1 rounded text-xs">Add to Cart</div>
-                                </div>
-                              </div>
-                            )}
+                            <div className="flex space-x-2">
+                              <div className="w-8 h-8 bg-blue-600 rounded border shadow-sm"></div>
+                              <div className="w-8 h-8 bg-blue-500 rounded border shadow-sm"></div>
+                              <div className="w-8 h-8 bg-blue-400 rounded border shadow-sm"></div>
+                            </div>
+                            <div className="p-2 border rounded bg-white">
+                              <div className="bg-blue-600 text-white px-3 py-1 rounded text-xs">Add to Cart</div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -694,63 +593,35 @@ export default function DesignRecommendations() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-between pt-4">
-                <div className="flex items-center space-x-2">
-                  {/* Generate New Colors button for color suggestions */}
-                  {previewingSuggestion.type === 'colors' && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setRegeneratingColors(true);
-                        generateNewColorsMutation.mutate();
-                      }}
-                      disabled={generateNewColorsMutation.isPending || regeneratingColors}
-                    >
-                      {generateNewColorsMutation.isPending || regeneratingColors ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></div>
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Generate New Colors
-                        </>
-                      )}
-                    </Button>
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPreviewingSuggestion(null)}
+                >
+                  Close Preview
+                </Button>
+                <Button 
+                  onClick={() => {
+                    applyDesignMutation.mutate({
+                      suggestionId: previewingSuggestion.id,
+                      changes: previewingSuggestion.suggestions
+                    });
+                    setPreviewingSuggestion(null);
+                  }}
+                  disabled={applyDesignMutation.isPending || (userCredits?.credits || 0) < 1}
+                >
+                  {applyDesignMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Applying...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Apply Changes (1 credit)
+                    </>
                   )}
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setPreviewingSuggestion(null)}
-                  >
-                    Close Preview
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      applyDesignMutation.mutate({
-                        suggestionId: previewingSuggestion.id,
-                        changes: previewingSuggestion.suggestions
-                      });
-                      setPreviewingSuggestion(null);
-                    }}
-                    disabled={applyDesignMutation.isPending || (userCredits?.credits || 0) < 1}
-                  >
-                    {applyDesignMutation.isPending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                        Applying...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="h-4 w-4 mr-2" />
-                        Apply Changes (1 credit)
-                      </>
-                    )}
-                  </Button>
-                </div>
+                </Button>
               </div>
             </div>
           )}

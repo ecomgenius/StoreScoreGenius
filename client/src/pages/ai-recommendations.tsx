@@ -51,7 +51,6 @@ export default function AIRecommendations() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkType, setBulkType] = useState<string>('');
   const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
-  const [productFilter, setProductFilter] = useState<'all' | 'optimized' | 'not-optimized'>('not-optimized');
   
   // State for AI suggestion previews
   const [previewingSuggestion, setPreviewingSuggestion] = useState<{
@@ -289,66 +288,47 @@ export default function AIRecommendations() {
     }
   };
 
-  // Filter products based on optimization status
-  const getFilteredProducts = (type: string) => {
-    if (productFilter === 'all') {
-      return products;
-    } else if (productFilter === 'optimized') {
-      return products.filter((product: Product) => 
-        optimizedProducts[product.id]?.[type]
-      );
-    } else { // not-optimized
-      return products.filter((product: Product) => 
-        !optimizedProducts[product.id]?.[type]
-      );
-    }
-  };
-
   // Helper function to check if a product is optimized for a specific type
   const isProductOptimized = (productId: string, type: string) => {
-    return optimizedProducts[productId]?.[type] || false;
+    return optimizedProducts[productId] && optimizedProducts[productId][type];
   };
 
-  // Create product-based optimization opportunities for each tab, with filtering
+  // Create product-based optimization opportunities for each tab, excluding already optimized products
   const productOptimizations = {
-    title: productFilter === 'optimized' ? getFilteredProducts('title') : 
-           productFilter === 'not-optimized' ? getFilteredProducts('title') :
-           getFilteredProducts('title').filter(p => 
-             p.title && (
-               p.title.length < 30 || 
-               p.title.length > 70 || 
-               !p.title.includes(p.product_type || '') ||
-               p.title === p.title.toUpperCase()
-             )
-           ),
-    description: productFilter === 'optimized' ? getFilteredProducts('description') : 
-                 productFilter === 'not-optimized' ? getFilteredProducts('description') :
-                 getFilteredProducts('description').filter(p => 
-                   (
-                     !p.body_html || 
-                     p.body_html.length < 100 || 
-                     !p.body_html.includes('benefits') ||
-                     !p.body_html.includes('features')
-                   )
-                 ),
-    pricing: productFilter === 'optimized' ? getFilteredProducts('pricing') : 
-             productFilter === 'not-optimized' ? getFilteredProducts('pricing') :
-             getFilteredProducts('pricing').filter(p => 
-               p.variants?.[0]?.price && // Must have a price
-               (
-                 parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
-                 !p.variants[0].compare_at_price // Missing compare at price for discounts
-               )
-             ),
-    keywords: productFilter === 'optimized' ? getFilteredProducts('keywords') : 
-              productFilter === 'not-optimized' ? getFilteredProducts('keywords') :
-              getFilteredProducts('keywords').filter(p => 
-                (
-                  !p.tags || // No tags at all
-                  p.tags.length < 5 || // Very few tags
-                  !p.tags.includes(',') // Single tag without commas
-                )
-              )
+    title: products.filter(p => 
+      !isProductOptimized(p.id, 'title') && // Filter out optimized products
+      p.title && (
+        p.title.length < 30 || 
+        p.title.length > 70 || 
+        !p.title.includes(p.product_type || '') ||
+        p.title === p.title.toUpperCase()
+      )
+    ),
+    description: products.filter(p => 
+      !isProductOptimized(p.id, 'description') && // Filter out optimized products
+      (
+        !p.body_html || 
+        p.body_html.length < 100 || 
+        !p.body_html.includes('benefits') ||
+        !p.body_html.includes('features')
+      )
+    ),
+    pricing: products.filter(p => 
+      !isProductOptimized(p.id, 'pricing') && // Filter out optimized products
+      p.variants?.[0]?.price && // Must have a price
+      (
+        parseFloat(p.variants[0].price) % 1 === 0 || // Round numbers might need .99 pricing
+        !p.variants[0].compare_at_price // Missing compare at price for discounts
+      )
+    ),
+    keywords: products.filter(p => 
+      !isProductOptimized(p.id, 'keywords') && // Filter out optimized products
+      (
+        !p.tags || // No tags at all
+        p.tags.length < 5 || // Very few tags
+        !p.tags.includes(',') // Single tag without commas
+      )
+    )
   };
 
 
@@ -581,57 +561,28 @@ export default function AIRecommendations() {
                     <p className="text-muted-foreground">Loading products...</p>
                   </div>
                 </div>
-              ) : (
+              ) : productOptimizations[type]?.length > 0 ? (
                 <>
                   <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold">Products for {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
+                        <h3 className="text-lg font-semibold">Products Needing {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
                         <p className="text-sm text-muted-foreground">
-                          {productOptimizations[type].length} products showing in current filter
+                          {productOptimizations[type].length} products could benefit from AI-powered improvements
                         </p>
                       </div>
                       <Button
                         onClick={() => handleBulkApply(type)}
-                        disabled={applyBulkMutation.isPending || productOptimizations[type].filter(p => !isProductOptimized(p.id, type)).length === 0}
+                        disabled={applyBulkMutation.isPending}
                         variant="outline"
                       >
-                        Optimize All Non-Optimized ({productOptimizations[type].filter(p => !isProductOptimized(p.id, type)).length} credits)
+                        Optimize All ({productOptimizations[type].length} credits)
                       </Button>
-                    </div>
-                    
-                    {/* Product Filter */}
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                      <span className="text-sm font-medium">Show:</span>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant={productFilter === 'not-optimized' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setProductFilter('not-optimized')}
-                        >
-                          Need Optimization ({products.filter(p => !isProductOptimized(p.id, type)).length})
-                        </Button>
-                        <Button 
-                          variant={productFilter === 'optimized' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setProductFilter('optimized')}
-                        >
-                          AI Optimized ({products.filter(p => isProductOptimized(p.id, type)).length})
-                        </Button>
-                        <Button 
-                          variant={productFilter === 'all' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setProductFilter('all')}
-                        >
-                          All Products ({products.length})
-                        </Button>
-                      </div>
                     </div>
                   </div>
                   
-                  {productOptimizations[type]?.length > 0 ? (
-                    <div className="space-y-4">
-                      {productOptimizations[type].map((product: Product) => (
+                  <div className="space-y-4">
+                    {productOptimizations[type].map((product: Product) => (
                       <Card key={product.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
@@ -729,33 +680,20 @@ export default function AIRecommendations() {
                           </div>
                         </CardContent>
                       </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      {productFilter === 'optimized' ? (
-                        <>
-                          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">No Optimized Products</h3>
-                          <p className="text-muted-foreground">
-                            No products have been optimized for {type} yet. Switch to "Need Optimization" to see available opportunities.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
-                          <p className="text-muted-foreground">
-                            {products.length > 0 ? 
-                              `All ${products.length} products have optimal ${type} settings.` :
-                              'Connect your Shopify store to see product optimization opportunities.'
-                            }
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </>
+              ) : (
+                <div className="text-center py-12">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
+                  <p className="text-muted-foreground">
+                    {products.length > 0 ? 
+                      `All ${products.length} products have optimal ${type} settings.` :
+                      'Connect your Shopify store to see product optimization opportunities.'
+                    }
+                  </p>
+                </div>
               )}
             </TabsContent>
           ))}

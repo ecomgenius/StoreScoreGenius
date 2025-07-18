@@ -456,14 +456,12 @@ export default function UserStores() {
                   id="shopifyDomain"
                   value={shopifyDomain}
                   onChange={(e) => setShopifyDomain(e.target.value)}
-                  placeholder="yourstore.myshopify.com"
+                  placeholder="i10jxn-aa.myshopify.com"
                   className="mt-1"
                 />
-                <div className="text-sm text-gray-500 mt-1 space-y-1">
-                  <p>✓ Use your .myshopify.com domain (e.g., yourstore.myshopify.com)</p>
-                  <p>✓ Custom domains connected to Shopify also work</p>
-                  <p>⚠️ Remove password protection before connecting</p>
-                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Enter your store's .myshopify.com domain or custom domain
+                </p>
               </div>
               <div className="flex justify-end space-x-2">
                 <Button
