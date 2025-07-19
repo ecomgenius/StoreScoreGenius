@@ -2541,6 +2541,35 @@ Provide actionable, specific recommendations that can be implemented.`;
         return res.status(404).json({ error: "Store not found" });
       }
 
+      // Check if store has Shopify access for real modifications
+      if (!store.shopifyAccessToken || !store.shopifyDomain) {
+        return res.status(400).json({ 
+          error: "Store not connected to Shopify. Please reconnect your store to apply trust optimizations directly to Shopify." 
+        });
+      }
+
+      let actualChanges = {
+        applied: false,
+        message: "Trust optimization tracked in system",
+        shopifyChanges: []
+      };
+
+      try {
+        // Apply actual Shopify modifications based on suggestion type
+        const { applyTrustOptimization } = await import('./services/shopifyTrustOptimization.js');
+        actualChanges = await applyTrustOptimization(
+          store.shopifyDomain,
+          store.shopifyAccessToken,
+          suggestionId,
+          changes
+        );
+      } catch (shopifyError) {
+        console.error("Shopify trust optimization failed:", shopifyError);
+        // Continue to record the optimization even if Shopify modification fails
+        actualChanges.message = "Trust optimization tracked. Shopify modification failed - manual implementation required.";
+      }
+
+      // Deduct credits and record optimization
       await storage.deductCredits(user.id, 1, `Trust optimization applied: ${suggestionId}`);
 
       await storage.recordProductOptimization({
@@ -2555,8 +2584,12 @@ Provide actionable, specific recommendations that can be implemented.`;
 
       res.json({ 
         success: true, 
-        message: "Trust optimization has been applied",
-        suggestion: changes.recommended
+        message: actualChanges.applied ? 
+          "Trust optimization applied successfully to your Shopify store!" : 
+          actualChanges.message,
+        suggestion: changes.recommended,
+        shopifyApplied: actualChanges.applied,
+        modifications: actualChanges.shopifyChanges
       });
     } catch (error) {
       console.error("Error applying trust recommendation:", error);
