@@ -1362,9 +1362,11 @@ Return ONLY a JSON object with this exact format:
         apiKey: process.env.OPENAI_API_KEY 
       });
 
-      const promptBase = `You are a direct response copywriter specializing in high-converting ${platform} ads. Create compelling ad copy that drives conversions.`;
+      const promptBase = `You are a professional creative director and copywriter specializing in high-converting visual ${platform} ads. Create compelling, platform-optimized visual ads with specific design instructions.`;
       
       let productInfo = '';
+      let productImages = [];
+      
       if (isWholeStore) {
         productInfo = `
 Store Name: ${storeData.name}
@@ -1372,14 +1374,48 @@ Store URL: ${storeData.url}
 Store Type: E-commerce store
 `;
       } else if (productData) {
+        productImages = productData.edges?.[0]?.node?.images?.edges?.map((img: any) => img.node.url) || [];
         productInfo = `
-Product Name: ${productData.title}
-Product Description: ${productData.body_html?.replace(/<[^>]*>/g, '').substring(0, 300) || 'Premium quality product'}
-Category: ${productData.product_type || 'Product'}
-Price: $${productData.variants?.[0]?.price || 'Contact for pricing'}
-Tags: ${productData.tags || 'Quality, Premium'}
+Product Name: ${productData.edges?.[0]?.node?.title || productData.title}
+Product Description: ${productData.edges?.[0]?.node?.description || productData.body_html?.replace(/<[^>]*>/g, '').substring(0, 300) || 'Premium quality product'}
+Category: ${productData.edges?.[0]?.node?.productType || productData.product_type || 'Product'}
+Price: $${productData.edges?.[0]?.node?.variants?.edges?.[0]?.node?.price || productData.variants?.[0]?.price || 'Contact for pricing'}
+Tags: ${productData.edges?.[0]?.node?.tags?.join(', ') || productData.tags || 'Quality, Premium'}
+Available Images: ${productImages.length} product images available
+Primary Image: ${productImages[0] || 'No image available'}
 `;
       }
+
+      // Platform-specific format requirements
+      const platformSpecs = {
+        'Facebook': {
+          image_ratio: '1.91:1 (landscape) or 1:1 (square)',
+          text_limits: 'Headline: 40 chars, Primary text: 125 chars',
+          visual_style: 'Clean, professional, with clear product focus'
+        },
+        'Instagram': {
+          image_ratio: '1:1 (square) or 4:5 (portrait)',
+          text_limits: 'Headline: 30 chars, Primary text: 2200 chars',
+          visual_style: 'Aesthetic, lifestyle-focused, visually appealing'
+        },
+        'TikTok': {
+          image_ratio: '9:16 (vertical)',
+          text_limits: 'Headline: 20 chars, Primary text: 100 chars',
+          visual_style: 'Bold, trendy, youth-oriented, dynamic'
+        },
+        'Google Ads': {
+          image_ratio: '1.91:1 (landscape)',
+          text_limits: 'Headline: 30 chars, Description: 90 chars',
+          visual_style: 'Clean, informative, trust-building'
+        },
+        'Pinterest': {
+          image_ratio: '2:3 (portrait)',
+          text_limits: 'Headline: 100 chars, Description: 500 chars',
+          visual_style: 'Inspirational, lifestyle, high-quality imagery'
+        }
+      };
+
+      const currentPlatformSpec = platformSpecs[platform] || platformSpecs['Facebook'];
 
       const adPrompt = `${promptBase}
 
@@ -1389,23 +1425,45 @@ Platform: ${platform}
 Ad Style: ${adStyle}
 Format: ${format}
 
-Requirements:
-- Create ${variants} unique ad variations
-- Each ad should be optimized for ${platform}
-- Use ${adStyle} approach for maximum engagement
-- Keep copy ${format === 'short' ? 'under 100 words' : format === 'medium' ? 'between 100-200 words' : 'over 200 words but engaging'}
-- Include compelling headlines, persuasive primary text, and strong call-to-action
-- Focus on benefits and emotional triggers
+PLATFORM SPECIFICATIONS FOR ${platform}:
+- Image Ratio: ${currentPlatformSpec.image_ratio}
+- Text Limits: ${currentPlatformSpec.text_limits}
+- Visual Style: ${currentPlatformSpec.visual_style}
+
+VISUAL AD REQUIREMENTS:
+- Create ${variants} unique ad variations optimized for ${platform}
+- Include specific visual design instructions for each ad
+- Use ${adStyle} approach for maximum emotional impact
+- Provide detailed instructions for image composition and styling
+- Include color schemes, typography suggestions, and layout guidance
+- Specify how to incorporate the product image effectively
+- Keep text within platform limits: ${currentPlatformSpec.text_limits}
+
+CREATIVE REQUIREMENTS:
+- Headlines should be ${format === 'short' ? 'punchy and direct' : format === 'medium' ? 'engaging with benefits' : 'detailed and compelling'}
+- Focus on benefits, emotional triggers, and conversion optimization
 - Use platform-specific best practices for ${platform}
+- Include visual storytelling elements
+- Specify background colors, text overlays, and product placement
 
 Return ads in JSON format with this exact structure:
-[
-  {
-    "headline": "Compelling headline text",
-    "primary_text": "Main ad copy that drives action",
-    "call_to_action": "Strong CTA button text"
-  }
-]`;
+{
+  "ads": [
+    {
+      "headline": "Platform-optimized headline",
+      "primary_text": "Compelling ad copy within character limits",
+      "call_to_action": "Strong CTA button text",
+      "product_image": "${productImages[0] || 'Use store logo or brand image'}",
+      "platform_format": "${platform} ${currentPlatformSpec.image_ratio}",
+      "visual_elements": {
+        "background_color": "Hex color or gradient suggestion",
+        "text_overlay": "Specific text placement and styling instructions",
+        "product_placement": "How to position the product in the image",
+        "style_notes": "Additional visual design guidance"
+      }
+    }
+  ]
+}`;
 
       console.log('Debug - Generating ads with OpenAI...');
       
@@ -1419,27 +1477,56 @@ Return ads in JSON format with this exact structure:
 
       let generatedAds;
       try {
-        const responseContent = aiResponse.choices[0].message.content || '[]';
+        const responseContent = aiResponse.choices[0].message.content || '{}';
         const parsedResponse = JSON.parse(responseContent);
         
-        // Handle both array format and object format from AI
-        if (Array.isArray(parsedResponse)) {
-          generatedAds = parsedResponse;
-        } else if (parsedResponse.ads && Array.isArray(parsedResponse.ads)) {
+        // Handle new visual ad format
+        if (parsedResponse.ads && Array.isArray(parsedResponse.ads)) {
           generatedAds = parsedResponse.ads;
+        } else if (Array.isArray(parsedResponse)) {
+          // Legacy format - convert to new format
+          generatedAds = parsedResponse.map(ad => ({
+            ...ad,
+            product_image: productImages[0] || null,
+            platform_format: `${platform} ${currentPlatformSpec.image_ratio}`,
+            visual_elements: {
+              background_color: '#ffffff',
+              text_overlay: 'Bold text overlay with product focus',
+              product_placement: 'Center product with lifestyle context',
+              style_notes: `${platform}-optimized visual design`
+            }
+          }));
         } else {
-          // Fallback: create array from single object
-          generatedAds = [parsedResponse];
+          // Single object format
+          generatedAds = [{
+            ...parsedResponse,
+            product_image: productImages[0] || null,
+            platform_format: `${platform} ${currentPlatformSpec.image_ratio}`,
+            visual_elements: {
+              background_color: '#ffffff',
+              text_overlay: 'Bold text overlay with product focus',
+              product_placement: 'Center product with lifestyle context',
+              style_notes: `${platform}-optimized visual design`
+            }
+          }];
         }
       } catch (parseError) {
         console.error('Error parsing AI response:', parseError);
-        // Fallback ads
+        // Enhanced fallback with visual elements
         generatedAds = [{
-          headline: isWholeStore ? `Discover Amazing Products at ${storeData.name}` : `Get Your ${productData?.title || 'Premium Product'} Today`,
+          headline: isWholeStore ? `Discover ${storeData.name}` : `Get ${productData?.edges?.[0]?.node?.title || productData?.title || 'Premium Product'}`,
           primary_text: isWholeStore 
-            ? `Shop the latest trends and quality products at ${storeData.name}. Limited time offers available!`
-            : `Experience the quality of ${productData?.title || 'our premium product'}. Join thousands of satisfied customers.`,
-          call_to_action: "Shop Now"
+            ? `Shop quality products at ${storeData.name}. Limited time offers!`
+            : `Experience premium quality. Join satisfied customers.`,
+          call_to_action: "Shop Now",
+          product_image: productImages[0] || null,
+          platform_format: `${platform} ${currentPlatformSpec.image_ratio}`,
+          visual_elements: {
+            background_color: '#ffffff',
+            text_overlay: 'Bold, contrasting text',
+            product_placement: 'Center focus with clean background',
+            style_notes: `Professional ${platform} ad design`
+          }
         }];
       }
 

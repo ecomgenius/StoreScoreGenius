@@ -40,6 +40,14 @@ interface GeneratedAd {
   headline: string;
   primary_text: string;
   call_to_action: string;
+  product_image?: string;
+  platform_format: string;
+  visual_elements: {
+    background_color?: string;
+    text_overlay?: string;
+    product_placement?: string;
+    style_notes?: string;
+  };
 }
 
 export default function AdCreator() {
@@ -475,37 +483,112 @@ export default function AdCreator() {
                   <>
                     <h3 className="text-lg font-semibold">Generated Ads</h3>
                     {generatedAds.map((ad, index) => (
-                      <Card key={index}>
+                      <Card key={index} className="overflow-hidden">
                         <CardHeader>
                           <div className="flex items-center justify-between">
-                            <CardTitle className="text-base">Ad Variant {index + 1}</CardTitle>
+                            <div>
+                              <CardTitle className="text-base">Ad Variant {index + 1}</CardTitle>
+                              <Badge variant="secondary" className="mt-1">
+                                {ad.platform_format || `${platform} Format`}
+                              </Badge>
+                            </div>
                             <div className="flex space-x-2">
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => copyToClipboard(`${ad.headline}\n\n${ad.primary_text}\n\n${ad.call_to_action}`)}
+                                onClick={() => copyToClipboard(`HEADLINE: ${ad.headline}\n\nPRIMARY TEXT: ${ad.primary_text}\n\nCALL TO ACTION: ${ad.call_to_action}\n\nVISUAL DESIGN:\n- Background: ${ad.visual_elements?.background_color || 'Not specified'}\n- Text Style: ${ad.visual_elements?.text_overlay || 'Not specified'}\n- Product Placement: ${ad.visual_elements?.product_placement || 'Not specified'}\n- Design Notes: ${ad.visual_elements?.style_notes || 'Not specified'}`)}
                               >
                                 <Copy className="h-3 w-3 mr-1" />
-                                Copy
+                                Copy All
                               </Button>
                             </div>
                           </div>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div>
-                            <Label className="text-xs font-medium text-muted-foreground">HEADLINE</Label>
-                            <p className="font-semibold">{ad.headline}</p>
+                        <CardContent className="space-y-4">
+                          {/* Visual Preview Section */}
+                          {ad.product_image && (
+                            <div className="space-y-2">
+                              <Label className="text-xs font-medium text-muted-foreground">VISUAL PREVIEW</Label>
+                              <div 
+                                className="relative border rounded-lg overflow-hidden"
+                                style={{
+                                  aspectRatio: platform === 'TikTok' ? '9/16' : 
+                                             platform === 'Pinterest' ? '2/3' :
+                                             platform === 'Instagram' ? '1/1' : '1.91/1',
+                                  maxHeight: '300px',
+                                  backgroundColor: ad.visual_elements?.background_color || '#f3f4f6'
+                                }}
+                              >
+                                <img 
+                                  src={ad.product_image} 
+                                  alt="Product"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-20 flex flex-col justify-end p-4">
+                                  <div className="bg-white bg-opacity-90 rounded p-2 mb-2">
+                                    <p className="font-bold text-sm text-black">{ad.headline}</p>
+                                    <p className="text-xs text-gray-800 mt-1">{ad.primary_text.substring(0, 80)}...</p>
+                                  </div>
+                                  <Button size="sm" className="w-fit">
+                                    {ad.call_to_action}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Ad Copy Section */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-xs font-medium text-muted-foreground">HEADLINE</Label>
+                              <p className="font-semibold text-sm">{ad.headline}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {ad.headline.length} characters
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-xs font-medium text-muted-foreground">CALL TO ACTION</Label>
+                              <Button size="sm" className="mt-1 w-full">
+                                {ad.call_to_action}
+                              </Button>
+                            </div>
                           </div>
+
                           <div>
                             <Label className="text-xs font-medium text-muted-foreground">PRIMARY TEXT</Label>
-                            <p className="text-sm">{ad.primary_text}</p>
+                            <p className="text-sm leading-relaxed">{ad.primary_text}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {ad.primary_text.length} characters
+                            </p>
                           </div>
-                          <div>
-                            <Label className="text-xs font-medium text-muted-foreground">CALL TO ACTION</Label>
-                            <Button size="sm" className="mt-1">
-                              {ad.call_to_action}
-                            </Button>
-                          </div>
+
+                          {/* Design Instructions */}
+                          {ad.visual_elements && (
+                            <div className="space-y-3 border-t pt-3">
+                              <Label className="text-xs font-medium text-muted-foreground">DESIGN INSTRUCTIONS</Label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <span className="font-medium">Background:</span>
+                                  <p className="text-muted-foreground">{ad.visual_elements.background_color}</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium">Text Style:</span>
+                                  <p className="text-muted-foreground">{ad.visual_elements.text_overlay}</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium">Product Placement:</span>
+                                  <p className="text-muted-foreground">{ad.visual_elements.product_placement}</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium">Style Notes:</span>
+                                  <p className="text-muted-foreground">{ad.visual_elements.style_notes}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
