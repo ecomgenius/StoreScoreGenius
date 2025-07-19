@@ -93,6 +93,7 @@ export default function AdCreator() {
       targetAudience: string;
     }) => apiRequest('POST', '/api/generate-ads', data),
     onSuccess: (data: { ads: GeneratedAd[]; creditsUsed: number }) => {
+      console.log('Debug - Ads generation response:', data);
       setGeneratedAds(data.ads);
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       toast({
@@ -129,6 +130,9 @@ export default function AdCreator() {
       });
       return;
     }
+
+    // Clear previous ads before generating new ones
+    setGeneratedAds([]);
 
     generateAdsMutation.mutate({
       storeId: selectedStore.id,
@@ -457,7 +461,7 @@ export default function AdCreator() {
                       ) : (
                         <>
                           <Zap className="h-4 w-4 mr-2" />
-                          Generate Ads ({variants} credit{variants > 1 ? 's' : ''})
+                          Generate Ads (1 credit)
                         </>
                       )}
                     </Button>
