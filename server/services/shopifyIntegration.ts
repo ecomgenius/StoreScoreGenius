@@ -165,21 +165,16 @@ export async function getShopInfo(shopDomain: string, accessToken: string): Prom
         id
         name
         email
-        domain
         myshopifyDomain
-        planDisplayName
-        planName
         primaryDomain {
           host
           sslEnabled
         }
         currencyCode
         weightUnit
-        timezoneAbbreviation
-        timezone
+        ianaTimezone
         taxesIncluded
         taxShipping
-        hasGiftCards
         setupRequired
         createdAt
         updatedAt
@@ -212,21 +207,21 @@ export async function getShopInfo(shopDomain: string, accessToken: string): Prom
     id: shop.id.split('/').pop(),
     name: shop.name,
     email: shop.email,
-    domain: shop.domain,
+    domain: shop.myshopifyDomain.replace('.myshopify.com', ''),
     myshopify_domain: shop.myshopifyDomain,
-    plan_display_name: shop.planDisplayName,
-    plan_name: shop.planName,
+    plan_display_name: 'Unknown',
+    plan_name: 'unknown',
     primary_domain: {
       host: shop.primaryDomain.host,
       ssl_enabled: shop.primaryDomain.sslEnabled
     },
     currency: shop.currencyCode,
     weight_unit: shop.weightUnit,
-    iana_timezone: shop.timezone,
-    timezone: shop.timezoneAbbreviation,
+    iana_timezone: shop.ianaTimezone,
+    timezone: shop.ianaTimezone,
     taxes_included: shop.taxesIncluded,
     tax_shipping: shop.taxShipping,
-    has_gift_cards: shop.hasGiftCards,
+    has_gift_cards: false,
     setup_required: shop.setupRequired,
     created_at: shop.createdAt,
     updated_at: shop.updatedAt
@@ -281,8 +276,6 @@ export async function fetchSingleProduct(shopDomain: string, accessToken: string
               compareAtPrice
               sku
               inventoryQuantity
-              weight
-              weightUnit
             }
           }
         }
@@ -346,8 +339,8 @@ export async function fetchSingleProduct(shopDomain: string, accessToken: string
         compare_at_price: varEdge.node.compareAtPrice,
         sku: varEdge.node.sku,
         inventory_quantity: varEdge.node.inventoryQuantity,
-        weight: varEdge.node.weight,
-        weight_unit: varEdge.node.weightUnit
+        weight: null,
+        weight_unit: null
       })),
       seo: product.seo
     }
@@ -456,8 +449,6 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
                   compareAtPrice
                   sku
                   inventoryQuantity
-                  weight
-                  weightUnit
                 }
               }
             }
@@ -522,8 +513,8 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
         compare_at_price: varEdge.node.compareAtPrice,
         sku: varEdge.node.sku,
         inventory_quantity: varEdge.node.inventoryQuantity,
-        weight: varEdge.node.weight,
-        weight_unit: varEdge.node.weightUnit
+        weight: null,
+        weight_unit: null
       })),
       seo: node.seo
     };
