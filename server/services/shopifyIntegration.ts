@@ -538,8 +538,8 @@ export async function updateProduct(shopDomain: string, accessToken: string, pro
   
   if (updateData.title) {
     mutation = `
-      mutation productUpdate($id: ID!, $input: ProductInput!) {
-        productUpdate(id: $id, input: $input) {
+      mutation productUpdate($input: ProductInput!) {
+        productUpdate(input: $input) {
           product {
             id
             title
@@ -554,10 +554,13 @@ export async function updateProduct(shopDomain: string, accessToken: string, pro
         }
       }
     `;
-    variables.input = {
-      title: updateData.title,
-      descriptionHtml: updateData.body_html,
-      tags: updateData.tags ? updateData.tags.split(',') : undefined
+    variables = {
+      input: {
+        id: gid,
+        title: updateData.title,
+        descriptionHtml: updateData.body_html,
+        tags: updateData.tags ? updateData.tags.split(',') : undefined
+      }
     };
   } else if (updateData.variants && updateData.variants.length > 0) {
     // Handle variant updates using the new productVariantsBulkUpdate mutation
@@ -588,8 +591,8 @@ export async function updateProduct(shopDomain: string, accessToken: string, pro
   } else if (updateData.tags) {
     // Update tags only
     mutation = `
-      mutation productUpdate($id: ID!, $input: ProductInput!) {
-        productUpdate(id: $id, input: $input) {
+      mutation productUpdate($input: ProductInput!) {
+        productUpdate(input: $input) {
           product {
             id
             tags
@@ -601,8 +604,11 @@ export async function updateProduct(shopDomain: string, accessToken: string, pro
         }
       }
     `;
-    variables.input = {
-      tags: updateData.tags.split(',')
+    variables = {
+      input: {
+        id: gid,
+        tags: updateData.tags.split(',')
+      }
     };
   }
 
