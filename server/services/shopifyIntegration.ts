@@ -154,16 +154,46 @@ export async function exchangeCodeForToken(
 }
 
 /**
- * Get shop information using access token
+ * Get shop information using GraphQL API (2024-04+ compliant)
  */
 export async function getShopInfo(shopDomain: string, accessToken: string): Promise<ShopifyStore> {
-  const shopUrl = `https://${shopDomain}/admin/api/2023-10/shop.json`;
+  const graphqlUrl = `https://${shopDomain}/admin/api/2024-04/graphql.json`;
   
-  const response = await fetch(shopUrl, {
+  const query = `
+    query getShop {
+      shop {
+        id
+        name
+        email
+        domain
+        myshopifyDomain
+        planDisplayName
+        planName
+        primaryDomain {
+          host
+          sslEnabled
+        }
+        currencyCode
+        weightUnit
+        timezoneAbbreviation
+        timezone
+        taxesIncluded
+        taxShipping
+        hasGiftCards
+        setupRequired
+        createdAt
+        updatedAt
+      }
+    }
+  `;
+
+  const response = await fetch(graphqlUrl, {
+    method: 'POST',
     headers: {
       'X-Shopify-Access-Token': accessToken,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({ query })
   });
 
   if (!response.ok) {
@@ -171,28 +201,157 @@ export async function getShopInfo(shopDomain: string, accessToken: string): Prom
   }
 
   const data = await response.json();
-  return data.shop;
+  
+  if (data.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  }
+
+  // Transform GraphQL response to match REST format for backward compatibility
+  const shop = data.data.shop;
+  return {
+    id: shop.id.split('/').pop(),
+    name: shop.name,
+    email: shop.email,
+    domain: shop.domain,
+    myshopify_domain: shop.myshopifyDomain,
+    plan_display_name: shop.planDisplayName,
+    plan_name: shop.planName,
+    primary_domain: {
+      host: shop.primaryDomain.host,
+      ssl_enabled: shop.primaryDomain.sslEnabled
+    },
+    currency: shop.currencyCode,
+    weight_unit: shop.weightUnit,
+    iana_timezone: shop.timezone,
+    timezone: shop.timezoneAbbreviation,
+    taxes_included: shop.taxesIncluded,
+    tax_shipping: shop.taxShipping,
+    has_gift_cards: shop.hasGiftCards,
+    setup_required: shop.setupRequired,
+    created_at: shop.createdAt,
+    updated_at: shop.updatedAt
+  };
 }
 
 /**
- * Get store products for analysis
+ * Get store products for analysis using GraphQL API (2024-04+ compliant)
  */
 export async function getStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
-  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
+  // Use the new fetchStoreProducts function which already uses GraphQL
+  return await fetchStoreProducts(shopDomain, accessToken, limit);
+}
+
+/**
+ * Fetch a single product by ID using GraphQL API (2024-04+ compliant)
+ */
+export async function fetchSingleProduct(shopDomain: string, accessToken: string, productId: string) {
+  const graphqlUrl = `https://${shopDomain}/admin/api/2024-04/graphql.json`;
   
-  const response = await fetch(productsUrl, {
+  // Convert numeric ID to GID format
+  const gid = `gid://shopify/Product/${productId}`;
+  
+  const query = `
+    query getProduct($id: ID!) {
+      product(id: $id) {
+        id
+        title
+        handle
+        descriptionHtml
+        productType
+        vendor
+        tags
+        status
+        createdAt
+        updatedAt
+        images(first: 5) {
+          edges {
+            node {
+              id
+              src: url
+              altText
+            }
+          }
+        }
+        variants(first: 10) {
+          edges {
+            node {
+              id
+              title
+              price
+              compareAtPrice
+              sku
+              inventoryQuantity
+              weight
+              weightUnit
+            }
+          }
+        }
+        seo {
+          title
+          description
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(graphqlUrl, {
+    method: 'POST',
     headers: {
       'X-Shopify-Access-Token': accessToken,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      query,
+      variables: { id: gid }
+    })
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to get products: ${response.statusText}`);
+    throw new Error(`Failed to fetch product: ${response.statusText}`);
   }
 
   const data = await response.json();
-  return data.products;
+  
+  if (data.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  }
+
+  if (!data.data.product) {
+    throw new Error(`Product not found: ${productId}`);
+  }
+
+  // Transform GraphQL response to match REST format for backward compatibility
+  const product = data.data.product;
+  return {
+    product: {
+      id: product.id.split('/').pop(),
+      title: product.title,
+      handle: product.handle,
+      body_html: product.descriptionHtml,
+      product_type: product.productType,
+      vendor: product.vendor,
+      tags: product.tags.join(','),
+      status: product.status.toLowerCase(),
+      created_at: product.createdAt,
+      updated_at: product.updatedAt,
+      images: product.images.edges.map((imgEdge: any) => ({
+        id: imgEdge.node.id.split('/').pop(),
+        src: imgEdge.node.src,
+        alt: imgEdge.node.altText
+      })),
+      variants: product.variants.edges.map((varEdge: any) => ({
+        id: varEdge.node.id.split('/').pop(),
+        title: varEdge.node.title,
+        price: varEdge.node.price,
+        compare_at_price: varEdge.node.compareAtPrice,
+        sku: varEdge.node.sku,
+        inventory_quantity: varEdge.node.inventoryQuantity,
+        weight: varEdge.node.weight,
+        weight_unit: varEdge.node.weightUnit
+      })),
+      seo: product.seo
+    }
+  };
 }
 
 /**
@@ -260,16 +419,72 @@ This is a comprehensive Shopify store that should be analyzed for:
 }
 
 /**
- * Fetch store products for AI recommendations
+ * Fetch store products using new GraphQL API (2024-04+ compliant)
  */
 export async function fetchStoreProducts(shopDomain: string, accessToken: string, limit: number = 50) {
-  const productsUrl = `https://${shopDomain}/admin/api/2023-10/products.json?limit=${limit}`;
+  const graphqlUrl = `https://${shopDomain}/admin/api/2024-04/graphql.json`;
   
-  const response = await fetch(productsUrl, {
+  const query = `
+    query getProducts($first: Int!) {
+      products(first: $first) {
+        edges {
+          node {
+            id
+            title
+            handle
+            descriptionHtml
+            productType
+            tags
+            status
+            createdAt
+            updatedAt
+            images(first: 5) {
+              edges {
+                node {
+                  id
+                  src: url
+                  altText
+                }
+              }
+            }
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price
+                  compareAtPrice
+                  sku
+                  inventoryQuantity
+                  weight
+                  weightUnit
+                }
+              }
+            }
+            seo {
+              title
+              description
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(graphqlUrl, {
+    method: 'POST',
     headers: {
       'X-Shopify-Access-Token': accessToken,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      query,
+      variables: { first: limit }
+    })
   });
 
   if (!response.ok) {
@@ -277,23 +492,138 @@ export async function fetchStoreProducts(shopDomain: string, accessToken: string
   }
 
   const data = await response.json();
-  return data.products || [];
+  
+  if (data.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  }
+
+  // Transform GraphQL response to match REST format for backward compatibility
+  const products = data.data.products.edges.map((edge: any) => {
+    const node = edge.node;
+    return {
+      id: node.id.split('/').pop(), // Extract numeric ID from GID
+      title: node.title,
+      handle: node.handle,
+      body_html: node.descriptionHtml,
+      product_type: node.productType,
+      tags: node.tags.join(','),
+      status: node.status.toLowerCase(),
+      created_at: node.createdAt,
+      updated_at: node.updatedAt,
+      images: node.images.edges.map((imgEdge: any) => ({
+        id: imgEdge.node.id.split('/').pop(),
+        src: imgEdge.node.src,
+        alt: imgEdge.node.altText
+      })),
+      variants: node.variants.edges.map((varEdge: any) => ({
+        id: varEdge.node.id.split('/').pop(),
+        title: varEdge.node.title,
+        price: varEdge.node.price,
+        compare_at_price: varEdge.node.compareAtPrice,
+        sku: varEdge.node.sku,
+        inventory_quantity: varEdge.node.inventoryQuantity,
+        weight: varEdge.node.weight,
+        weight_unit: varEdge.node.weightUnit
+      })),
+      seo: node.seo
+    };
+  });
+
+  return products;
 }
 
 /**
- * Update a product via Shopify API
+ * Update a product using new GraphQL API (2024-04+ compliant)
  */
 export async function updateProduct(shopDomain: string, accessToken: string, productId: string, updateData: any) {
-  const productUrl = `https://${shopDomain}/admin/api/2023-10/products/${productId}.json`;
+  const graphqlUrl = `https://${shopDomain}/admin/api/2024-04/graphql.json`;
   
-  const response = await fetch(productUrl, {
-    method: 'PUT',
+  // Convert numeric ID to GID format
+  const gid = `gid://shopify/Product/${productId}`;
+  
+  // Build the mutation based on what needs to be updated
+  let mutation = '';
+  let variables: any = { id: gid };
+  
+  if (updateData.title) {
+    mutation = `
+      mutation productUpdate($id: ID!, $input: ProductInput!) {
+        productUpdate(id: $id, input: $input) {
+          product {
+            id
+            title
+            handle
+            descriptionHtml
+            tags
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+    variables.input = {
+      title: updateData.title,
+      descriptionHtml: updateData.body_html,
+      tags: updateData.tags ? updateData.tags.split(',') : undefined
+    };
+  } else if (updateData.variants && updateData.variants.length > 0) {
+    // Handle variant updates using the new productVariantsBulkUpdate mutation
+    const variantGid = `gid://shopify/ProductVariant/${updateData.variants[0].id}`;
+    mutation = `
+      mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+        productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+          productVariants {
+            id
+            price
+            compareAtPrice
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+    variables = {
+      productId: gid,
+      variants: [{
+        id: variantGid,
+        price: updateData.variants[0].price,
+        compareAtPrice: updateData.variants[0].compare_at_price
+      }]
+    };
+  } else if (updateData.tags) {
+    // Update tags only
+    mutation = `
+      mutation productUpdate($id: ID!, $input: ProductInput!) {
+        productUpdate(id: $id, input: $input) {
+          product {
+            id
+            tags
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+    variables.input = {
+      tags: updateData.tags.split(',')
+    };
+  }
+
+  const response = await fetch(graphqlUrl, {
+    method: 'POST',
     headers: {
       'X-Shopify-Access-Token': accessToken,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      product: updateData
+      query: mutation,
+      variables
     })
   });
 
@@ -301,5 +631,17 @@ export async function updateProduct(shopDomain: string, accessToken: string, pro
     throw new Error(`Failed to update product: ${response.statusText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  
+  if (data.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  }
+
+  // Check for user errors in the mutation response
+  const mutationData = data.data.productUpdate || data.data.productVariantsBulkUpdate;
+  if (mutationData?.userErrors && mutationData.userErrors.length > 0) {
+    throw new Error(`Shopify API errors: ${JSON.stringify(mutationData.userErrors)}`);
+  }
+
+  return data;
 }

@@ -570,13 +570,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // First, fetch the current product data
-      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
-        headers: {
-          'X-Shopify-Access-Token': store.shopifyAccessToken,
-          'Content-Type': 'application/json',
-        },
-      }).then(res => res.json()).then(data => data.product);
+      // First, fetch the current product data using GraphQL
+      const { fetchSingleProduct } = await import('./services/shopifyIntegration.js');
+      const productData = await fetchSingleProduct(store.shopifyDomain, store.shopifyAccessToken, productId);
+      const currentProduct = productData.product;
 
       if (!currentProduct) {
         return res.status(404).json({ error: "Product not found" });
@@ -857,13 +854,10 @@ Generate ONLY the comma-separated list of optimized keywords, nothing else:`;
         return res.status(400).json({ error: "Store not connected to Shopify" });
       }
 
-      // Fetch the current product data
-      const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
-        headers: {
-          'X-Shopify-Access-Token': store.shopifyAccessToken,
-          'Content-Type': 'application/json',
-        },
-      }).then(res => res.json()).then(data => data.product);
+      // Fetch the current product data using GraphQL
+      const { fetchSingleProduct } = await import('./services/shopifyIntegration.js');
+      const productData = await fetchSingleProduct(store.shopifyDomain, store.shopifyAccessToken, productId);
+      const currentProduct = productData.product;
 
       if (!currentProduct) {
         return res.status(404).json({ error: "Product not found" });
@@ -1012,13 +1006,10 @@ Generate ONLY the clean description text without HTML tags, quotes, or extra for
       // Apply recommendations to each product with real AI generation
       for (const productId of productIds) {
         try {
-          // Fetch current product data for AI optimization
-          const currentProduct = await fetch(`https://${store.shopifyDomain}/admin/api/2023-10/products/${productId}.json`, {
-            headers: {
-              'X-Shopify-Access-Token': store.shopifyAccessToken,
-              'Content-Type': 'application/json',
-            },
-          }).then(res => res.json()).then(data => data.product);
+          // Fetch current product data for AI optimization using GraphQL
+          const { fetchSingleProduct } = await import('./services/shopifyIntegration.js');
+          const productData = await fetchSingleProduct(store.shopifyDomain, store.shopifyAccessToken, productId);
+          const currentProduct = productData.product;
 
           if (!currentProduct) {
             console.error(`Product ${productId} not found`);

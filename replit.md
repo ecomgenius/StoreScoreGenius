@@ -144,6 +144,7 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Completed Mandatory Subscription Flow**: Fixed registration to require credit card input and trial subscription setup before dashboard access, preventing users from bypassing subscription requirements and ensuring proper $49/month billing after 7-day trial
 - **Enhanced Payment Security**: Implemented separate Stripe elements for card number, expiry date, and CVV validation, removing test card information from user interface while maintaining comprehensive payment verification
 - **AI Time Savings Integration**: Added OpenAI-powered time savings calculation system showing users exactly how much manual work they save with each optimization, displayed in individual product previews with detailed breakdowns of research, creation, review, and implementation time
+- **Critical Shopify API Migration**: Migrated entire application from deprecated REST APIs (2023-10) to new GraphQL Product APIs (2024-04+) for compliance with Shopify deprecation timeline (Feb 2025 for public apps, April 2025 for custom apps), ensuring future compatibility and avoiding feature limitations
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled
