@@ -1586,6 +1586,37 @@ Return in JSON format:
     }
   });
 
+  // ================ IMAGE DOWNLOAD ROUTE ================
+  app.get("/api/download-image", async (req: Request, res: Response) => {
+    try {
+      const { url, filename } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "Image URL is required" });
+      }
+
+      // Fetch the image from OpenAI
+      const response = await fetch(url as string);
+      
+      if (!response.ok) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      const buffer = await response.arrayBuffer();
+      const imageBuffer = Buffer.from(buffer);
+
+      // Set appropriate headers for download
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename || 'ad-image.png'}"`);
+      res.setHeader('Content-Length', imageBuffer.length);
+
+      res.send(imageBuffer);
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      res.status(500).json({ error: "Failed to download image" });
+    }
+  });
+
   // ================ SUBSCRIPTION ROUTES ================
   
   // Get subscription plans
