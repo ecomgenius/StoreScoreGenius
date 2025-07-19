@@ -2555,6 +2555,8 @@ Provide actionable, specific recommendations that can be implemented.`;
       };
 
       try {
+        console.log(`Applying trust optimization for store ${store.shopifyDomain}, suggestion: ${suggestionId}`);
+        
         // Apply actual Shopify modifications based on suggestion type
         const { applyTrustOptimization } = await import('./services/shopifyTrustOptimization.js');
         actualChanges = await applyTrustOptimization(
@@ -2563,6 +2565,8 @@ Provide actionable, specific recommendations that can be implemented.`;
           suggestionId,
           changes
         );
+        
+        console.log(`Trust optimization result:`, actualChanges);
       } catch (shopifyError) {
         console.error("Shopify trust optimization failed:", shopifyError);
         // Continue to record the optimization even if Shopify modification fails

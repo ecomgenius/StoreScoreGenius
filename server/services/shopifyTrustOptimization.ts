@@ -24,12 +24,16 @@ export async function applyTrustOptimization(
     'Content-Type': 'application/json',
   };
 
+  console.log(`Starting trust optimization for ${shopifyDomain}, suggestion: ${suggestionId}`);
+  console.log(`Using API URL: ${baseUrl}`);
+
   const appliedChanges: string[] = [];
   let successCount = 0;
 
   try {
     // Determine optimization type based on suggestion ID and content
     const optimizationType = determineOptimizationType(suggestionId, changes);
+    console.log(`Determined optimization type: ${optimizationType}`);
 
     switch (optimizationType) {
       case 'reviews':
@@ -213,13 +217,20 @@ async function implementReviewSystem(baseUrl: string, headers: any, changes: Tru
     }
   };
 
+  console.log(`Creating review policy page at: ${baseUrl}/pages.json`);
   const response = await fetch(`${baseUrl}/pages.json`, {
     method: 'POST',
     headers,
     body: JSON.stringify(reviewPageData)
   });
 
-  if (response.ok) {
+  console.log(`Page creation response status: ${response.status}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Failed to create page: ${errorText}`);
+  } else {
+    const responseData = await response.json();
+    console.log(`Successfully created page:`, responseData);
     appliedChanges.push("Created customer reviews policy page and enhanced existing pages with review encouragement");
   }
 }
