@@ -2599,9 +2599,11 @@ Provide actionable, specific recommendations that can be implemented.`;
       let responseMessage = actualChanges.message;
       
       if (isReviewOptimization && actualChanges.applied) {
-        responseMessage = `✅ Page created in your Shopify store! Go to Shopify Admin → "Online Store" → "Pages" → "Customer Reviews Policy" to see the new content. 
+        responseMessage = `✅ Review system foundation applied! Added review prompts to product pages, customer testimonials to existing pages, and created review policy page.
 
-📝 To complete setup: Install a review app from Shopify App Store (Judge.me, Yotpo, or Loox).`;
+🔧 For full functionality: Install Judge.me, Yotpo, or Loox from Shopify App Store to enable star ratings, review collection, and automated emails.
+
+📍 Check: Shopify Admin → Products → [Your Products] to see review prompts added to descriptions.`;
       }
 
       res.json({ 
