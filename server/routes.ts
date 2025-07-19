@@ -1356,7 +1356,7 @@ Return ONLY a JSON object with this exact format:
         }
       }
 
-      // Generate AI prompt
+      // Generate AI-powered visual ads
       const openai = await import('openai');
       const openaiClient = new openai.default({ 
         apiKey: process.env.OPENAI_API_KEY 
@@ -1446,21 +1446,19 @@ CREATIVE REQUIREMENTS:
 - Include visual storytelling elements
 - Specify background colors, text overlays, and product placement
 
-Return ads in JSON format with this exact structure:
+Generate ${variants} DALL-E 3 prompts for creating complete visual ad images.
+Each prompt should create a full ad image with text overlays burned directly into the image.
+
+Return in JSON format:
 {
   "ads": [
     {
-      "headline": "Platform-optimized headline",
-      "primary_text": "Compelling ad copy within character limits",
-      "call_to_action": "Strong CTA button text",
-      "product_image": "${productImages[0] || 'Use store logo or brand image'}",
+      "headline": "Platform-optimized headline for reference",
+      "primary_text": "Compelling ad copy for reference", 
+      "call_to_action": "Strong CTA for reference",
+      "dalle_prompt": "Detailed DALL-E 3 prompt to generate complete visual ad with text overlays",
       "platform_format": "${platform} ${currentPlatformSpec.image_ratio}",
-      "visual_elements": {
-        "background_color": "Hex color or gradient suggestion",
-        "text_overlay": "Specific text placement and styling instructions",
-        "product_placement": "How to position the product in the image",
-        "style_notes": "Additional visual design guidance"
-      }
+      "style_description": "Brief description of the visual style and approach"
     }
   ]
 }`;
@@ -1475,59 +1473,84 @@ Return ads in JSON format with this exact structure:
         response_format: { type: "json_object" }
       });
 
-      let generatedAds;
+      let adPrompts;
       try {
         const responseContent = aiResponse.choices[0].message.content || '{}';
         const parsedResponse = JSON.parse(responseContent);
         
-        // Handle new visual ad format
+        // Handle DALL-E prompt format
         if (parsedResponse.ads && Array.isArray(parsedResponse.ads)) {
-          generatedAds = parsedResponse.ads;
+          adPrompts = parsedResponse.ads;
         } else if (Array.isArray(parsedResponse)) {
-          // Legacy format - convert to new format
-          generatedAds = parsedResponse.map(ad => ({
-            ...ad,
-            product_image: productImages[0] || null,
-            platform_format: `${platform} ${currentPlatformSpec.image_ratio}`,
-            visual_elements: {
-              background_color: '#ffffff',
-              text_overlay: 'Bold text overlay with product focus',
-              product_placement: 'Center product with lifestyle context',
-              style_notes: `${platform}-optimized visual design`
-            }
-          }));
+          adPrompts = parsedResponse;
         } else {
-          // Single object format
-          generatedAds = [{
-            ...parsedResponse,
-            product_image: productImages[0] || null,
-            platform_format: `${platform} ${currentPlatformSpec.image_ratio}`,
-            visual_elements: {
-              background_color: '#ffffff',
-              text_overlay: 'Bold text overlay with product focus',
-              product_placement: 'Center product with lifestyle context',
-              style_notes: `${platform}-optimized visual design`
-            }
-          }];
+          adPrompts = [parsedResponse];
         }
       } catch (parseError) {
         console.error('Error parsing AI response:', parseError);
-        // Enhanced fallback with visual elements
-        generatedAds = [{
-          headline: isWholeStore ? `Discover ${storeData.name}` : `Get ${productData?.edges?.[0]?.node?.title || productData?.title || 'Premium Product'}`,
-          primary_text: isWholeStore 
-            ? `Shop quality products at ${storeData.name}. Limited time offers!`
-            : `Experience premium quality. Join satisfied customers.`,
+        // Fallback ad prompts
+        const productTitle = isWholeStore ? storeData.name : (productData?.edges?.[0]?.node?.title || productData?.title || 'Premium Product');
+        adPrompts = [{
+          headline: `Discover ${productTitle}`,
+          primary_text: "Premium quality products with exceptional value",
           call_to_action: "Shop Now",
-          product_image: productImages[0] || null,
+          dalle_prompt: `Create a professional ${platform} ad image for "${productTitle}". Style: ${adStyle}. Include bold text overlay with the headline "Discover ${productTitle}" prominently displayed. Use modern typography, ${currentPlatformSpec.visual_style.toLowerCase()} aesthetic. Aspect ratio: ${currentPlatformSpec.image_ratio}. Background should be clean and professional.`,
           platform_format: `${platform} ${currentPlatformSpec.image_ratio}`,
-          visual_elements: {
-            background_color: '#ffffff',
-            text_overlay: 'Bold, contrasting text',
-            product_placement: 'Center focus with clean background',
-            style_notes: `Professional ${platform} ad design`
-          }
+          style_description: `Professional ${platform} advertisement with clean design`
         }];
+      }
+
+      // Generate actual visual ads using DALL-E 3
+      const generatedAds = [];
+      
+      for (let i = 0; i < adPrompts.length && i < variants; i++) {
+        const adPrompt = adPrompts[i];
+        
+        try {
+          console.log(`Debug - Generating visual ad ${i + 1} with DALL-E 3...`);
+          
+          // Generate image with DALL-E 3
+          const imageResponse = await openaiClient.images.generate({
+            model: "dall-e-3",
+            prompt: adPrompt.dalle_prompt,
+            n: 1,
+            size: platform === 'TikTok' ? "1024x1792" : // 9:16 vertical
+                   platform === 'Pinterest' ? "1024x1536" : // 2:3 portrait  
+                   platform === 'Instagram' ? "1024x1024" : // 1:1 square
+                   "1792x1024", // 1.91:1 landscape for Facebook/Google
+            quality: "hd",
+            style: adStyle.toLowerCase().includes('premium') ? "natural" : "vivid"
+          });
+
+          const imageUrl = imageResponse.data[0].url;
+          
+          generatedAds.push({
+            headline: adPrompt.headline,
+            primary_text: adPrompt.primary_text,
+            call_to_action: adPrompt.call_to_action,
+            image_url: imageUrl,
+            platform_format: adPrompt.platform_format,
+            style_description: adPrompt.style_description,
+            dalle_prompt: adPrompt.dalle_prompt
+          });
+          
+          console.log(`Debug - Successfully generated visual ad ${i + 1}`);
+          
+        } catch (imageError) {
+          console.error(`Error generating image for ad ${i + 1}:`, imageError);
+          
+          // Fallback to text-based ad if image generation fails
+          generatedAds.push({
+            headline: adPrompt.headline,
+            primary_text: adPrompt.primary_text,
+            call_to_action: adPrompt.call_to_action,
+            image_url: null,
+            platform_format: adPrompt.platform_format,
+            style_description: adPrompt.style_description + " (Image generation failed)",
+            dalle_prompt: adPrompt.dalle_prompt,
+            error: "Image generation failed"
+          });
+        }
       }
 
       // Ensure we have the requested number of variants

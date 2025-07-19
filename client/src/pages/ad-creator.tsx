@@ -40,14 +40,11 @@ interface GeneratedAd {
   headline: string;
   primary_text: string;
   call_to_action: string;
-  product_image?: string;
+  image_url?: string;
   platform_format: string;
-  visual_elements: {
-    background_color?: string;
-    text_overlay?: string;
-    product_placement?: string;
-    style_notes?: string;
-  };
+  style_description: string;
+  dalle_prompt?: string;
+  error?: string;
 }
 
 export default function AdCreator() {
@@ -158,8 +155,49 @@ export default function AdCreator() {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied to clipboard",
-      description: "Ad content has been copied to your clipboard",
+      description: "Ad content copied successfully",
     });
+  };
+
+  const downloadImage = async (imageUrl: string, filename: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Download Started",
+        description: `${filename} is being downloaded`,
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download image",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateVariants = () => {
+    if (!selectedStore || !platform || !adStyle || !format || !targetAudience) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate new variants with same settings
+    setGeneratedAds([]);
+    handleGenerateAds();
   };
 
   const resetFlow = () => {
@@ -496,7 +534,7 @@ export default function AdCreator() {
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => copyToClipboard(`HEADLINE: ${ad.headline}\n\nPRIMARY TEXT: ${ad.primary_text}\n\nCALL TO ACTION: ${ad.call_to_action}\n\nVISUAL DESIGN:\n- Background: ${ad.visual_elements?.background_color || 'Not specified'}\n- Text Style: ${ad.visual_elements?.text_overlay || 'Not specified'}\n- Product Placement: ${ad.visual_elements?.product_placement || 'Not specified'}\n- Design Notes: ${ad.visual_elements?.style_notes || 'Not specified'}`)}
+                                onClick={() => copyToClipboard(`HEADLINE: ${ad.headline}\n\nPRIMARY TEXT: ${ad.primary_text}\n\nCALL TO ACTION: ${ad.call_to_action}\n\nPLATFORM: ${ad.platform_format}\n\nSTYLE: ${ad.style_description}\n\nIMAGE URL: ${ad.image_url || 'Generation failed'}\n\nDALL-E PROMPT: ${ad.dalle_prompt || 'Not available'}`)}
                               >
                                 <Copy className="h-3 w-3 mr-1" />
                                 Copy All
@@ -505,37 +543,70 @@ export default function AdCreator() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          {/* Visual Preview Section */}
-                          {ad.product_image && (
-                            <div className="space-y-2">
-                              <Label className="text-xs font-medium text-muted-foreground">VISUAL PREVIEW</Label>
+                          {/* AI-Generated Visual Ad */}
+                          {ad.image_url ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium text-muted-foreground">AI-GENERATED VISUAL AD</Label>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => downloadImage(ad.image_url!, `${platform}_ad_${index + 1}.png`)}
+                                  >
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Download
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(ad.image_url, '_blank')}
+                                  >
+                                    View Full Size
+                                  </Button>
+                                </div>
+                              </div>
                               <div 
-                                className="relative border rounded-lg overflow-hidden"
+                                className="relative border rounded-lg overflow-hidden bg-gray-100"
                                 style={{
                                   aspectRatio: platform === 'TikTok' ? '9/16' : 
                                              platform === 'Pinterest' ? '2/3' :
                                              platform === 'Instagram' ? '1/1' : '1.91/1',
-                                  maxHeight: '300px',
-                                  backgroundColor: ad.visual_elements?.background_color || '#f3f4f6'
+                                  maxHeight: '400px'
                                 }}
                               >
                                 <img 
-                                  src={ad.product_image} 
-                                  alt="Product"
-                                  className="w-full h-full object-cover"
+                                  src={ad.image_url} 
+                                  alt={`AI-generated ${platform} ad`}
+                                  className="w-full h-full object-contain"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement?.insertAdjacentHTML('beforeend', 
+                                      '<div class="flex items-center justify-center h-full text-muted-foreground">Failed to load image</div>'
+                                    );
                                   }}
                                 />
-                                <div className="absolute inset-0 bg-black bg-opacity-20 flex flex-col justify-end p-4">
-                                  <div className="bg-white bg-opacity-90 rounded p-2 mb-2">
-                                    <p className="font-bold text-sm text-black">{ad.headline}</p>
-                                    <p className="text-xs text-gray-800 mt-1">{ad.primary_text.substring(0, 80)}...</p>
-                                  </div>
-                                  <Button size="sm" className="w-fit">
-                                    {ad.call_to_action}
-                                  </Button>
-                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {ad.style_description}
+                              </p>
+                            </div>
+                          ) : ad.error ? (
+                            <div className="space-y-2">
+                              <Label className="text-xs font-medium text-muted-foreground">IMAGE GENERATION FAILED</Label>
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                <p className="text-sm text-red-600">{ad.error}</p>
+                                <p className="text-xs text-red-500 mt-1">
+                                  DALL-E Prompt: {ad.dalle_prompt}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Label className="text-xs font-medium text-muted-foreground">GENERATING VISUAL AD...</Label>
+                              <div className="bg-gray-100 border rounded-lg p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                <p className="text-sm text-muted-foreground">Creating your AI-powered visual ad...</p>
                               </div>
                             </div>
                           )}
@@ -565,30 +636,30 @@ export default function AdCreator() {
                             </p>
                           </div>
 
-                          {/* Design Instructions */}
-                          {ad.visual_elements && (
-                            <div className="space-y-3 border-t pt-3">
-                              <Label className="text-xs font-medium text-muted-foreground">DESIGN INSTRUCTIONS</Label>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                <div>
-                                  <span className="font-medium">Background:</span>
-                                  <p className="text-muted-foreground">{ad.visual_elements.background_color}</p>
-                                </div>
-                                <div>
-                                  <span className="font-medium">Text Style:</span>
-                                  <p className="text-muted-foreground">{ad.visual_elements.text_overlay}</p>
-                                </div>
-                                <div>
-                                  <span className="font-medium">Product Placement:</span>
-                                  <p className="text-muted-foreground">{ad.visual_elements.product_placement}</p>
-                                </div>
-                                <div>
-                                  <span className="font-medium">Style Notes:</span>
-                                  <p className="text-muted-foreground">{ad.visual_elements.style_notes}</p>
-                                </div>
+                          {/* DALL-E Prompt Reference */}
+                          {ad.dalle_prompt && (
+                            <div className="space-y-2 border-t pt-3">
+                              <Label className="text-xs font-medium text-muted-foreground">AI GENERATION DETAILS</Label>
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-600">
+                                  <span className="font-medium">DALL-E 3 Prompt:</span> {ad.dalle_prompt}
+                                </p>
                               </div>
                             </div>
                           )}
+
+                          {/* Generate More Variants */}
+                          <div className="flex justify-center pt-3 border-t">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={generateVariants}
+                              disabled={generateAdsMutation.isPending}
+                            >
+                              <Zap className="h-3 w-3 mr-1" />
+                              Generate More Variants
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}

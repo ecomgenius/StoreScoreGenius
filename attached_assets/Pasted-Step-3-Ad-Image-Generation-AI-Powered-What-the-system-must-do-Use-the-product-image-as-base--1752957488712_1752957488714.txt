@@ -1,0 +1,76 @@
+Step 3 – Ad Image Generation (AI-Powered)
+✅ What the system must do:
+Use the product image as base
+
+Use OpenAI + vision capabilities to:
+
+Generate a visual ad variant using that image
+
+Add AI-generated text directly inside the image (not as output block)
+
+Adapt layout to chosen format (1:1, 9:16, etc.)
+
+Style image to reflect selected ad style (e.g., "Urgency" = red bold text overlays; "Premium" = clean, white, elegant fonts)
+
+🎯 Output:
+
+One downloadable image (PNG or JPG)
+
+100% AI generated
+
+Branded visually to match platform best practices
+
+No call-to-action button (like Shop Now), unless user enables it explicitly
+
+📦 OPTIONAL: AI Budget + Target Suggestion (if toggle enabled)
+If the user enables this feature:
+
+OpenAI generates:
+
+Suggested audience targeting based on product category and input
+
+Suggested daily budget + duration
+
+Suggested platform behavior (e.g. better for IG story vs Facebook feed)
+
+📤 Final Output
+✅ One image file, ready to use on ad platforms
+
+Download button (with format label)
+
+Option to generate 2-3 variants from same input
+
+Optional export to ad library
+
+🧠 PROMPT STRATEGY FOR OPENAI (image + logic)
+plaintext
+Copy
+Edit
+You are a professional ad designer.  
+Create a high-converting ad image for the product:  
+"{product_title}"  
+Use this description: {product_description}  
+Style: {ad_style}  
+Audience: {target_audience}  
+Tone: {tone}  
+Format: {format}  
+Overlay compelling text inside the image. Make it suitable for {platform}.  
+Base the image on this photo: {image_url}  
+You can then pass this to DALL·E (if using OpenAI image gen), or GPT-4 with Vision if layering and layout is being AI-prompted into a canvas.
+
+📚 Suggested Stack
+Feature	Tech
+Image generation	OpenAI DALL·E 3 API (or Replicate’s SDXL)
+Image manipulation	Pillow or Canva API
+Frontend UI	React (Next.js) or Replit native
+Backend	Python / Flask or Node.js
+Storage	Cloudinary or Supabase for ad image hosting
+Authentication	Simple API key or OAuth for Shopify
+
+📌 Summary: What Makes This Better Than Text-Based Ads?
+Old (text-based)	New (your idea)
+ChatGPT ad copy only	Full visual ad asset
+Needs manual Canva editing	AI builds image in 1 click
+Boring “Shop Now” layout	Visual storytelling, styled per ad psychology
+No direct upload	Download + direct media format ready
+
