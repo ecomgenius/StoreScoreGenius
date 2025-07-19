@@ -83,6 +83,16 @@ export async function applyTrustOptimization(
 
   } catch (error) {
     console.error('Shopify trust optimization error:', error);
+    
+    // Check if this is a permissions error
+    if (error.message && error.message.includes('write_content')) {
+      return {
+        applied: false,
+        message: "Shopify permissions insufficient. Please reconnect your store with content writing permissions to enable trust optimizations.",
+        shopifyChanges: []
+      };
+    }
+    
     return {
       applied: false,
       message: "Failed to apply trust optimization to Shopify. Manual implementation required.",

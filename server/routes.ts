@@ -2075,7 +2075,7 @@ Provide actionable, specific recommendations that can be implemented.`;
         const shopDomain = shop as string;
         const installUrl = `https://${shopDomain}/admin/oauth/authorize?` +
           `client_id=${process.env.SHOPIFY_API_KEY}&` +
-          `scope=read_products,write_products&` +
+          `scope=read_products,write_products,write_content&` +
           `redirect_uri=${encodeURIComponent(process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/shopify/callback` : 'http://localhost:5000/api/shopify/callback')}&` +
           `state=install_${Date.now()}`;
         
@@ -2569,8 +2569,13 @@ Provide actionable, specific recommendations that can be implemented.`;
         console.log(`Trust optimization result:`, actualChanges);
       } catch (shopifyError) {
         console.error("Shopify trust optimization failed:", shopifyError);
-        // Continue to record the optimization even if Shopify modification fails
-        actualChanges.message = "Trust optimization tracked. Shopify modification failed - manual implementation required.";
+        
+        // Check if this is a permissions error
+        if (shopifyError.message && shopifyError.message.includes('write_content')) {
+          actualChanges.message = "⚠️ Missing Shopify Permissions: Your store needs 'write_content' permission. Please reconnect your store to enable trust optimizations.";
+        } else {
+          actualChanges.message = "Trust optimization tracked. Shopify modification failed - manual implementation required.";
+        }
       }
 
       // Deduct credits and record optimization
