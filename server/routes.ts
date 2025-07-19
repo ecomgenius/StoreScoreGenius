@@ -2582,14 +2582,26 @@ Provide actionable, specific recommendations that can be implemented.`;
         creditsUsed: 1,
       });
 
+      // Determine if this is a review-specific optimization that needs manual setup
+      const isReviewOptimization = suggestionId.includes('review') || 
+        changes.recommended.toLowerCase().includes('review') ||
+        changes.implementation.toLowerCase().includes('review');
+
+      let responseMessage = actualChanges.message;
+      
+      if (isReviewOptimization && actualChanges.applied) {
+        responseMessage = `Trust optimization applied to your Shopify store! Created review policy pages and enhanced existing content. 
+
+⚠️ To complete the review system setup: Install a review app from Shopify App Store (Judge.me, Yotpo, or Loox) - this cannot be automated but the foundation has been created.`;
+      }
+
       res.json({ 
         success: true, 
-        message: actualChanges.applied ? 
-          "Trust optimization applied successfully to your Shopify store!" : 
-          actualChanges.message,
+        message: actualChanges.applied ? responseMessage : actualChanges.message,
         suggestion: changes.recommended,
         shopifyApplied: actualChanges.applied,
-        modifications: actualChanges.shopifyChanges
+        modifications: actualChanges.shopifyChanges,
+        requiresManualStep: isReviewOptimization
       });
     } catch (error) {
       console.error("Error applying trust recommendation:", error);

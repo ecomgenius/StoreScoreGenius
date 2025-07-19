@@ -58,9 +58,17 @@ export default function TrustRecommendationsPage() {
       });
     },
     onSuccess: (data: any) => {
+      const toastTitle = data.shopifyApplied ? 
+        "Applied to Shopify Store!" : 
+        "Trust Optimization Tracked!";
+      
+      const toastDescription = data.shopifyApplied ?
+        `${data.message} Check your Shopify admin for new pages and content.` :
+        data.message || "Trust optimization has been recorded. Manual implementation may be required for full functionality.";
+      
       toast({
-        title: "Trust Optimization Applied!",
-        description: data.message || "Your store's trust elements have been improved successfully.",
+        title: toastTitle,
+        description: toastDescription,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: [`/api/trust-recommendations/${storeId}`] });
