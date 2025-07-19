@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Megaphone, Store, ShoppingBag, Zap, Copy, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Megaphone, Store, ShoppingBag, ExternalLink, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -185,21 +185,6 @@ export default function AdCreator() {
     }
   };
 
-  const generateVariants = () => {
-    if (!selectedStore || !platform || !adStyle || !format || !targetAudience) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Generate new variants with same settings
-    setGeneratedAds([]);
-    handleGenerateAds();
-  };
-
   const resetFlow = () => {
     setCurrentStep('store');
     setSelectedStore(null);
@@ -247,7 +232,7 @@ export default function AdCreator() {
               <p className="text-sm text-muted-foreground">Available Credits</p>
               <p className="text-2xl font-bold">{userCredits?.credits || 0}</p>
             </div>
-            <Zap className="h-6 w-6 text-yellow-500" />
+            <CreditCard className="h-6 w-6 text-blue-600" />
           </div>
         </div>
 
@@ -506,7 +491,7 @@ export default function AdCreator() {
                         </>
                       ) : (
                         <>
-                          <Zap className="h-4 w-4 mr-2" />
+                          <Megaphone className="h-4 w-4 mr-2" />
                           Generate Ads (1 credit)
                         </>
                       )}
@@ -531,13 +516,14 @@ export default function AdCreator() {
                               </Badge>
                             </div>
                             <div className="flex space-x-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
-                                onClick={() => copyToClipboard(`HEADLINE: ${ad.headline}\n\nPRIMARY TEXT: ${ad.primary_text}\n\nCALL TO ACTION: ${ad.call_to_action}\n\nPLATFORM: ${ad.platform_format}\n\nSTYLE: ${ad.style_description}\n\nIMAGE URL: ${ad.image_url || 'Generation failed'}\n\nDALL-E PROMPT: ${ad.dalle_prompt || 'Not available'}`)}
+                                onClick={() => downloadImage(ad.image_url!, `${platform}_ad_${index + 1}.png`)}
+                                disabled={!ad.image_url}
                               >
-                                <Copy className="h-3 w-3 mr-1" />
-                                Copy All
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Download
                               </Button>
                             </div>
                           </div>
@@ -636,30 +622,7 @@ export default function AdCreator() {
                             </p>
                           </div>
 
-                          {/* DALL-E Prompt Reference */}
-                          {ad.dalle_prompt && (
-                            <div className="space-y-2 border-t pt-3">
-                              <Label className="text-xs font-medium text-muted-foreground">AI GENERATION DETAILS</Label>
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="text-xs text-gray-600">
-                                  <span className="font-medium">DALL-E 3 Prompt:</span> {ad.dalle_prompt}
-                                </p>
-                              </div>
-                            </div>
-                          )}
 
-                          {/* Generate More Variants */}
-                          <div className="flex justify-center pt-3 border-t">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={generateVariants}
-                              disabled={generateAdsMutation.isPending}
-                            >
-                              <Zap className="h-3 w-3 mr-1" />
-                              Generate More Variants
-                            </Button>
-                          </div>
                         </CardContent>
                       </Card>
                     ))}
