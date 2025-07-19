@@ -145,6 +145,9 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Enhanced Payment Security**: Implemented separate Stripe elements for card number, expiry date, and CVV validation, removing test card information from user interface while maintaining comprehensive payment verification
 - **AI Time Savings Integration**: Added OpenAI-powered time savings calculation system showing users exactly how much manual work they save with each optimization, displayed in individual product previews with detailed breakdowns of research, creation, review, and implementation time
 - **Critical Shopify API Migration**: Migrated entire application from deprecated REST APIs (2023-10) to new GraphQL Product APIs (2024-04+) for compliance with Shopify deprecation timeline (Feb 2025 for public apps, April 2025 for custom apps), ensuring future compatibility and avoiding feature limitations
+- **Fixed Legacy Route Support**: Added missing route pattern (/recommendations/:storeId) to handle backward compatibility with legacy URLs, resolving 404 errors when accessing AI Recommendations via "Optimize with AI" button
+- **Implemented Product Filtering System**: Added comprehensive filtering functionality with "All", "To optimize", and "Optimized" buttons allowing users to easily view product optimization status across all recommendation categories
+- **Added AI Optimization Badges**: Products now display green "✓ AI Optimized" badges next to titles for items that have been processed by AI, providing clear visual feedback on optimization status and helping users track their progress
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled

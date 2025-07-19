@@ -52,6 +52,7 @@ export default function AIRecommendations() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkType, setBulkType] = useState<string>('');
   const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'to-optimize' | 'optimized'>('all');
   
   // State for AI suggestion previews
   const [previewingSuggestion, setPreviewingSuggestion] = useState<{
@@ -599,37 +600,75 @@ export default function AIRecommendations() {
             </div>
           </TabsContent>
 
-          {(['title', 'description', 'pricing', 'keywords'] as const).map((type) => (
-            <TabsContent key={type} value={type} className="space-y-4">
-              {productsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Loading products...</p>
+          {(['title', 'description', 'pricing', 'keywords'] as const).map((type) => {
+            // Filter products based on the selected filter
+            const allProductsForType = products || [];
+            const toOptimizeProducts = productOptimizations[type] || [];
+            const optimizedProducts = allProductsForType.filter(p => isProductOptimized(p.id, type));
+            
+            const filteredProducts = filter === 'all' 
+              ? allProductsForType 
+              : filter === 'to-optimize' 
+                ? toOptimizeProducts 
+                : optimizedProducts;
+
+            return (
+              <TabsContent key={type} value={type} className="space-y-4">
+                {/* Filter buttons */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold">Products Needing {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {toOptimizeProducts.length} products could benefit from AI-powered improvements
+                    </p>
                   </div>
-                </div>
-              ) : productOptimizations[type]?.length > 0 ? (
-                <>
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold">Products Needing {type.charAt(0).toUpperCase() + type.slice(1)} Optimization</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {productOptimizations[type].length} products could benefit from AI-powered improvements
-                        </p>
-                      </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-1 p-1 bg-muted rounded-lg">
                       <Button
-                        onClick={() => handleBulkApply(type)}
-                        disabled={applyBulkMutation.isPending}
-                        variant="outline"
+                        variant={filter === 'all' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setFilter('all')}
+                        className="text-xs"
                       >
-                        Optimize All ({productOptimizations[type].length} credits)
+                        All
+                      </Button>
+                      <Button
+                        variant={filter === 'to-optimize' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setFilter('to-optimize')}
+                        className="text-xs text-red-600"
+                      >
+                        To optimize
+                      </Button>
+                      <Button
+                        variant={filter === 'optimized' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setFilter('optimized')}
+                        className="text-xs text-green-600"
+                      >
+                        Optimized
                       </Button>
                     </div>
+                    <Button
+                      onClick={() => handleBulkApply(type)}
+                      disabled={applyBulkMutation.isPending || toOptimizeProducts.length === 0}
+                      variant="outline"
+                    >
+                      Optimize All ({toOptimizeProducts.length} credits)
+                    </Button>
                   </div>
-                  
+                </div>
+                
+                {productsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading products...</p>
+                    </div>
+                  </div>
+                ) : filteredProducts.length > 0 ? (
                   <div className="space-y-4">
-                    {productOptimizations[type].map((product: Product) => (
+                    {filteredProducts.map((product: Product) => (
                       <Card key={product.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
@@ -739,8 +778,7 @@ export default function AIRecommendations() {
                       </Card>
                     ))}
                   </div>
-                </>
-              ) : (
+                ) : (
                 <div className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">All Products Optimized!</h3>
@@ -753,7 +791,8 @@ export default function AIRecommendations() {
                 </div>
               )}
             </TabsContent>
-          ))}
+            );
+          })}
         </Tabs>
       </div>
 
