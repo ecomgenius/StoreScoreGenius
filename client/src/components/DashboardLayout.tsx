@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import AlexBot from '@/components/AlexBot';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -147,6 +148,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
+
+      {/* Alex AI Bot */}
+      <AlexBot />
     </div>
   );
 }

@@ -1318,6 +1318,207 @@ Return ONLY a JSON object with this exact format:
     }
   });
 
+  // ================ ALEX AI BOT ROUTES ================
+  
+  // Get store insights for Alex
+  app.get("/api/alex/insights", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { user } = req;
+      const stores = await storage.getUserStores(user.id);
+      
+      const insights = await Promise.all(stores.map(async (store) => {
+        // Get recent analyses for this user
+        const allAnalyses = await storage.getUserAnalyses(user.id, 50);
+        // Filter to analyses for this specific store
+        const analyses = allAnalyses.filter(a => a.userStoreId === store.id).slice(0, 5);
+        
+        if (analyses.length === 0) {
+          return {
+            storeId: store.id,
+            storeName: store.name,
+            healthScore: 0,
+            totalProducts: 0,
+            weakestAreas: [],
+            lastAnalyzed: null,
+            topIssues: []
+          };
+        }
+        
+        const latestAnalysis = analyses[0];
+        const healthScore = Math.round((
+          (latestAnalysis.designScore || 0) + 
+          (latestAnalysis.productScore || 0) + 
+          (latestAnalysis.trustScore || 0) + 
+          (latestAnalysis.seoScore || 0) + 
+          (latestAnalysis.pricingScore || 0) + 
+          (latestAnalysis.conversionScore || 0)
+        ) / 6);
+        
+        // Identify weakest areas
+        const areaScores = [
+          { area: 'design', score: latestAnalysis.designScore || 0 },
+          { area: 'products', score: latestAnalysis.productScore || 0 },
+          { area: 'trust', score: latestAnalysis.trustScore || 0 },
+          { area: 'seo', score: latestAnalysis.seoScore || 0 },
+          { area: 'pricing', score: latestAnalysis.pricingScore || 0 },
+          { area: 'conversion', score: latestAnalysis.conversionScore || 0 }
+        ];
+        
+        const weakestAreas = areaScores
+          .filter(area => area.score < 70)
+          .sort((a, b) => a.score - b.score)
+          .map(area => area.area);
+        
+        // Generate top issues based on analysis
+        const topIssues = [];
+        if (latestAnalysis.designScore < 70) {
+          topIssues.push({
+            category: 'design',
+            description: 'Store design and visual appeal need improvement',
+            severity: latestAnalysis.designScore < 50 ? 'critical' : 'high'
+          });
+        }
+        if (latestAnalysis.productScore < 70) {
+          topIssues.push({
+            category: 'products',
+            description: 'Product titles, descriptions, and images need optimization',
+            severity: latestAnalysis.productScore < 50 ? 'critical' : 'high'
+          });
+        }
+        if (latestAnalysis.trustScore < 70) {
+          topIssues.push({
+            category: 'trust',
+            description: 'Trust signals and customer reviews missing',
+            severity: latestAnalysis.trustScore < 50 ? 'critical' : 'medium'
+          });
+        }
+        if (latestAnalysis.seoScore < 70) {
+          topIssues.push({
+            category: 'seo',
+            description: 'SEO and search optimization opportunities',
+            severity: latestAnalysis.seoScore < 50 ? 'critical' : 'medium'
+          });
+        }
+        
+        return {
+          storeId: store.id,
+          storeName: store.name,
+          healthScore,
+          totalProducts: 0, // We'll get this from Shopify if needed
+          weakestAreas,
+          lastAnalyzed: latestAnalysis.createdAt,
+          topIssues
+        };
+      }));
+      
+      res.json(insights);
+    } catch (error) {
+      console.error("Error getting Alex insights:", error);
+      res.status(500).json({ error: "Failed to get store insights" });
+    }
+  });
+
+  // Chat with Alex
+  app.post("/api/alex/chat", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { message, context } = req.body;
+      const { user } = req;
+      
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Use OpenAI to generate Alex's response
+      const openai = await import('openai');
+      const openaiClient = new openai.default({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+
+      const systemPrompt = `You are Alex, a humanoid AI e-commerce manager and strategic assistant. You help Shopify/eBay sellers grow their business by analyzing their store data and providing actionable insights.
+
+Your personality:
+- Friendly, insightful, occasionally witty
+- Proactive and solution-focused  
+- Speak like a knowledgeable business partner
+- Use emojis sparingly but effectively
+- Keep responses concise but valuable
+
+Your capabilities:
+- Analyze store performance data
+- Suggest specific improvements
+- Teach e-commerce skills and strategies
+- Propose actionable next steps
+- Help with product optimization, ads, scaling
+
+Always be specific and actionable. Don't give generic advice.`;
+
+      let userPrompt = message;
+      
+      // Add context to the prompt if available
+      if (context) {
+        if (context.type === 'education') {
+          userPrompt = `The user wants to learn about e-commerce optimization. Their store data: ${JSON.stringify(context.insights?.slice(0, 1))}. Provide a practical lesson about their weakest area. Keep it under 150 words with 1-2 specific actionable tips.`;
+        } else if (context.type === 'scaling') {
+          userPrompt = `The user wants scaling strategies. Their store performance: ${JSON.stringify(context.insights?.slice(0, 1))}. Give specific scaling advice based on their current state. Include 2-3 concrete next steps.`;
+        } else if (context.type === 'weak_products') {
+          userPrompt = `Show the user's weakest products and specific fixes. Store data: ${JSON.stringify(context.insights?.slice(0, 1))}. Suggest specific product optimization actions.`;
+        } else if (context.stores && context.insights) {
+          userPrompt = `User message: "${message}". Store context: ${JSON.stringify(context.insights?.slice(0, 1))}. Respond as Alex with specific insights and actions.`;
+        }
+      }
+
+      const response = await openaiClient.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        max_tokens: 400,
+        temperature: 0.7,
+      });
+
+      const alexResponse = response.choices[0].message.content || "I'm having trouble processing that. Can you try asking something else?";
+
+      // Generate action buttons based on context and response
+      const actions = [];
+      
+      if (message.toLowerCase().includes('teach') || message.toLowerCase().includes('learn')) {
+        actions.push({
+          id: 'more-tips',
+          label: 'More Tips',
+          icon: 'BookOpen',
+          action: 'education'
+        });
+      }
+      
+      if (context?.insights?.[0]?.healthScore < 70) {
+        actions.push({
+          id: 'fix-now',
+          label: 'Fix Issues',
+          icon: 'Zap',
+          action: 'optimize'
+        });
+      }
+      
+      if (context?.insights?.[0]?.healthScore >= 70) {
+        actions.push({
+          id: 'create-ads',
+          label: 'Create Ads',
+          icon: 'Camera',
+          action: 'ads'
+        });
+      }
+
+      res.json({ 
+        message: alexResponse,
+        actions: actions
+      });
+    } catch (error) {
+      console.error("Error processing Alex chat:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
   // ================ AI AD GENERATION ROUTES ================
   
   // Generate AI-powered ads
