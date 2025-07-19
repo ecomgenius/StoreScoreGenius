@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface TrustSuggestion {
   id: string;
@@ -35,6 +36,7 @@ export default function TrustRecommendationsPage() {
   const params = useParams();
   const storeId = params.storeId;
   const { user } = useAuth();
+  const { toast } = useToast();
   const [previewingSuggestion, setPreviewingSuggestion] = useState<TrustSuggestion | null>(null);
 
   const { data: recommendations, isLoading } = useQuery<TrustRecommendations>({
@@ -55,9 +57,20 @@ export default function TrustRecommendationsPage() {
         changes: data.changes
       });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      toast({
+        title: "Trust Optimization Applied!",
+        description: data.message || "Your store's trust elements have been improved successfully.",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
       queryClient.invalidateQueries({ queryKey: [`/api/trust-recommendations/${storeId}`] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Application Failed",
+        description: error.message || "Failed to apply trust recommendation. Please try again.",
+        variant: "destructive",
+      });
     }
   });
 
