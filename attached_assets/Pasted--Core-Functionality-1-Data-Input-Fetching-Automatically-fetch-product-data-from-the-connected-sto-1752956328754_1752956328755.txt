@@ -1,0 +1,121 @@
+ Core Functionality
+1. Data Input & Fetching
+Automatically fetch product data from the connected store:
+
+Product Title
+
+Product Description
+
+Product Images (URL)
+
+Price
+
+Discount (if any)
+
+Product Category
+
+Customer Reviews (optional)
+
+Store Design Aesthetic (color palette, tone of voice)
+
+Target Country / Language
+
+2. Prompt Generation for OpenAI
+Use the fetched data to build a high-performance prompt. Prompt format must include:
+
+text
+Copy
+Edit
+You are a direct response copywriter. Create a high-converting Facebook/Instagram/Google ad for the following product.
+
+Product Name: {{product_name}}
+Product Description: {{description}}
+Category: {{category}}
+Main Benefits: {{bullet_points}}
+Price: {{price}} {{discount_info}}
+Target Audience: {{target_audience}}
+Ad Style: {{ad_style}}  (e.g., emotional, problem-solution, curiosity-based, short-form, long-form)
+
+Write 3 ad variations in a conversion-focused tone for {{platform}}.
+Return ads in JSON format with fields: headline, primary_text, and call_to_action.
+🎛️ User Options & UI Controls
+➤ Ad Platform
+User selects where the ad will be published:
+
+Facebook
+
+Instagram
+
+TikTok
+
+Google Ads (Search)
+
+Pinterest (optional)
+
+➤ Ad Style / Angle
+User selects the tone or persuasion angle:
+
+Emotional
+
+Curiosity-based
+
+Problem → Solution
+
+Scarcity/Urgency
+
+Social proof (if reviews are present)
+
+➤ Format / Length
+Choose the desired output type:
+
+Short copy (under 100 words)
+
+Medium (100–200 words)
+
+Long-form (200+ words)
+
+➤ Number of Variants
+Choose how many ad variations to generate (1 to 5).
+
+💡 Examples of Prompt Customization
+For a beauty product:
+
+text
+Copy
+Edit
+Product: "Vitamin C Glow Serum"
+Audience: Women 25-45, skincare lovers
+Style: Emotional, benefits-driven
+Discount: 30% Off – Limited Time
+
+Prompt:
+You are a top direct-response copywriter. Write 3 high-converting Facebook ad copies for a skincare serum. Focus on the emotional transformation, glowing skin, and limited-time discount. Target: women aged 25–45 interested in beauty and skincare. Return in JSON with headline, primary_text, CTA.
+🖥️ UI Requirements on Replit
+Frontend (React/Next.js or plain HTML+JS)
+ Dropdowns for platform, style, length
+
+ Input field: target audience description
+
+ Slider or dropdown for number of variants
+
+ Toggle: "Include customer reviews?"
+
+ Preview area for each generated ad (headline, text, CTA)
+
+Backend (Node.js / Python Flask / FastAPI)
+ Endpoint to generate OpenAI prompt and request ads
+
+ Handle OpenAI API response parsing
+
+ Return clean JSON:
+
+json
+Copy
+Edit
+[
+  {
+    "headline": "...",
+    "primary_text": "...",
+    "call_to_action": "Shop Now"
+  }
+]
