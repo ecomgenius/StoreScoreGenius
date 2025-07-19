@@ -31,6 +31,7 @@ function Router() {
       <Route path="/analysis/:id" component={AnalysisDetail} />
       <Route path="/dashboard/stores" component={UserStores} />
       <Route path="/dashboard/stores/:storeId/recommendations" component={GeneralRecommendations} />
+      <Route path="/recommendations/:storeId" component={GeneralRecommendations} />
       <Route path="/dashboard/stores/:storeId/products" component={AIRecommendations} />
       <Route path="/dashboard/stores/:storeId/design" component={DesignRecommendations} />
       <Route path="/dashboard/stores/:storeId/seo" component={SEORecommendations} />
