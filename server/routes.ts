@@ -1501,7 +1501,7 @@ Return in JSON format:
       }
 
       // Generate actual visual ads using DALL-E 3
-      const generatedAds = [];
+      let generatedAds = [];
       
       for (let i = 0; i < adPrompts.length && i < variants; i++) {
         const adPrompt = adPrompts[i];
@@ -1553,13 +1553,17 @@ Return in JSON format:
         }
       }
 
-      // Ensure we have the requested number of variants
-      while (generatedAds.length < variants) {
+      // Ensure we have the requested number of variants (only if needed)
+      while (generatedAds.length < variants && generatedAds.length > 0) {
         const baseAd = generatedAds[0];
         generatedAds.push({
           headline: baseAd.headline + " - Limited Time",
           primary_text: baseAd.primary_text + " Don't miss out!",
-          call_to_action: baseAd.call_to_action
+          call_to_action: baseAd.call_to_action,
+          image_url: baseAd.image_url,
+          platform_format: baseAd.platform_format,
+          style_description: baseAd.style_description + " (Variant)",
+          dalle_prompt: baseAd.dalle_prompt
         });
       }
 
