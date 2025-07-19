@@ -182,6 +182,44 @@ export const productOptimizations = pgTable("product_optimizations", {
   };
 });
 
+// Alex chat sessions table
+export const alexChatSessions = pgTable("alex_chat_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("alex_chat_sessions_user_id_idx").on(table.userId),
+    isActiveIdx: index("alex_chat_sessions_is_active_idx").on(table.isActive),
+  };
+});
+
+// Alex chat messages table
+export const alexChatMessages = pgTable("alex_chat_messages", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => alexChatSessions.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  isFromAlex: boolean("is_from_alex").default(false).notNull(),
+  actions: jsonb("actions").$type<Array<{
+    id: string;
+    label: string;
+    icon: string;
+    action: string;
+    variant?: string;
+  }>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    sessionIdIdx: index("alex_chat_messages_session_id_idx").on(table.sessionId),
+    userIdIdx: index("alex_chat_messages_user_id_idx").on(table.userId),
+    createdAtIdx: index("alex_chat_messages_created_at_idx").on(table.createdAt),
+  };
+});
+
 // Schema validation
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -300,6 +338,8 @@ export type UserSession = typeof userSessions.$inferSelect;
 export type ProductOptimization = typeof productOptimizations.$inferSelect;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type AlexChatSession = typeof alexChatSessions.$inferSelect;
+export type AlexChatMessage = typeof alexChatMessages.$inferSelect;
 export type AnalyzeStoreRequest = z.infer<typeof analyzeStoreRequestSchema>;
 export type RegisterUserRequest = z.infer<typeof registerUserSchema>;
 export type LoginUserRequest = z.infer<typeof loginUserSchema>;

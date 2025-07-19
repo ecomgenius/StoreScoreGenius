@@ -7,6 +7,8 @@ import {
   productOptimizations,
   subscriptionPlans,
   userSubscriptions,
+  alexChatSessions,
+  alexChatMessages,
   type StoreAnalysis, 
   type InsertStoreAnalysis,
   type User,
@@ -17,7 +19,9 @@ import {
   type UserSession,
   type ProductOptimization,
   type SubscriptionPlan,
-  type UserSubscription
+  type UserSubscription,
+  type AlexChatSession,
+  type AlexChatMessage
 } from "@shared/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -71,6 +75,17 @@ export interface IStorage {
   }): Promise<ProductOptimization>;
   getProductOptimizations(userStoreId: number, optimizationType?: string): Promise<ProductOptimization[]>;
   isProductOptimized(userStoreId: number, shopifyProductId: string, optimizationType: string): Promise<boolean>;
+
+  // Alex chat methods
+  createChatSession(userId: number, title: string): Promise<AlexChatSession>;
+  getUserChatSessions(userId: number): Promise<AlexChatSession[]>;
+  getChatSession(sessionId: number): Promise<AlexChatSession | undefined>;
+  updateChatSession(sessionId: number, updates: Partial<AlexChatSession>): Promise<AlexChatSession | undefined>;
+  deleteChatSession(sessionId: number): Promise<boolean>;
+  
+  addChatMessage(sessionId: number, userId: number, content: string, isFromAlex: boolean, actions?: any[]): Promise<AlexChatMessage>;
+  getChatMessages(sessionId: number, limit?: number): Promise<AlexChatMessage[]>;
+  clearChatHistory(sessionId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -292,6 +307,72 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return result.length > 0;
+  }
+
+  // Alex chat methods implementation
+  async createChatSession(userId: number, title: string): Promise<AlexChatSession> {
+    const result = await db.insert(alexChatSessions).values({
+      userId,
+      title,
+      isActive: true
+    }).returning();
+    return result[0];
+  }
+
+  async getUserChatSessions(userId: number): Promise<AlexChatSession[]> {
+    return await db.select().from(alexChatSessions)
+      .where(eq(alexChatSessions.userId, userId))
+      .orderBy(desc(alexChatSessions.updatedAt));
+  }
+
+  async getChatSession(sessionId: number): Promise<AlexChatSession | undefined> {
+    const result = await db.select().from(alexChatSessions)
+      .where(eq(alexChatSessions.id, sessionId))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateChatSession(sessionId: number, updates: Partial<AlexChatSession>): Promise<AlexChatSession | undefined> {
+    const result = await db.update(alexChatSessions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(alexChatSessions.id, sessionId))
+      .returning();
+    return result[0];
+  }
+
+  async deleteChatSession(sessionId: number): Promise<boolean> {
+    const result = await db.delete(alexChatSessions)
+      .where(eq(alexChatSessions.id, sessionId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async addChatMessage(sessionId: number, userId: number, content: string, isFromAlex: boolean, actions?: any[]): Promise<AlexChatMessage> {
+    // Update session timestamp
+    await db.update(alexChatSessions)
+      .set({ updatedAt: new Date() })
+      .where(eq(alexChatSessions.id, sessionId));
+
+    const result = await db.insert(alexChatMessages).values({
+      sessionId,
+      userId,
+      content,
+      isFromAlex,
+      actions: actions || null
+    }).returning();
+    return result[0];
+  }
+
+  async getChatMessages(sessionId: number, limit: number = 50): Promise<AlexChatMessage[]> {
+    return await db.select().from(alexChatMessages)
+      .where(eq(alexChatMessages.sessionId, sessionId))
+      .orderBy(alexChatMessages.createdAt)
+      .limit(limit);
+  }
+
+  async clearChatHistory(sessionId: number): Promise<boolean> {
+    const result = await db.delete(alexChatMessages)
+      .where(eq(alexChatMessages.sessionId, sessionId));
+    return (result.rowCount || 0) >= 0; // Returns true even if no messages to delete
   }
 }
 
@@ -550,6 +631,54 @@ export class MemStorage implements IStorage {
   async isProductOptimized(userStoreId: number, shopifyProductId: string, optimizationType: string): Promise<boolean> {
     // Stub implementation for memory storage - always return false so optimizations can be applied
     return false;
+  }
+
+  // Alex chat methods (stub implementation for memory storage)
+  async createChatSession(userId: number, title: string): Promise<AlexChatSession> {
+    return {
+      id: Math.floor(Math.random() * 10000),
+      userId,
+      title,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async getUserChatSessions(userId: number): Promise<AlexChatSession[]> {
+    return [];
+  }
+
+  async getChatSession(sessionId: number): Promise<AlexChatSession | undefined> {
+    return undefined;
+  }
+
+  async updateChatSession(sessionId: number, updates: Partial<AlexChatSession>): Promise<AlexChatSession | undefined> {
+    return undefined;
+  }
+
+  async deleteChatSession(sessionId: number): Promise<boolean> {
+    return false;
+  }
+
+  async addChatMessage(sessionId: number, userId: number, content: string, isFromAlex: boolean, actions?: any[]): Promise<AlexChatMessage> {
+    return {
+      id: Math.floor(Math.random() * 10000),
+      sessionId,
+      userId,
+      content,
+      isFromAlex,
+      actions: actions || null,
+      createdAt: new Date()
+    };
+  }
+
+  async getChatMessages(sessionId: number, limit?: number): Promise<AlexChatMessage[]> {
+    return [];
+  }
+
+  async clearChatHistory(sessionId: number): Promise<boolean> {
+    return true;
   }
 }
 

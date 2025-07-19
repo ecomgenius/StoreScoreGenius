@@ -1,19 +1,34 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MessageCircle, X, Send, Bot, Zap, BookOpen, Camera, Edit3 } from "lucide-react";
+import { MessageCircle, X, Send, Bot, Zap, BookOpen, Camera, Edit3, Plus, History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
-  id: string;
-  text: string;
-  isBot: boolean;
-  timestamp: Date;
+  id: number;
+  content: string;
+  isFromAlex: boolean;
+  createdAt: Date;
   actions?: BotAction[];
+}
+
+interface ChatSession {
+  id: number;
+  title: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface BotAction {
@@ -44,6 +59,8 @@ export default function AlexBot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [showSessionSelector, setShowSessionSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get user stores and recent analyses
@@ -57,23 +74,66 @@ export default function AlexBot() {
     enabled: !!user && isOpen
   });
 
+  // Get user's chat sessions
+  const { data: sessions = [], refetch: refetchSessions } = useQuery<ChatSession[]>({
+    queryKey: ['/api/alex/sessions'],
+    enabled: !!user && isOpen
+  });
+
+  // Get messages for current session
+  const { data: sessionMessages = [], refetch: refetchMessages } = useQuery<Message[]>({
+    queryKey: ['/api/alex/sessions', currentSessionId, 'messages'],
+    enabled: !!user && !!currentSessionId,
+    onSuccess: (data) => {
+      setMessages(data);
+    }
+  });
+
   const chatMutation = useMutation({
-    mutationFn: async (data: { message: string; context?: any }) => {
+    mutationFn: async (data: { message: string; context?: any; sessionId?: number }) => {
       return apiRequest('POST', '/api/alex/chat', data);
     },
     onSuccess: (response: any) => {
-      const botMessage: Message = {
-        id: Date.now().toString(),
-        text: response.message,
-        isBot: true,
-        timestamp: new Date(),
-        actions: response.actions || []
-      };
-      setMessages(prev => [...prev, botMessage]);
       setIsTyping(false);
+      setCurrentSessionId(response.sessionId);
+      refetchMessages();
+      refetchSessions();
     },
     onError: () => {
       setIsTyping(false);
+    }
+  });
+
+  const createSessionMutation = useMutation({
+    mutationFn: async (title: string) => {
+      return apiRequest('POST', '/api/alex/sessions', { title });
+    },
+    onSuccess: (session: ChatSession) => {
+      setCurrentSessionId(session.id);
+      setMessages([]);
+      refetchSessions();
+    }
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (sessionId: number) => {
+      return apiRequest('DELETE', `/api/alex/sessions/${sessionId}`);
+    },
+    onSuccess: () => {
+      refetchSessions();
+      if (currentSessionId && sessions.length > 1) {
+        // Switch to another session
+        const otherSession = sessions.find(s => s.id !== currentSessionId);
+        if (otherSession) {
+          setCurrentSessionId(otherSession.id);
+        } else {
+          setCurrentSessionId(null);
+          setMessages([]);
+        }
+      } else {
+        setCurrentSessionId(null);
+        setMessages([]);
+      }
     }
   });
 
@@ -88,41 +148,39 @@ export default function AlexBot() {
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue,
-      isBot: false,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     setInputValue("");
     setIsTyping(true);
 
     chatMutation.mutate({ 
       message: inputValue,
+      sessionId: currentSessionId || undefined,
       context: { stores, insights }
     });
   };
 
-  const initializeChat = () => {
-    if (messages.length > 0) return;
+  const handleNewChat = () => {
+    const title = `New Chat ${new Date().toLocaleDateString()}`;
+    createSessionMutation.mutate(title);
+  };
 
-    setIsTyping(true);
-    
-    // Generate initial greeting based on available data
-    setTimeout(() => {
-      const greeting = generateInitialGreeting();
-      const initialMessage: Message = {
-        id: "initial",
-        text: greeting.message,
-        isBot: true,
-        timestamp: new Date(),
-        actions: greeting.actions
-      };
-      setMessages([initialMessage]);
-      setIsTyping(false);
-    }, 1000);
+  const handleSwitchSession = (sessionId: number) => {
+    setCurrentSessionId(sessionId);
+    setShowSessionSelector(false);
+  };
+
+  const handleDeleteSession = (sessionId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteSessionMutation.mutate(sessionId);
+  };
+
+  const initializeChat = () => {
+    // If no current session and no sessions exist, create first session
+    if (!currentSessionId && sessions.length === 0) {
+      handleNewChat();
+    } else if (!currentSessionId && sessions.length > 0) {
+      // Load the most recent session
+      setCurrentSessionId(sessions[0].id);
+    }
   };
 
   const generateInitialGreeting = () => {
@@ -269,10 +327,21 @@ Since your basics are solid, want to explore:`,
   };
 
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen) {
       initializeChat();
     }
-  }, [isOpen, insights]);
+  }, [isOpen, sessions]);
+
+  // Auto-select first session when sessions load
+  useEffect(() => {
+    if (sessions.length > 0 && !currentSessionId) {
+      setCurrentSessionId(sessions[0].id);
+    }
+  }, [sessions, currentSessionId]);
+
+  const getCurrentSession = () => {
+    return sessions.find(s => s.id === currentSessionId);
+  };
 
   const TypingIndicator = () => (
     <div className="flex items-center space-x-1 p-3">
@@ -328,35 +397,94 @@ Since your basics are solid, want to explore:`,
                 <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                   <Bot className="h-4 w-4 text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-sm">Alex</h3>
-                  <p className="text-xs text-muted-foreground">Your AI E-commerce Manager</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getCurrentSession()?.title || "Your AI E-commerce Manager"}
+                  </p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                {/* Session Selector */}
+                <DropdownMenu open={showSessionSelector} onOpenChange={setShowSessionSelector}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <History className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <div className="p-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNewChat}
+                        className="w-full mb-2"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Chat
+                      </Button>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <div className="max-h-64 overflow-y-auto">
+                      {sessions.map((session) => (
+                        <DropdownMenuItem
+                          key={session.id}
+                          onClick={() => handleSwitchSession(session.id)}
+                          className={`flex items-center justify-between cursor-pointer ${
+                            session.id === currentSessionId ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                          }`}
+                        >
+                          <div className="flex-1 text-sm truncate">
+                            {session.title}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleDeleteSession(session.id, e)}
+                            className="h-6 w-6 p-0 ml-2"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 h-80">
+              {messages.length === 0 && !isTyping && (
+                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                  <div className="text-center">
+                    <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Start a conversation with Alex!</p>
+                  </div>
+                </div>
+              )}
+              
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+                  className={`flex ${message.isFromAlex ? 'justify-start' : 'justify-end'}`}
                 >
                   <div
                     className={`max-w-[80%] p-3 rounded-lg ${
-                      message.isBot
+                      message.isFromAlex
                         ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                         : 'bg-blue-500 text-white'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-line">{message.text}</p>
+                    <p className="text-sm whitespace-pre-line">{message.content}</p>
                     
                     {/* Action Buttons */}
                     {message.actions && message.actions.length > 0 && (

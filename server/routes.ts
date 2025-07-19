@@ -1418,15 +1418,102 @@ Return ONLY a JSON object with this exact format:
     }
   });
 
+  // Get user's chat sessions
+  app.get("/api/alex/sessions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { user } = req;
+      const sessions = await storage.getUserChatSessions(user.id);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error getting chat sessions:", error);
+      res.status(500).json({ error: "Failed to get chat sessions" });
+    }
+  });
+
+  // Create new chat session
+  app.post("/api/alex/sessions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { title } = req.body;
+      const { user } = req;
+      
+      if (!title) {
+        return res.status(400).json({ error: "Session title is required" });
+      }
+
+      const session = await storage.createChatSession(user.id, title);
+      res.json(session);
+    } catch (error) {
+      console.error("Error creating chat session:", error);
+      res.status(500).json({ error: "Failed to create chat session" });
+    }
+  });
+
+  // Get messages for a specific session
+  app.get("/api/alex/sessions/:sessionId/messages", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { sessionId } = req.params;
+      const { user } = req;
+      
+      // Verify session belongs to user
+      const session = await storage.getChatSession(parseInt(sessionId));
+      if (!session || session.userId !== user.id) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      const messages = await storage.getChatMessages(parseInt(sessionId));
+      res.json(messages);
+    } catch (error) {
+      console.error("Error getting chat messages:", error);
+      res.status(500).json({ error: "Failed to get chat messages" });
+    }
+  });
+
+  // Delete chat session
+  app.delete("/api/alex/sessions/:sessionId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { sessionId } = req.params;
+      const { user } = req;
+      
+      // Verify session belongs to user
+      const session = await storage.getChatSession(parseInt(sessionId));
+      if (!session || session.userId !== user.id) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      await storage.deleteChatSession(parseInt(sessionId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting chat session:", error);
+      res.status(500).json({ error: "Failed to delete chat session" });
+    }
+  });
+
   // Chat with Alex
   app.post("/api/alex/chat", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { message, context } = req.body;
+      const { message, context, sessionId } = req.body;
       const { user } = req;
       
       if (!message) {
         return res.status(400).json({ error: "Message is required" });
       }
+
+      // If no sessionId provided, create a new session
+      let chatSessionId = sessionId;
+      if (!chatSessionId) {
+        const sessionTitle = message.length > 30 ? message.substring(0, 30) + "..." : message;
+        const newSession = await storage.createChatSession(user.id, sessionTitle);
+        chatSessionId = newSession.id;
+      } else {
+        // Verify session belongs to user
+        const session = await storage.getChatSession(chatSessionId);
+        if (!session || session.userId !== user.id) {
+          return res.status(404).json({ error: "Session not found" });
+        }
+      }
+
+      // Save user message
+      await storage.addChatMessage(chatSessionId, user.id, message, false);
 
       // Use OpenAI to generate Alex's response
       const openai = await import('openai');
@@ -1509,9 +1596,13 @@ Always be specific and actionable. Don't give generic advice.`;
         });
       }
 
+      // Save Alex's response
+      await storage.addChatMessage(chatSessionId, user.id, alexResponse, true, actions);
+
       res.json({ 
         message: alexResponse,
-        actions: actions
+        actions: actions,
+        sessionId: chatSessionId
       });
     } catch (error) {
       console.error("Error processing Alex chat:", error);

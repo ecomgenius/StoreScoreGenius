@@ -59,6 +59,7 @@ The application follows a full-stack architecture with a clear separation betwee
 - **User Stores Table**: Manages connected user stores for easy re-analysis
 - **Credit Transactions Table**: Tracks all credit purchases, usage, and refunds
 - **User Sessions Table**: Secure session management for authentication
+- **Alex Chat Sessions and Messages Tables**: Complete chat history management with session-based conversations, message persistence, and user-specific chat organization
 - **Support for Multiple Store Types**: Flexible schema accommodating both Shopify URLs and eBay usernames
 
 ## Data Flow
@@ -118,7 +119,7 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Build Scripts**: Separate development and production build processes
 - **Database Migrations**: Drizzle Kit handles schema changes and migrations
 
-### Recent Changes (July 13, 2025)
+### Recent Changes (July 19, 2025)
 - **Fixed Critical Authentication Bug**: Resolved database connection issues causing empty responses for authenticated users
 - **Implemented Real-time Dashboard**: Added dynamic credit tracking, analysis counting, and store management
 - **Completed SaaS Functionality**: Full user account system with credit deduction and transaction logging
@@ -153,6 +154,7 @@ The application follows a full-stack architecture with a clear separation betwee
 - **Platform-Specific Visual Formats**: Automatically generates correct aspect ratios for each platform (Instagram 1024x1024, TikTok 1024x1792, Pinterest 1024x1536, Facebook/Google 1792x1024) with platform-optimized prompting and styling
 - **Professional Ad Download System**: Users receive complete visual ads as downloadable PNG/JPG files ready for immediate upload to advertising platforms, with full-size viewing and direct download functionality
 - **Intelligent Visual Prompting**: AI creates sophisticated DALL-E 3 prompts incorporating product details, platform specifications, ad styles, and target audience for maximum conversion potential
+- **Alex AI Bot with Persistent Chat History**: Built comprehensive humanoid AI assistant with full chat session management, allowing users to create multiple conversations, switch between chat histories, delete sessions, and maintain context across conversations with automatic session persistence and real-time synchronization
 
 ### Scalability Considerations
 - **Stateless Backend**: Express server can be horizontally scaled
