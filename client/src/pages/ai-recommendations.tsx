@@ -123,13 +123,15 @@ export default function AIRecommendations() {
   });
 
   // Fetch store products (remove dependency on recommendations)
-  const { data: products = [], isLoading: productsLoading } = useQuery({
+  const { data: products = [], isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['/api/shopify/products', storeId],
     queryFn: async () => {
       try {
         return await apiRequest('GET', `/api/shopify/products/${storeId}`);
       } catch (error: any) {
-        if (error.message?.includes('Store not connected')) {
+        if (error.message?.includes('Store not connected') || 
+            error.message?.includes('connection expired') ||
+            error.message?.includes('needsReconnection')) {
           return []; // Return empty array if store not connected
         }
         throw error;
@@ -385,12 +387,18 @@ export default function AIRecommendations() {
     );
   }
 
-  // Check if store is connected using the correct schema fields
-  const isShopifyConnected = store.isConnected || 
-                           store.shopifyAccessToken || 
-                           store.connectionStatus === 'connected' ||
-                           recommendations.length > 0 || 
-                           store.aiRecommendationsCount > 0;
+  // Check if store is connected and products are loading successfully
+  const hasConnectionError = productsError && (
+    productsError.message?.includes('Unauthorized') ||
+    productsError.message?.includes('connection expired') ||
+    productsError.message?.includes('needsReconnection')
+  );
+  
+  const isShopifyConnected = (store.isConnected || 
+                             store.shopifyAccessToken || 
+                             store.connectionStatus === 'connected' ||
+                             recommendations.length > 0 || 
+                             store.aiRecommendationsCount > 0) && !hasConnectionError;
 
   if (!isShopifyConnected) {
     return (
@@ -422,9 +430,14 @@ export default function AIRecommendations() {
               <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ExternalLink className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Connect Your Shopify Store</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {hasConnectionError ? 'Shopify Connection Expired' : 'Connect Your Shopify Store'}
+              </h3>
               <p className="text-muted-foreground mb-6">
-                To use AI recommendations, you need to connect your store to Shopify. This allows us to access your products and apply optimizations.
+                {hasConnectionError 
+                  ? 'Your Shopify connection has expired and needs to be refreshed. Please reconnect to continue using AI recommendations.'
+                  : 'To use AI recommendations, you need to connect your store to Shopify. This allows us to access your products and apply optimizations.'
+                }
               </p>
               <div className="space-y-3">
                 <Button 

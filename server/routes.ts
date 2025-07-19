@@ -404,8 +404,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch products from Shopify
-      const products = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
-      res.json(products);
+      try {
+        const products = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
+        res.json(products);
+      } catch (shopifyError: any) {
+        console.error("Shopify API Error:", shopifyError.message);
+        
+        // If unauthorized, mark store as disconnected
+        if (shopifyError.message.includes('Unauthorized') || shopifyError.message.includes('401')) {
+          await storage.updateUserStore(store.id, {
+            isConnected: false,
+            connectionStatus: 'disconnected'
+          });
+          
+          return res.status(401).json({ 
+            error: "Shopify connection expired. Please reconnect your store.",
+            needsReconnection: true
+          });
+        }
+        
+        throw shopifyError;
+      }
     } catch (error) {
       console.error("Error fetching Shopify products:", error);
       res.status(500).json({ error: "Failed to fetch products" });
