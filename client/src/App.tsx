@@ -19,6 +19,7 @@ import ConversionRecommendations from "@/pages/conversion-recommendations";
 import TrustRecommendations from "@/pages/trust-recommendations";
 import BuyCredits from "@/pages/buy-credits";
 import SubscriptionOnboarding from "@/pages/subscription-onboarding";
+import AdCreator from "@/pages/ad-creator";
 import { AuthProvider } from "@/hooks/useAuth";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/dashboard/stores/:storeId/trust" component={TrustRecommendations} />
       <Route path="/dashboard/settings" component={Settings} />
       <Route path="/dashboard/credits" component={BuyCredits} />
+      <Route path="/dashboard/ad-creator" component={AdCreator} />
       <Route path="/subscription-onboarding" component={SubscriptionOnboarding} />
       <Route component={NotFound} />
     </Switch>

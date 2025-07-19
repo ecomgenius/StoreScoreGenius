@@ -9,7 +9,8 @@ import {
   X, 
   User,
   LogOut,
-  CreditCard
+  CreditCard,
+  Megaphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +28,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Analyze Store', href: '/dashboard', icon: Search },
     { name: 'Past Analysis', href: '/dashboard/analysis', icon: History },
     { name: 'Your Stores', href: '/dashboard/stores', icon: Store },
+    { name: 'AI Ad Creator', href: '/dashboard/ad-creator', icon: Megaphone },
     { name: 'Buy Credits', href: '/dashboard/credits', icon: CreditCard },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];

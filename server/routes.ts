@@ -1318,6 +1318,160 @@ Return ONLY a JSON object with this exact format:
     }
   });
 
+  // ================ AI AD GENERATION ROUTES ================
+  
+  // Generate AI-powered ads
+  app.post("/api/generate-ads", requireAuth, checkCredits(1), async (req: Request, res: Response) => {
+    try {
+      const { storeId, productId, isWholeStore, platform, adStyle, format, variants, targetAudience } = req.body;
+      const { user } = req;
+
+      // Validate required fields
+      if (!storeId || !platform || !adStyle || !format || !targetAudience) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Get the user's store
+      const store = await storage.getUserStore(parseInt(storeId));
+      if (!store || store.userId !== user.id) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      let productData = null;
+      let storeData = {
+        name: store.name,
+        url: store.storeUrl,
+        domain: store.shopifyDomain
+      };
+
+      // If product-specific ad, fetch product data
+      if (!isWholeStore && productId && store.shopifyAccessToken) {
+        try {
+          const { fetchSingleProduct } = await import('./services/shopifyIntegration.js');
+          const result = await fetchSingleProduct(store.shopifyDomain, store.shopifyAccessToken, productId);
+          productData = result.product;
+        } catch (error) {
+          console.error('Error fetching product data:', error);
+          return res.status(400).json({ error: "Failed to fetch product data" });
+        }
+      }
+
+      // Generate AI prompt
+      const openai = await import('openai');
+      const openaiClient = new openai.default({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+
+      const promptBase = `You are a direct response copywriter specializing in high-converting ${platform} ads. Create compelling ad copy that drives conversions.`;
+      
+      let productInfo = '';
+      if (isWholeStore) {
+        productInfo = `
+Store Name: ${storeData.name}
+Store URL: ${storeData.url}
+Store Type: E-commerce store
+`;
+      } else if (productData) {
+        productInfo = `
+Product Name: ${productData.title}
+Product Description: ${productData.body_html?.replace(/<[^>]*>/g, '').substring(0, 300) || 'Premium quality product'}
+Category: ${productData.product_type || 'Product'}
+Price: $${productData.variants?.[0]?.price || 'Contact for pricing'}
+Tags: ${productData.tags || 'Quality, Premium'}
+`;
+      }
+
+      const adPrompt = `${promptBase}
+
+${productInfo}
+Target Audience: ${targetAudience}
+Platform: ${platform}
+Ad Style: ${adStyle}
+Format: ${format}
+
+Requirements:
+- Create ${variants} unique ad variations
+- Each ad should be optimized for ${platform}
+- Use ${adStyle} approach for maximum engagement
+- Keep copy ${format === 'short' ? 'under 100 words' : format === 'medium' ? 'between 100-200 words' : 'over 200 words but engaging'}
+- Include compelling headlines, persuasive primary text, and strong call-to-action
+- Focus on benefits and emotional triggers
+- Use platform-specific best practices for ${platform}
+
+Return ads in JSON format with this exact structure:
+[
+  {
+    "headline": "Compelling headline text",
+    "primary_text": "Main ad copy that drives action",
+    "call_to_action": "Strong CTA button text"
+  }
+]`;
+
+      console.log('Debug - Generating ads with OpenAI...');
+      
+      const aiResponse = await openaiClient.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: adPrompt }],
+        max_tokens: 1500,
+        temperature: 0.8,
+        response_format: { type: "json_object" }
+      });
+
+      let generatedAds;
+      try {
+        const responseContent = aiResponse.choices[0].message.content || '[]';
+        const parsedResponse = JSON.parse(responseContent);
+        
+        // Handle both array format and object format from AI
+        if (Array.isArray(parsedResponse)) {
+          generatedAds = parsedResponse;
+        } else if (parsedResponse.ads && Array.isArray(parsedResponse.ads)) {
+          generatedAds = parsedResponse.ads;
+        } else {
+          // Fallback: create array from single object
+          generatedAds = [parsedResponse];
+        }
+      } catch (parseError) {
+        console.error('Error parsing AI response:', parseError);
+        // Fallback ads
+        generatedAds = [{
+          headline: isWholeStore ? `Discover Amazing Products at ${storeData.name}` : `Get Your ${productData?.title || 'Premium Product'} Today`,
+          primary_text: isWholeStore 
+            ? `Shop the latest trends and quality products at ${storeData.name}. Limited time offers available!`
+            : `Experience the quality of ${productData?.title || 'our premium product'}. Join thousands of satisfied customers.`,
+          call_to_action: "Shop Now"
+        }];
+      }
+
+      // Ensure we have the requested number of variants
+      while (generatedAds.length < variants) {
+        const baseAd = generatedAds[0];
+        generatedAds.push({
+          headline: baseAd.headline + " - Limited Time",
+          primary_text: baseAd.primary_text + " Don't miss out!",
+          call_to_action: baseAd.call_to_action
+        });
+      }
+
+      // Trim to requested number
+      generatedAds = generatedAds.slice(0, variants);
+
+      // Deduct credits (1 credit per generation batch, regardless of number of variants)
+      const creditsUsed = 1;
+      await storage.deductCredits(user.id, creditsUsed, `AI ad generation for ${isWholeStore ? store.name : productData?.title || 'product'}`);
+
+      console.log(`Debug - Successfully generated ${generatedAds.length} ads using ${creditsUsed} credits`);
+
+      res.json({ 
+        ads: generatedAds,
+        creditsUsed 
+      });
+    } catch (error) {
+      console.error("Error generating ads:", error);
+      res.status(500).json({ error: "Failed to generate ads" });
+    }
+  });
+
   // ================ SUBSCRIPTION ROUTES ================
   
   // Get subscription plans
