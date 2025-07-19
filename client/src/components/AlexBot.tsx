@@ -83,11 +83,15 @@ export default function AlexBot() {
   // Get messages for current session
   const { data: sessionMessages = [], refetch: refetchMessages } = useQuery<Message[]>({
     queryKey: ['/api/alex/sessions', currentSessionId, 'messages'],
-    enabled: !!user && !!currentSessionId,
-    onSuccess: (data) => {
-      setMessages(data);
-    }
+    enabled: !!user && !!currentSessionId
   });
+
+  // Update messages when sessionMessages changes
+  useEffect(() => {
+    if (sessionMessages) {
+      setMessages(sessionMessages);
+    }
+  }, [sessionMessages]);
 
   const chatMutation = useMutation({
     mutationFn: async (data: { message: string; context?: any; sessionId?: number }) => {
@@ -95,11 +99,17 @@ export default function AlexBot() {
     },
     onSuccess: (response: any) => {
       setIsTyping(false);
-      setCurrentSessionId(response.sessionId);
-      refetchMessages();
-      refetchSessions();
+      if (response.sessionId) {
+        setCurrentSessionId(response.sessionId);
+      }
+      // Force refetch messages after a small delay to ensure DB is updated
+      setTimeout(() => {
+        refetchMessages();
+        refetchSessions();
+      }, 100);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Alex chat error:', error);
       setIsTyping(false);
     }
   });
@@ -148,11 +158,12 @@ export default function AlexBot() {
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
 
+    const messageToSend = inputValue;
     setInputValue("");
     setIsTyping(true);
 
     chatMutation.mutate({ 
-      message: inputValue,
+      message: messageToSend,
       sessionId: currentSessionId || undefined,
       context: { stores, insights }
     });
@@ -343,6 +354,31 @@ Since your basics are solid, want to explore:`,
     return sessions.find(s => s.id === currentSessionId);
   };
 
+  const getActionIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'BookOpen':
+        return <BookOpen className="h-3 w-3" />;
+      case 'Zap':
+        return <Zap className="h-3 w-3" />;
+      case 'Camera':
+        return <Camera className="h-3 w-3" />;
+      case 'Edit3':
+        return <Edit3 className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
+
+  const handleActionClick = (action: any) => {
+    if (action.action === 'education') {
+      handleEducationQuestion();
+    } else if (action.action === 'optimize') {
+      handleOptimizeAction();
+    } else if (action.action === 'ads') {
+      handleCreateAds();
+    }
+  };
+
   const TypingIndicator = () => (
     <div className="flex items-center space-x-1 p-3">
       <div className="flex space-x-1">
@@ -494,10 +530,10 @@ Since your basics are solid, want to explore:`,
                             key={action.id}
                             variant={action.variant || "outline"}
                             size="sm"
-                            onClick={action.action}
+                            onClick={() => handleActionClick(action)}
                             className="h-8 text-xs"
                           >
-                            {action.icon}
+                            {getActionIcon(action.icon)}
                             <span className="ml-1">{action.label}</span>
                           </Button>
                         ))}
