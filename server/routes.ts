@@ -2599,9 +2599,9 @@ Provide actionable, specific recommendations that can be implemented.`;
       let responseMessage = actualChanges.message;
       
       if (isReviewOptimization && actualChanges.applied) {
-        responseMessage = `Trust optimization applied to your Shopify store! Created review policy pages and enhanced existing content. 
+        responseMessage = `✅ Page created in your Shopify store! Go to Shopify Admin → "Online Store" → "Pages" → "Customer Reviews Policy" to see the new content. 
 
-⚠️ To complete the review system setup: Install a review app from Shopify App Store (Judge.me, Yotpo, or Loox) - this cannot be automated but the foundation has been created.`;
+📝 To complete setup: Install a review app from Shopify App Store (Judge.me, Yotpo, or Loox).`;
       }
 
       res.json({ 

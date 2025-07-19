@@ -63,7 +63,7 @@ export default function TrustRecommendationsPage() {
         "Trust Optimization Tracked!";
       
       const toastDescription = data.shopifyApplied ?
-        `${data.message} Check your Shopify admin for new pages and content.` :
+        `${data.message} Check your Shopify admin under "Online Store > Pages" for new content.` :
         data.message || "Trust optimization has been recorded. Manual implementation may be required for full functionality.";
       
       toast({
