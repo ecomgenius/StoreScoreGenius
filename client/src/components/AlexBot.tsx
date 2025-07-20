@@ -443,13 +443,13 @@ Since your basics are solid, want to explore:`,
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm">Alex</h3>
                   <p className="text-xs text-muted-foreground">
-                    {getCurrentSession()?.title || "Your AI E-commerce Manager"}
+                    {sessions.find(s => s.id === currentSessionId)?.title || "Your AI E-commerce Manager"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 {/* Session Selector */}
-                <DropdownMenu open={showSessionSelector} onOpenChange={setShowSessionSelector}>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
                       <History className="h-4 w-4" />
