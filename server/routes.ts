@@ -1587,33 +1587,59 @@ Return ONLY a JSON object with this exact format:
 
       // Dynamic response generation is already completed above
 
-      // Generate action buttons based on context and response
+      // Generate smart, contextual action buttons based on Alex's response
       const actions = [];
+      const lowerResponse = alexResponse.toLowerCase();
       
-      if (message.toLowerCase().includes('teach') || message.toLowerCase().includes('learn')) {
+      // Detect questions that need Yes/No responses
+      if (lowerResponse.includes('would you like') || lowerResponse.includes('want me to') || 
+          lowerResponse.includes('should i') || lowerResponse.includes('ready to')) {
+        actions.push(
+          {
+            id: 'yes-action',
+            label: 'Yes ✅',
+            icon: 'Check',
+            type: 'response',
+            text: 'Yes, please help me with that'
+          },
+          {
+            id: 'no-action', 
+            label: 'No thanks ❌',
+            icon: 'X',
+            type: 'response',
+            text: 'No thanks, I want to focus on something else'
+          }
+        );
+      }
+      
+      // Add contextual buttons based on content
+      if (lowerResponse.includes('product') && lowerResponse.includes('improve')) {
         actions.push({
-          id: 'more-tips',
-          label: 'More Tips',
-          icon: 'BookOpen',
-          action: 'education'
+          id: 'show-products',
+          label: 'Show me products 🔍',
+          icon: 'Search',
+          type: 'response',
+          text: 'Show me which specific products need the most improvement'
         });
       }
       
-      if (context?.insights?.[0]?.healthScore < 70) {
+      if (lowerResponse.includes('a/b test') || lowerResponse.includes('test')) {
         actions.push({
-          id: 'fix-now',
-          label: 'Fix Issues',
-          icon: 'Zap',
-          action: 'optimize'
+          id: 'learn-testing',
+          label: 'Learn A/B testing 📊',
+          icon: 'BookOpen', 
+          type: 'response',
+          text: 'Teach me how to set up A/B tests for my store'
         });
       }
       
-      if (context?.insights?.[0]?.healthScore >= 70) {
+      if (lowerResponse.includes('ads') || lowerResponse.includes('marketing')) {
         actions.push({
           id: 'create-ads',
-          label: 'Create Ads',
+          label: 'Create ads now 🎨',
           icon: 'Camera',
-          action: 'ads'
+          type: 'response', 
+          text: 'Help me create ads for my best products'
         });
       }
 

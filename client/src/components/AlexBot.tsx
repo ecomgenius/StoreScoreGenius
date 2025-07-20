@@ -359,7 +359,7 @@ Since your basics are solid, want to explore:`,
     if (sessions.length > 0 && !currentSessionId) {
       setCurrentSessionId(sessions[0].id);
     }
-  }, [sessions.length, !currentSessionId]); // Fixed dependency to prevent loops
+  }, [sessions.length]); // Only sessions.length to prevent infinite loops
 
   const getActionIcon = (iconName: string) => {
     switch (iconName) {
@@ -371,13 +371,25 @@ Since your basics are solid, want to explore:`,
         return <Camera className="h-3 w-3" />;
       case 'Edit3':
         return <Edit3 className="h-3 w-3" />;
+      case 'Check':
+        return <span className="text-green-500">✅</span>;
+      case 'X':
+        return <span className="text-red-500">❌</span>;
+      case 'Search':
+        return <span>🔍</span>;
       default:
         return null;
     }
   };
 
   const handleActionClick = (action: any) => {
-    if (action.action) {
+    if (action.type === 'response') {
+      // Send the action text as a message
+      chatMutation.mutate({ 
+        message: action.text,
+        sessionId: currentSessionId 
+      });
+    } else if (action.action && typeof action.action === 'function') {
       action.action();
     }
   };
