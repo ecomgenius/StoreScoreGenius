@@ -41,7 +41,7 @@ export default function LivePreviewSection() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentStep((prev) => (prev + 1) % steps.length);
-    }, 3000); // 3 seconds per step
+    }, 4000); // 4 seconds per step
 
     return () => clearInterval(interval);
   }, []);
