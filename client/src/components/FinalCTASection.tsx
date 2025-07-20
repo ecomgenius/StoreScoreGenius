@@ -69,49 +69,37 @@ export default function FinalCTASection({ onAnalysisStart, onAnalysisComplete, o
   });
 
   const handleAnalyze = () => {
-    if (activeTab === 'shopify') {
-      if (!storeUrl.trim()) {
-        toast({
-          title: "URL Required",
-          description: "Please enter a valid Shopify store URL",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      let normalizedUrl = storeUrl.trim();
-      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-        normalizedUrl = 'https://' + normalizedUrl;
-      }
-      
-      try {
-        new URL(normalizedUrl);
-        setStoreUrl(normalizedUrl);
-      } catch {
-        toast({
-          title: "Invalid URL",
-          description: "Please enter a valid URL (e.g., desertcart.ae or https://www.allbirds.com)",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else {
-      if (!ebayUsername.trim()) {
-        toast({
-          title: "Username Required",
-          description: "Please enter a valid eBay username",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (!storeUrl.trim()) {
+      toast({
+        title: "URL Required",
+        description: "Please enter a valid Shopify store URL",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    let normalizedUrl = storeUrl.trim();
+    if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+    
+    try {
+      new URL(normalizedUrl);
+      setStoreUrl(normalizedUrl);
+    } catch {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL (e.g., desertcart.ae or https://www.allbirds.com)",
+        variant: "destructive",
+      });
+      return;
     }
 
     onAnalysisStart();
     
     const analysisData = {
-      storeUrl: activeTab === 'shopify' ? (storeUrl.startsWith('http') ? storeUrl : 'https://' + storeUrl) : undefined,
-      ebayUsername: activeTab === 'ebay' ? ebayUsername : undefined,
-      storeType: activeTab,
+      storeUrl: normalizedUrl,
+      storeType: 'shopify' as const,
     };
     
     analyzeStoreMutation.mutate(analysisData);
@@ -215,63 +203,28 @@ export default function FinalCTASection({ onAnalysisStart, onAnalysisComplete, o
           exit={{ y: 100, opacity: 0 }}
           className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50 p-4"
         >
-          <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col lg:flex-row items-center gap-4">
-              <div className="hidden sm:block flex-shrink-0">
-                <p className="font-semibold text-gray-900">Start analyzing your store now</p>
-                <p className="text-sm text-gray-500">Free analysis • Instant results</p>
-              </div>
-              
-              <div className="flex-1 max-w-2xl">
-                <Tabs defaultValue="shopify" className="w-full" onValueChange={(value) => setActiveTab(value as 'shopify' | 'ebay')}>
-                  <TabsList className="grid w-full grid-cols-2 mb-3 h-8">
-                    <TabsTrigger value="shopify" className="text-xs">Shopify</TabsTrigger>
-                    <TabsTrigger value="ebay" className="text-xs">eBay</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="shopify" className="mt-0">
-                    <div className="flex gap-2">
-                      <Input
-                        type="url"
-                        placeholder={landingText.hero.placeholder}
-                        value={storeUrl}
-                        onChange={(e) => setStoreUrl(e.target.value)}
-                        className="flex-1 h-10 text-sm"
-                      />
-                      <Button 
-                        onClick={handleAnalyze}
-                        disabled={analyzeStoreMutation.isPending}
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 h-10"
-                      >
-                        <Search className="w-4 h-4 mr-1" />
-                        {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Analyze'}
-                      </Button>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="ebay" className="mt-0">
-                    <div className="flex gap-2">
-                      <Input
-                        type="text"
-                        placeholder="Enter your eBay username"
-                        value={ebayUsername}
-                        onChange={(e) => setEbayUsername(e.target.value)}
-                        className="flex-1 h-10 text-sm"
-                      />
-                      <Button 
-                        onClick={handleAnalyze}
-                        disabled={analyzeStoreMutation.isPending}
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 h-10"
-                      >
-                        <Search className="w-4 h-4 mr-1" />
-                        {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Analyze'}
-                      </Button>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            <div className="hidden sm:block">
+              <p className="font-semibold text-gray-900">Start analyzing your store now</p>
+              <p className="text-sm text-gray-500">Free analysis • Instant results</p>
+            </div>
+            <div className="flex flex-1 max-w-md gap-2">
+              <Input
+                type="url"
+                placeholder={landingText.hero.placeholder}
+                value={storeUrl}
+                onChange={(e) => setStoreUrl(e.target.value)}
+                className="flex-1 h-10"
+              />
+              <Button 
+                onClick={handleAnalyze}
+                disabled={analyzeStoreMutation.isPending}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 h-10 whitespace-nowrap"
+              >
+                <Search className="w-4 h-4 mr-1" />
+                {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Analyze'}
+              </Button>
             </div>
           </div>
         </motion.div>
