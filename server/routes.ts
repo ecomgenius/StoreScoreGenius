@@ -27,6 +27,7 @@ import {
   validateWebhookSignature
 } from "./services/shopifyIntegration";
 import { analyzeStoreWithAI } from "./services/openai";
+import { generateDynamicWelcome, generateContextualResponse, extractConversationInsights, type UserContext } from "./services/alexConversational";
 import { subscriptionService } from "./services/subscriptionService";
 import Stripe from "stripe";
 
@@ -1499,56 +1500,54 @@ Return ONLY a JSON object with this exact format:
       // Save user message
       await storage.addChatMessage(chatSessionId, user.id, message, false);
 
-      // Use OpenAI to generate Alex's response
-      const openai = await import('openai');
-      const openaiClient = new openai.default({ 
-        apiKey: process.env.OPENAI_API_KEY 
-      });
-
-      const systemPrompt = `You are Alex, a humanoid AI e-commerce manager and strategic assistant. You help Shopify/eBay sellers grow their business by analyzing their store data and providing actionable insights.
-
-Your personality:
-- Friendly, insightful, occasionally witty
-- Proactive and solution-focused  
-- Speak like a knowledgeable business partner
-- Use emojis sparingly but effectively
-- Keep responses concise but valuable
-
-Your capabilities:
-- Analyze store performance data
-- Suggest specific improvements
-- Teach e-commerce skills and strategies
-- Propose actionable next steps
-- Help with product optimization, ads, scaling
-
-Always be specific and actionable. Don't give generic advice.`;
-
-      let userPrompt = message;
+      // Build dynamic context for Alex AI
+      const stores = await storage.getUserStores(user.id);
+      const allAnalyses = await storage.getUserAnalyses(user.id, 10);
       
-      // Add context to the prompt if available
-      if (context) {
-        if (context.type === 'education') {
-          userPrompt = `The user wants to learn about e-commerce optimization. Their store data: ${JSON.stringify(context.insights?.slice(0, 1))}. Provide a practical lesson about their weakest area. Keep it under 150 words with 1-2 specific actionable tips.`;
-        } else if (context.type === 'scaling') {
-          userPrompt = `The user wants scaling strategies. Their store performance: ${JSON.stringify(context.insights?.slice(0, 1))}. Give specific scaling advice based on their current state. Include 2-3 concrete next steps.`;
-        } else if (context.type === 'weak_products') {
-          userPrompt = `Show the user's weakest products and specific fixes. Store data: ${JSON.stringify(context.insights?.slice(0, 1))}. Suggest specific product optimization actions.`;
-        } else if (context.stores && context.insights) {
-          userPrompt = `User message: "${message}". Store context: ${JSON.stringify(context.insights?.slice(0, 1))}. Respond as Alex with specific insights and actions.`;
-        }
+      // Get conversation history for this session if it exists
+      let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+      if (chatSessionId) {
+        const messages = await storage.getChatMessages(chatSessionId);
+        conversationHistory = messages.slice(-ALEX.MAX_CONVERSATION_HISTORY).map(msg => ({
+          role: msg.isFromAlex ? 'assistant' : 'user',
+          content: msg.content
+        }));
+      }
+      
+      // Get past conversation topics for memory
+      const pastSessions = await storage.getUserChatSessions(user.id);
+      const pastConversations = pastSessions.slice(-5).map(session => ({
+        topic: session.title.replace('New Chat ', ''),
+        timestamp: session.createdAt,
+        summary: session.title
+      }));
+      
+      const userContext: UserContext = {
+        userId: user.id,
+        stores: stores.map(store => ({
+          id: store.id,
+          name: store.name,
+          storeUrl: store.storeUrl,
+          lastAnalyzed: allAnalyses.find(a => a.userStoreId === store.id)?.createdAt?.toISOString()
+        })),
+        recentAnalyses: allAnalyses,
+        pastConversations,
+        dashboardVisitTime: new Date(),
+        timeSinceLastMessage: pastSessions.length > 0 ? 
+          (new Date().getTime() - new Date(pastSessions[0].updatedAt).getTime()) / (1000 * 60 * 60) : undefined
+      };
+      
+      let alexResponse: string;
+      
+      // If this is the first message in a new session, generate dynamic welcome
+      if (!sessionId && message.trim().length < 10) {
+        alexResponse = await generateDynamicWelcome(userContext);
+      } else {
+        // Generate contextual response for ongoing conversation
+        alexResponse = await generateContextualResponse(message, userContext, conversationHistory);
       }
 
-      const response = await openaiClient.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 400,
-        temperature: 0.7,
-      });
-
-      const alexResponse = response.choices[0].message.content || "I'm having trouble processing that. Can you try asking something else?";
+      // Dynamic response generation is already completed above
 
       // Generate action buttons based on context and response
       const actions = [];

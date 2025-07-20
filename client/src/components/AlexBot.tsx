@@ -309,13 +309,13 @@ Since your basics are solid, want to explore:`,
   };
 
   const navigateToOptimization = (type: string) => {
-    if (stores.length > 0) {
+    if (stores && Array.isArray(stores) && stores.length > 0) {
       window.location.href = `/dashboard/stores/${stores[0].id}/recommendations/products`;
     }
   };
 
   const navigateToRecommendations = () => {
-    if (stores.length > 0) {
+    if (stores && Array.isArray(stores) && stores.length > 0) {
       window.location.href = `/dashboard/stores/${stores[0].id}/recommendations`;
     }
   };
@@ -359,7 +359,7 @@ Since your basics are solid, want to explore:`,
     if (sessions.length > 0 && !currentSessionId) {
       setCurrentSessionId(sessions[0].id);
     }
-  }, [sessions.length > 0]); // Only depend on whether sessions exist, not the sessions array itself
+  }, [sessions, currentSessionId]); // Fixed dependencies
 
   const getActionIcon = (iconName: string) => {
     switch (iconName) {
@@ -377,12 +377,8 @@ Since your basics are solid, want to explore:`,
   };
 
   const handleActionClick = (action: any) => {
-    if (action.action === 'education') {
-      handleEducationQuestion();
-    } else if (action.action === 'optimize') {
-      handleOptimizeAction();
-    } else if (action.action === 'ads') {
-      handleCreateAds();
+    if (action.action) {
+      action.action();
     }
   };
 
@@ -557,7 +553,7 @@ Since your basics are solid, want to explore:`,
                             onClick={() => handleActionClick(action)}
                             className="h-8 text-xs"
                           >
-                            {getActionIcon(action.icon)}
+                            {typeof action.icon === 'string' ? getActionIcon(action.icon) : action.icon}
                             <span className="ml-1">{action.label}</span>
                           </Button>
                         ))}

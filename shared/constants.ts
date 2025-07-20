@@ -84,6 +84,14 @@ export const API_ENDPOINTS = {
   }
 } as const;
 
+export const ALEX = {
+  GREETING_DELAY: 2000,
+  MAX_MESSAGE_LENGTH: 500,
+  MAX_CONVERSATION_HISTORY: 10,
+  CONTEXT_REFRESH_INTERVAL: 300000, // 5 minutes
+  MEMORY_RETENTION_DAYS: 30
+} as const;
+
 export const SHOPIFY = {
   SCOPES: 'read_products,write_products,read_orders,read_customers,read_analytics',
   API_VERSION: '2024-04'
