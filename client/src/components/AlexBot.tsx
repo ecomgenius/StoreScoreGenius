@@ -393,18 +393,20 @@ Since your basics are solid, want to explore:`,
     }
   }, [sessions.length]); // Only sessions.length to prevent infinite loops
 
-  // Handle proactive outreach notifications
+  // Handle proactive outreach notifications - fixed infinite loop
   useEffect(() => {
-    if (proactiveOutreach && proactiveOutreach.shouldNotify && !isOpen && !showProactiveNotification) {
+    if (proactiveOutreach?.shouldNotify && !isOpen && !showProactiveNotification) {
       setProactiveMessage(proactiveOutreach.message);
       setShowProactiveNotification(true);
       
       // Auto-hide after 10 seconds
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setShowProactiveNotification(false);
       }, 10000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [proactiveOutreach?.shouldNotify, isOpen]); // Fixed dependencies
+  }, [proactiveOutreach?.shouldNotify, isOpen]); // Removed showProactiveNotification from dependencies
 
   const getActionIcon = (iconName: string) => {
     switch (iconName) {

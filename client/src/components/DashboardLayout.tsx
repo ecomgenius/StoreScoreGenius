@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import AlexBot from '@/components/AlexBot';
 
 interface DashboardLayoutProps {
@@ -24,6 +26,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuth();
+
+  // Fetch current user credits
+  const { data: creditsData } = useQuery({
+    queryKey: ['/api/credits'],
+    queryFn: async () => {
+      return await apiRequest('GET', '/api/credits');
+    },
+    enabled: !!user,
+    refetchInterval: 30000 // Refresh every 30 seconds
+  });
 
   const navigation = [
     { name: 'Analyze Store', href: '/dashboard', icon: Search },
@@ -87,30 +99,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">{user?.email}</p>
-                <p className="text-xs text-gray-500">{user?.credits || 0} credits</p>
+                <p className="text-xs text-gray-500">{creditsData?.credits || 0} credits</p>
               </div>
             </div>
           </div>
-          <div className="flex space-x-2">
-            <Link href="/dashboard/credits">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 text-xs"
-              >
-                <CreditCard className="w-3 h-3 mr-1" />
-                Buy Credits
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-xs"
-            >
-              <LogOut className="w-3 h-3" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="text-xs w-full justify-start"
+          >
+            <LogOut className="w-3 h-3 mr-1" />
+            Logout
+          </Button>
         </div>
       </div>
 
