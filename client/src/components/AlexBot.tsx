@@ -101,10 +101,21 @@ export default function AlexBot() {
     enabled: !!user && !!currentSessionId
   });
 
-  // Update messages when sessionMessages changes
+  // Update messages when sessionMessages changes, but preserve temporary messages
   useEffect(() => {
     if (sessionMessages) {
-      setMessages(sessionMessages);
+      // Remove temporary messages and replace with real ones
+      setMessages(prev => {
+        const tempMessages = prev.filter(m => m.isTemporary);
+        const realMessages = sessionMessages.filter(m => !m.isTemporary);
+        
+        // If we have temp messages, keep them until the server responds
+        if (tempMessages.length > 0 && realMessages.length === prev.filter(m => !m.isTemporary).length) {
+          return prev; // Keep temp messages
+        }
+        
+        return realMessages;
+      });
     }
   }, [sessionMessages]);
 
@@ -184,6 +195,17 @@ export default function AlexBot() {
 
     const messageToSend = inputValue;
     setInputValue("");
+    
+    // Immediately add user message to the UI for responsive feel
+    const tempUserMessage = {
+      id: Date.now(),
+      content: messageToSend,
+      isFromAlex: false,
+      createdAt: new Date(),
+      isTemporary: true
+    };
+    
+    setMessages(prev => [...prev, tempUserMessage]);
     setIsTyping(true);
 
     chatMutation.mutate({ 
@@ -384,6 +406,18 @@ Since your basics are solid, want to explore:`,
 
   const handleActionClick = (action: any) => {
     if (action.type === 'response') {
+      // Immediately add user response to the UI
+      const tempUserMessage = {
+        id: Date.now(),
+        content: action.text,
+        isFromAlex: false,
+        createdAt: new Date(),
+        isTemporary: true
+      };
+      
+      setMessages(prev => [...prev, tempUserMessage]);
+      setIsTyping(true);
+      
       // Send the action text as a message
       chatMutation.mutate({ 
         message: action.text,

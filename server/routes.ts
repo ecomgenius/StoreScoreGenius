@@ -1523,47 +1523,74 @@ Return ONLY a JSON object with this exact format:
         summary: session.title
       }));
       
-      // Fetch product data for stores with Shopify connections
-      const storesWithProductData = await Promise.all(stores.map(async (store) => {
-        let productData = { products: [], productCount: 0, lowPerformingProducts: [] };
-        
-        if (store.shopifyAccessToken && store.shopifyDomain) {
-          try {
-            const { fetchStoreProducts } = await import('./services/shopifyIntegration.js');
-            const result = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
-            const products = result.products || [];
-            
-            // Analyze products for performance issues
-            const lowPerformingProducts = products.filter(product => {
-              const hasShortTitle = product.title && product.title.length < 30;
-              const hasShortDescription = !product.body_html || product.body_html.replace(/<[^>]*>/g, '').length < 100;
-              const hasFewImages = !product.images || product.images.length < 2;
-              const hasNoTags = !product.tags || product.tags.length === 0;
-              
-              const issueCount = [hasShortTitle, hasShortDescription, hasFewImages, hasNoTags].filter(Boolean).length;
-              return issueCount >= 2;
-            });
-
-            productData = {
-              products,
-              productCount: products.length,
-              lowPerformingProducts: lowPerformingProducts.slice(0, 10)
-            };
-          } catch (error) {
-            console.error('Alex - Failed to fetch products for store', store.name, ':', error);
-          }
-        }
-        
-        return {
-          id: store.id,
-          name: store.name,
-          storeUrl: store.storeUrl,
-          shopifyDomain: store.shopifyDomain,
-          shopifyAccessToken: store.shopifyAccessToken,
-          lastAnalyzed: allAnalyses.find(a => a.userStoreId === store.id)?.createdAt?.toISOString(),
-          ...productData
-        };
+      // Only fetch product data if user is asking about specific products
+      const needsProductData = message.toLowerCase().includes('product') && 
+        (message.toLowerCase().includes('improve') || message.toLowerCase().includes('optimize') || 
+         message.toLowerCase().includes('which') || message.toLowerCase().includes('show') ||
+         message.toLowerCase().includes('weak') || message.toLowerCase().includes('fix'));
+      
+      // Cache product data for 5 minutes to avoid repeated API calls
+      const productDataCache = new Map();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      
+      const storesWithProductData = stores.map(store => ({
+        id: store.id,
+        name: store.name,
+        storeUrl: store.storeUrl,
+        shopifyDomain: store.shopifyDomain,
+        shopifyAccessToken: store.shopifyAccessToken,
+        lastAnalyzed: allAnalyses.find(a => a.userStoreId === store.id)?.createdAt?.toISOString(),
+        productCount: 0, // Will be populated if needed
+        lowPerformingProducts: []
       }));
+
+      // Fetch product data only when specifically needed, with caching
+      if (needsProductData) {
+        await Promise.all(storesWithProductData.map(async (store) => {
+          if (store.shopifyAccessToken && store.shopifyDomain) {
+            const cacheKey = `${store.shopifyDomain}_products`;
+            const cachedData = productDataCache.get(cacheKey);
+            
+            // Use cached data if available and recent
+            if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
+              store.productCount = cachedData.productCount;
+              store.lowPerformingProducts = cachedData.lowPerformingProducts;
+              return;
+            }
+            
+            try {
+              const { fetchStoreProducts } = await import('./services/shopifyIntegration.js');
+              const result = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
+              const products = result.products || [];
+              
+              // Analyze products for performance issues
+              const lowPerformingProducts = products.filter(product => {
+                const hasShortTitle = product.title && product.title.length < 30;
+                const hasShortDescription = !product.body_html || product.body_html.replace(/<[^>]*>/g, '').length < 100;
+                const hasFewImages = !product.images || product.images.length < 2;
+                const hasNoTags = !product.tags || product.tags.length === 0;
+                
+                const issueCount = [hasShortTitle, hasShortDescription, hasFewImages, hasNoTags].filter(Boolean).length;
+                return issueCount >= 2;
+              });
+
+              const productData = {
+                productCount: products.length,
+                lowPerformingProducts: lowPerformingProducts.slice(0, 10),
+                timestamp: Date.now()
+              };
+              
+              // Cache the results
+              productDataCache.set(cacheKey, productData);
+              
+              store.productCount = productData.productCount;
+              store.lowPerformingProducts = productData.lowPerformingProducts;
+            } catch (error) {
+              console.error('Alex - Failed to fetch products for store', store.name, ':', error);
+            }
+          }
+        }));
+      }
 
       const userContext: UserContext = {
         userId: user.id,
