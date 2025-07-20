@@ -76,6 +76,8 @@ export default function AlexBot() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [showProactiveNotification, setShowProactiveNotification] = useState(false);
+  const [proactiveMessage, setProactiveMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get user stores and recent analyses
@@ -87,6 +89,14 @@ export default function AlexBot() {
   const { data: insights } = useQuery<StoreInsight[]>({
     queryKey: [API_ENDPOINTS.ALEX.INSIGHTS],
     enabled: !!user && isOpen
+  });
+
+  // Proactive outreach check - runs in background
+  const { data: proactiveOutreach } = useQuery({
+    queryKey: [API_ENDPOINTS.ALEX.PROACTIVE],
+    enabled: !!user && !isOpen, // Only check when chat is closed
+    refetchInterval: 60000, // Check every minute
+    staleTime: 30000 // Consider stale after 30 seconds
   });
 
   // Get user's chat sessions
@@ -383,6 +393,19 @@ Since your basics are solid, want to explore:`,
     }
   }, [sessions.length]); // Only sessions.length to prevent infinite loops
 
+  // Handle proactive outreach notifications
+  useEffect(() => {
+    if (proactiveOutreach && proactiveOutreach.shouldNotify && !isOpen && !showProactiveNotification) {
+      setProactiveMessage(proactiveOutreach.message);
+      setShowProactiveNotification(true);
+      
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        setShowProactiveNotification(false);
+      }, 10000);
+    }
+  }, [proactiveOutreach, isOpen, showProactiveNotification]);
+
   const getActionIcon = (iconName: string) => {
     switch (iconName) {
       case 'BookOpen':
@@ -443,6 +466,52 @@ Since your basics are solid, want to explore:`,
 
   return (
     <>
+      {/* Proactive Notification */}
+      <AnimatePresence>
+        {showProactiveNotification && (
+          <motion.div
+            initial={{ opacity: 0, x: 400, y: 20 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: 400, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-24 right-6 z-50 max-w-xs"
+          >
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg relative">
+              <button
+                onClick={() => setShowProactiveNotification(false)}
+                className="absolute top-2 right-2 text-white/80 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <p className="text-sm pr-6">{proactiveMessage}</p>
+              <div className="flex justify-end mt-3 space-x-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowProactiveNotification(false);
+                    setIsOpen(true);
+                  }}
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs"
+                >
+                  Chat now
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowProactiveNotification(false)}
+                  className="text-white/80 hover:text-white hover:bg-white/10 text-xs"
+                >
+                  Later
+                </Button>
+              </div>
+              {/* Speech bubble tail */}
+              <div className="absolute bottom-0 right-8 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-purple-600 transform translate-y-full"></div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bot Avatar - Bottom Right */}
       <motion.div
         className="fixed bottom-6 right-6 z-50"
@@ -451,15 +520,18 @@ Since your basics are solid, want to explore:`,
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
       >
         <Button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setShowProactiveNotification(false);
+            setIsOpen(true);
+          }}
           className="h-14 w-14 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg"
           size="sm"
         >
           <Bot className="h-6 w-6 text-white" />
         </Button>
         
-        {/* Notification dot for new insights */}
-        {insights && insights.some(i => i.healthScore < 70) && (
+        {/* Notification dot for proactive messages or insights */}
+        {(showProactiveNotification || (insights && insights.some(i => i.healthScore < 70))) && (
           <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full border-2 border-white">
             <div className="h-full w-full bg-red-500 rounded-full animate-ping"></div>
           </div>

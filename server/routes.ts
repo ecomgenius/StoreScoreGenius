@@ -1404,6 +1404,76 @@ Return ONLY a JSON object with this exact format:
     }
   });
 
+  // Alex AI Proactive Outreach endpoint
+  app.get('/api/alex/proactive', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      
+      // Get user's current state
+      const stores = await storage.getUserStores(user.id);
+      const allAnalyses = await storage.getUserAnalyses(user.id, 10);
+      const recentSessions = await storage.getAlexSessionsByUserId(user.id, 5);
+      
+      // Basic logic to determine if we should show proactive notification
+      let shouldNotify = false;
+      let reason = '';
+      let message = '';
+      
+      // Check if user has stores but hasn't analyzed them recently
+      if (stores.length > 0) {
+        const hasRecentAnalysis = allAnalyses.some(analysis => {
+          const daysSince = (Date.now() - new Date(analysis.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+          return daysSince < 7;
+        });
+        
+        if (!hasRecentAnalysis) {
+          shouldNotify = true;
+          reason = 'no_recent_analysis';
+          message = "Hey! 👋 It's been a while since your last store analysis. Ready to see what's changed?";
+        }
+      }
+      
+      // Check if user has low-performing stores
+      if (!shouldNotify && allAnalyses.length > 0) {
+        const latestAnalysis = allAnalyses[0];
+        const overallScore = latestAnalysis.overallScore || 0;
+        
+        if (overallScore < 70) {
+          shouldNotify = true;
+          reason = 'low_performance';
+          message = `Hi! 🎯 Your store scored ${overallScore}/100. I found some quick wins we can fix together!`;
+        }
+      }
+      
+      // Check if user hasn't chatted recently but has actionable items
+      if (!shouldNotify && recentSessions.length === 0 && stores.length > 0) {
+        shouldNotify = true;
+        reason = 'first_time_user';
+        message = "Hi! 😊 I'm Alex, your AI e-commerce assistant. Want me to analyze your store and find growth opportunities?";
+      }
+      
+      // Don't notify too frequently - basic cooldown
+      if (shouldNotify && recentSessions.length > 0) {
+        const lastSession = recentSessions[0];
+        const hoursSinceLastChat = (Date.now() - new Date(lastSession.updatedAt).getTime()) / (1000 * 60 * 60);
+        
+        if (hoursSinceLastChat < 2) { // 2 hour cooldown
+          shouldNotify = false;
+        }
+      }
+      
+      res.json({
+        shouldNotify,
+        message,
+        reason
+      });
+      
+    } catch (error) {
+      console.error('Alex proactive error:', error);
+      res.json({ shouldNotify: false });
+    }
+  });
+
   // Get user's chat sessions
   app.get("/api/alex/sessions", requireAuth, async (req: Request, res: Response) => {
     try {

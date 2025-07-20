@@ -80,7 +80,8 @@ export const API_ENDPOINTS = {
   ALEX: {
     SESSIONS: '/api/alex/sessions',
     CHAT: '/api/alex/chat',
-    INSIGHTS: '/api/alex/insights'
+    INSIGHTS: '/api/alex/insights',
+    PROACTIVE: '/api/alex/proactive'
   }
 } as const;
 
