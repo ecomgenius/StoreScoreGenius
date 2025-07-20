@@ -1407,7 +1407,7 @@ Return ONLY a JSON object with this exact format:
   // Alex AI Proactive Outreach endpoint
   app.get('/api/alex/proactive', requireAuth, async (req, res) => {
     try {
-      const user = req.user as User;
+      const user = req.user;
       
       // Get user's current state
       const stores = await storage.getUserStores(user.id);
