@@ -1,12 +1,9 @@
 import express, { type Request, type Response, type Express } from "express";
 import { createServer, type Server } from "http";
-import path from "path";
-import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import { storage } from "./storage";
+import { ANALYSIS, CREDITS } from "@shared/constants";
+import { handleApiError, handleAuthError, handleInsufficientCreditsError, asyncHandler } from "@shared/errorHandler";
 import { 
   analyzeStoreRequestSchema, 
   registerUserSchema, 
@@ -251,12 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check credits for authenticated users
       if (req.user) {
         const userCredits = await storage.getUserCredits(req.user.id);
-        if (userCredits < 1) {
-          return res.status(402).json({ 
-            error: 'Insufficient credits', 
-            creditsRequired: 1,
-            creditsAvailable: userCredits
-          });
+        if (userCredits < CREDITS.ANALYSIS_COST) {
+          return handleInsufficientCreditsError(res, CREDITS.ANALYSIS_COST, userCredits);
         }
       }
       
@@ -296,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Deduct credits for authenticated users
       if (req.user) {
-        await storage.deductCredits(req.user.id, 1, "Store analysis", storedAnalysis.id);
+        await storage.deductCredits(req.user.id, CREDITS.ANALYSIS_COST, "Store analysis", storedAnalysis.id);
 
         // Update store last analyzed timestamp if userStoreId provided
         if (userStoreId) {
@@ -308,25 +301,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(storedAnalysis);
       
     } catch (error) {
-      console.error("Error analyzing store:", error);
-      res.status(500).json({ 
-        error: "Failed to analyze store", 
-        details: error instanceof Error ? error.message : "Unknown error" 
-      });
+      handleApiError(error, "analyze store", res);
     }
   });
 
   // Get user's analyses
-  app.get("/api/analyses", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 20;
-      const analyses = await storage.getUserAnalyses(req.user!.id, limit);
-      res.json(analyses);
-    } catch (error) {
-      console.error("Error fetching user analyses:", error);
-      res.status(500).json({ error: "Failed to fetch analyses" });
-    }
-  });
+  app.get("/api/analyses", requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || ANALYSIS.DEFAULT_LIMIT;
+    const analyses = await storage.getUserAnalyses(req.user!.id, limit);
+    res.json(analyses);
+  }, "fetch user analyses"));
 
   // Get analysis by ID
   app.get("/api/analysis/:id", authenticateUser, async (req: Request, res: Response) => {

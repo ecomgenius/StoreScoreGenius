@@ -2,7 +2,15 @@ import { analyzeStoreWithAI, type StoreAnalysisData } from './openai';
 import type { StoreAnalysisResult } from '@shared/schema';
 import { captureStoreScreenshot } from './screenshotService';
 import { createStoreFingerprint, hasStoreChanged, createEbayFingerprint } from './storeChangeDetector';
+import { ANALYSIS } from '@shared/constants';
+import { logInfo, logWarning } from '@shared/errorHandler';
 
+/**
+ * Analyzes a Shopify store using AI-powered evaluation
+ * @param storeUrl - The full URL of the Shopify store to analyze
+ * @returns Promise<StoreAnalysisResult & { contentHash: string }> - Comprehensive analysis with scores and content hash
+ * @throws Error if store is inaccessible or analysis fails
+ */
 export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalysisResult & { contentHash: string }> {
   try {
     console.log(`Starting analysis for store: ${storeUrl}`);
@@ -52,7 +60,7 @@ export async function analyzeShopifyStore(storeUrl: string): Promise<StoreAnalys
 
     // If fetching fails, create a comprehensive analysis based on URL and domain
     if (!fetchSuccess || !html) {
-      console.log("Direct fetch failed, creating analysis based on URL and domain");
+      logWarning("Store Analysis", "Direct fetch failed, creating analysis based on URL and domain");
       
       // Check for existing analysis using URL-based fingerprint for fallback scenarios
       const urlBasedContent = `FALLBACK_ANALYSIS:${storeUrl}`;

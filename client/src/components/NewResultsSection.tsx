@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import AuthModal from "./AuthModal";
+import { getScoreColor, getScoreBadgeColor, formatScorePercentage } from "@shared/utils";
 
 interface NewResultsSectionProps {
   analysisResult: {

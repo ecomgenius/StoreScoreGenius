@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MessageCircle, X, Send, Bot, Zap, BookOpen, Camera, Edit3, Plus, History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -14,7 +13,11 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { API_ENDPOINTS } from "@shared/constants";
 
+/**
+ * Chat message interface for Alex AI conversations
+ */
 interface Message {
   id: number;
   content: string;
@@ -23,6 +26,9 @@ interface Message {
   actions?: BotAction[];
 }
 
+/**
+ * Chat session interface for managing multiple conversations
+ */
 interface ChatSession {
   id: number;
   title: string;
@@ -31,6 +37,9 @@ interface ChatSession {
   updatedAt: Date;
 }
 
+/**
+ * Action button interface for interactive bot responses
+ */
 interface BotAction {
   id: string;
   label: string;
@@ -39,6 +48,9 @@ interface BotAction {
   variant?: "default" | "secondary" | "outline";
 }
 
+/**
+ * Store insight data for Alex AI context
+ */
 interface StoreInsight {
   storeId: number;
   storeName: string;
@@ -53,6 +65,10 @@ interface StoreInsight {
   }>;
 }
 
+/**
+ * Alex AI Bot component - Intelligent assistant for e-commerce store optimization
+ * Provides contextual advice, education, and recommendations based on store data
+ */
 export default function AlexBot() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -60,29 +76,28 @@ export default function AlexBot() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
-  const [showSessionSelector, setShowSessionSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get user stores and recent analyses
   const { data: stores = [] } = useQuery({
-    queryKey: ['/api/stores'],
+    queryKey: [API_ENDPOINTS.STORES.LIST],
     enabled: !!user
   });
 
   const { data: insights } = useQuery<StoreInsight[]>({
-    queryKey: ['/api/alex/insights'],
+    queryKey: [API_ENDPOINTS.ALEX.INSIGHTS],
     enabled: !!user && isOpen
   });
 
   // Get user's chat sessions
   const { data: sessions = [], refetch: refetchSessions } = useQuery<ChatSession[]>({
-    queryKey: ['/api/alex/sessions'],
+    queryKey: [API_ENDPOINTS.ALEX.SESSIONS],
     enabled: !!user && isOpen
   });
 
   // Get messages for current session
   const { data: sessionMessages = [], refetch: refetchMessages } = useQuery<Message[]>({
-    queryKey: ['/api/alex/sessions', currentSessionId, 'messages'],
+    queryKey: [API_ENDPOINTS.ALEX.SESSIONS, currentSessionId, 'messages'],
     enabled: !!user && !!currentSessionId
   });
 
@@ -93,9 +108,12 @@ export default function AlexBot() {
     }
   }, [sessionMessages]);
 
+  /**
+   * Mutation for sending chat messages to Alex AI
+   */
   const chatMutation = useMutation({
     mutationFn: async (data: { message: string; context?: any; sessionId?: number }) => {
-      return apiRequest('POST', '/api/alex/chat', data);
+      return apiRequest('POST', API_ENDPOINTS.ALEX.CHAT, data);
     },
     onSuccess: (response: any) => {
       setIsTyping(false);
@@ -114,9 +132,12 @@ export default function AlexBot() {
     }
   });
 
+  /**
+   * Mutation for creating new chat sessions
+   */
   const createSessionMutation = useMutation({
     mutationFn: async (title: string) => {
-      return apiRequest('POST', '/api/alex/sessions', { title });
+      return apiRequest('POST', API_ENDPOINTS.ALEX.SESSIONS, { title });
     },
     onSuccess: (session: ChatSession) => {
       setCurrentSessionId(session.id);
@@ -125,9 +146,12 @@ export default function AlexBot() {
     }
   });
 
+  /**
+   * Mutation for deleting chat sessions
+   */
   const deleteSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      return apiRequest('DELETE', `/api/alex/sessions/${sessionId}`);
+      return apiRequest('DELETE', `${API_ENDPOINTS.ALEX.SESSIONS}/${sessionId}`);
     },
     onSuccess: () => {
       refetchSessions();
@@ -176,7 +200,6 @@ export default function AlexBot() {
 
   const handleSwitchSession = (sessionId: number) => {
     setCurrentSessionId(sessionId);
-    setShowSessionSelector(false);
   };
 
   const handleDeleteSession = (sessionId: number, e: React.MouseEvent) => {
@@ -337,10 +360,6 @@ Since your basics are solid, want to explore:`,
       setCurrentSessionId(sessions[0].id);
     }
   }, [sessions.length > 0]); // Only depend on whether sessions exist, not the sessions array itself
-
-  const getCurrentSession = () => {
-    return sessions.find(s => s.id === currentSessionId);
-  };
 
   const getActionIcon = (iconName: string) => {
     switch (iconName) {
