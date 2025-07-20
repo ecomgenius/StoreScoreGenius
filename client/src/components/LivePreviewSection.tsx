@@ -31,7 +31,6 @@ const steps = [
 
 export default function LivePreviewSection() {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [animatedScore, setAnimatedScore] = useState(58);
   const [animatedIssues, setAnimatedIssues] = useState(0);
   const [typingText, setTypingText] = useState('');
@@ -40,14 +39,12 @@ export default function LivePreviewSection() {
   const fullUrl = 'your-store.myshopify.com';
 
   useEffect(() => {
-    if (!isPlaying) return;
-
     const interval = setInterval(() => {
       setCurrentStep((prev) => (prev + 1) % steps.length);
     }, 4000); // 4 seconds per step
 
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, []);
 
   // Step-specific animations
   useEffect(() => {
@@ -152,8 +149,6 @@ export default function LivePreviewSection() {
                 }`}
                 onClick={() => {
                   setCurrentStep(index);
-                  setIsPlaying(false);
-                  setTimeout(() => setIsPlaying(true), 1000);
                 }}
                 whileHover={{ scale: 1.05 }}
               >
@@ -420,17 +415,7 @@ export default function LivePreviewSection() {
             </Card>
           </motion.div>
 
-          {/* Play/Pause Control */}
-          <div className="text-center mt-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              {isPlaying ? 'Pause Demo' : 'Play Demo'}
-            </Button>
-          </div>
+
         </div>
       </div>
     </section>
