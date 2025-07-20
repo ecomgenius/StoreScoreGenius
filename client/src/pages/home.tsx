@@ -77,6 +77,8 @@ export default function Home() {
           <FAQSection />
           <FinalCTASection 
             onAnalysisStart={handleAnalysisStart}
+            onAnalysisComplete={handleAnalysisComplete}
+            onAnalysisError={handleAnalysisError}
           />
         </>
       )}
