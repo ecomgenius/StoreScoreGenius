@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { storage } from '../storage';
 import { ALEX } from '@shared/constants';
 import { logInfo } from '@shared/errorHandler';
+import { fetchStoreProducts } from './shopifyIntegration';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -16,6 +17,11 @@ export interface UserContext {
     storeUrl: string;
     lastAnalyzed?: string;
     healthScore?: number;
+    products?: any[];
+    productCount?: number;
+    lowPerformingProducts?: any[];
+    shopifyDomain?: string;
+    shopifyAccessToken?: string;
   }>;
   recentAnalyses: Array<{
     storeUrl: string;
@@ -42,15 +48,17 @@ const SYSTEM_PROMPT = `You are Alex, an AI-powered eCommerce Manager assistant.
 Your mission is to help users grow their online stores through suggestions, education and analysis.
 
 You must:
-- Be proactive and guide the user based on their specific store data
-- Use the provided context (store data, product performance, history) to personalize responses
-- Avoid hardcoded replies - every response should be contextual and dynamic  
+- Be proactive and guide the user based on their specific store data and actual product information
+- Use the provided context (store data, real product performance, sales history) to personalize responses
+- Avoid hardcoded replies - every response should be contextual and based on real store data
+- When asked about products to improve, analyze actual product data and recommend specific products with reasons
 - Adapt tone and focus based on store quality and past conversations
+- Fetch and analyze real product data when making product recommendations
 - Teach concepts when no urgent optimization tasks exist
 - Store and recall previous interactions for continuity
 - Evolve from assistant to coach as conversations progress
-- Ask follow-up questions and provide action plans
-- Link improvements to business outcomes
+- Ask follow-up questions and provide action plans with specific product names and data
+- Link improvements to business outcomes using real metrics
 
 Personality traits:
 - Friendly but professional
@@ -60,6 +68,50 @@ Personality traits:
 - Encouraging but realistic
 
 Always speak with clarity, personality, and strategic thinking. Keep responses concise but actionable.`;
+
+/**
+ * Fetches and analyzes product data for a specific store
+ */
+async function fetchStoreProductData(store: any): Promise<any> {
+  if (!store.shopifyAccessToken || !store.shopifyDomain) {
+    return { products: [], productCount: 0, lowPerformingProducts: [] };
+  }
+
+  try {
+    // Fetch products from Shopify
+    const productData = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
+    const products = productData.products || [];
+    
+    // Analyze products for performance issues
+    const lowPerformingProducts = products.filter(product => {
+      // Check for common issues that indicate low performance
+      const hasShortTitle = product.title && product.title.length < 30;
+      const hasShortDescription = !product.body_html || product.body_html.replace(/<[^>]*>/g, '').length < 100;
+      const hasFewImages = !product.images || product.images.length < 2;
+      const hasNoTags = !product.tags || product.tags.length === 0;
+      const hasHighPrice = product.variants && product.variants.length > 0 && 
+        parseFloat(product.variants[0].price) > 100;
+      const hasLowStock = product.variants && product.variants.some(v => 
+        v.inventory_quantity !== null && v.inventory_quantity < 5
+      );
+      
+      // Product needs improvement if it has 2+ issues
+      const issueCount = [hasShortTitle, hasShortDescription, hasFewImages, hasNoTags, hasHighPrice, hasLowStock].filter(Boolean).length;
+      return issueCount >= 2;
+    });
+
+    logInfo('Alex AI', `Analyzed ${products.length} products, found ${lowPerformingProducts.length} needing improvement`);
+
+    return {
+      products,
+      productCount: products.length,
+      lowPerformingProducts: lowPerformingProducts.slice(0, 10) // Top 10 priority products
+    };
+  } catch (error) {
+    console.error('Alex AI - Failed to fetch store products:', error);
+    return { products: [], productCount: 0, lowPerformingProducts: [] };
+  }
+}
 
 /**
  * Builds dynamic context string for OpenAI prompt
@@ -85,6 +137,17 @@ function buildDynamicContext(context: UserContext): string {
     if (analysis) {
       contextString += `They have 1 connected Shopify store: "${store.name}" (score ${analysis.overallScore}/100).\n`;
       contextString += `Store breakdown: Design ${analysis.designScore}/100, Trust ${analysis.trustScore}/100, Performance ${analysis.performanceScore}/100, Catalog ${analysis.catalogScore}/100.\n`;
+      
+      // Add product information if available
+      if (store.productCount && store.productCount > 0) {
+        contextString += `Store has ${store.productCount} products total.\n`;
+        if (store.lowPerformingProducts && store.lowPerformingProducts.length > 0) {
+          contextString += `${store.lowPerformingProducts.length} products need optimization:\n`;
+          store.lowPerformingProducts.slice(0, 5).forEach((product: any, index: number) => {
+            contextString += `${index + 1}. "${product.title}" - needs title/description/images/tags improvement\n`;
+          });
+        }
+      }
       
       // Identify weak areas
       const weakAreas = [];

@@ -1523,14 +1523,51 @@ Return ONLY a JSON object with this exact format:
         summary: session.title
       }));
       
-      const userContext: UserContext = {
-        userId: user.id,
-        stores: stores.map(store => ({
+      // Fetch product data for stores with Shopify connections
+      const storesWithProductData = await Promise.all(stores.map(async (store) => {
+        let productData = { products: [], productCount: 0, lowPerformingProducts: [] };
+        
+        if (store.shopifyAccessToken && store.shopifyDomain) {
+          try {
+            const { fetchStoreProducts } = await import('./services/shopifyIntegration.js');
+            const result = await fetchStoreProducts(store.shopifyDomain, store.shopifyAccessToken);
+            const products = result.products || [];
+            
+            // Analyze products for performance issues
+            const lowPerformingProducts = products.filter(product => {
+              const hasShortTitle = product.title && product.title.length < 30;
+              const hasShortDescription = !product.body_html || product.body_html.replace(/<[^>]*>/g, '').length < 100;
+              const hasFewImages = !product.images || product.images.length < 2;
+              const hasNoTags = !product.tags || product.tags.length === 0;
+              
+              const issueCount = [hasShortTitle, hasShortDescription, hasFewImages, hasNoTags].filter(Boolean).length;
+              return issueCount >= 2;
+            });
+
+            productData = {
+              products,
+              productCount: products.length,
+              lowPerformingProducts: lowPerformingProducts.slice(0, 10)
+            };
+          } catch (error) {
+            console.error('Alex - Failed to fetch products for store', store.name, ':', error);
+          }
+        }
+        
+        return {
           id: store.id,
           name: store.name,
           storeUrl: store.storeUrl,
-          lastAnalyzed: allAnalyses.find(a => a.userStoreId === store.id)?.createdAt?.toISOString()
-        })),
+          shopifyDomain: store.shopifyDomain,
+          shopifyAccessToken: store.shopifyAccessToken,
+          lastAnalyzed: allAnalyses.find(a => a.userStoreId === store.id)?.createdAt?.toISOString(),
+          ...productData
+        };
+      }));
+
+      const userContext: UserContext = {
+        userId: user.id,
+        stores: storesWithProductData,
         recentAnalyses: allAnalyses,
         pastConversations,
         dashboardVisitTime: new Date(),

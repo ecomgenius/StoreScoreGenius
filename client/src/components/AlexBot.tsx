@@ -359,7 +359,7 @@ Since your basics are solid, want to explore:`,
     if (sessions.length > 0 && !currentSessionId) {
       setCurrentSessionId(sessions[0].id);
     }
-  }, [sessions.length]); // Only depend on length to prevent infinite loops
+  }, [sessions.length, !currentSessionId]); // Fixed dependency to prevent loops
 
   const getActionIcon = (iconName: string) => {
     switch (iconName) {
