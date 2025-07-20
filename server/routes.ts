@@ -1412,55 +1412,46 @@ Return ONLY a JSON object with this exact format:
       // Get user's current state
       const stores = await storage.getUserStores(user.id);
       const allAnalyses = await storage.getUserAnalyses(user.id, 10);
-      const recentSessions = await storage.getAlexSessionsByUserId(user.id, 5);
+      const recentSessions = await storage.getUserChatSessions(user.id);
       
-      // Basic logic to determine if we should show proactive notification
+      // Enhanced proactive notification logic
       let shouldNotify = false;
       let reason = '';
       let message = '';
       
-      // Check if user has stores but hasn't analyzed them recently
+      console.log('Proactive check:', { 
+        storeCount: stores.length, 
+        analysisCount: allAnalyses.length, 
+        sessionCount: recentSessions.length 
+      });
+      
+      // For testing - always show notification for now
       if (stores.length > 0) {
-        const hasRecentAnalysis = allAnalyses.some(analysis => {
-          const daysSince = (Date.now() - new Date(analysis.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-          return daysSince < 7;
-        });
-        
-        if (!hasRecentAnalysis) {
-          shouldNotify = true;
-          reason = 'no_recent_analysis';
-          message = "Hey! 👋 It's been a while since your last store analysis. Ready to see what's changed?";
-        }
+        shouldNotify = true;
+        reason = 'test_notification';
+        message = "Hi! 🎯 I noticed you have a store connected. Ready to boost your sales with some AI insights?";
       }
       
       // Check if user has low-performing stores
-      if (!shouldNotify && allAnalyses.length > 0) {
+      if (allAnalyses.length > 0) {
         const latestAnalysis = allAnalyses[0];
         const overallScore = latestAnalysis.overallScore || 0;
         
-        if (overallScore < 70) {
+        if (overallScore < 80) {
           shouldNotify = true;
           reason = 'low_performance';
-          message = `Hi! 🎯 Your store scored ${overallScore}/100. I found some quick wins we can fix together!`;
+          message = `Hi! 🚀 Your store scored ${overallScore}/100. I found quick wins that could boost your sales!`;
         }
       }
       
-      // Check if user hasn't chatted recently but has actionable items
-      if (!shouldNotify && recentSessions.length === 0 && stores.length > 0) {
+      // New users with stores but no chat history
+      if (recentSessions.length === 0 && stores.length > 0) {
         shouldNotify = true;
-        reason = 'first_time_user';
-        message = "Hi! 😊 I'm Alex, your AI e-commerce assistant. Want me to analyze your store and find growth opportunities?";
+        reason = 'new_user_guidance';
+        message = "Hi! 😊 I'm Alex, your AI assistant. Want me to analyze your store and find growth opportunities?";
       }
       
-      // Don't notify too frequently - basic cooldown
-      if (shouldNotify && recentSessions.length > 0) {
-        const lastSession = recentSessions[0];
-        const hoursSinceLastChat = (Date.now() - new Date(lastSession.updatedAt).getTime()) / (1000 * 60 * 60);
-        
-        if (hoursSinceLastChat < 2) { // 2 hour cooldown
-          shouldNotify = false;
-        }
-      }
+      console.log('Proactive decision:', { shouldNotify, reason, message });
       
       res.json({
         shouldNotify,

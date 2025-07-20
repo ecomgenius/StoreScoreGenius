@@ -95,8 +95,8 @@ export default function AlexBot() {
   const { data: proactiveOutreach } = useQuery({
     queryKey: [API_ENDPOINTS.ALEX.PROACTIVE],
     enabled: !!user && !isOpen, // Only check when chat is closed
-    refetchInterval: 60000, // Check every minute
-    staleTime: 30000 // Consider stale after 30 seconds
+    refetchInterval: 5000, // Check every 5 seconds for testing
+    staleTime: 1000 // Consider stale after 1 second
   });
 
   // Get user's chat sessions
