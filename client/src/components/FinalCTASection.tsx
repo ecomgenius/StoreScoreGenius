@@ -25,11 +25,22 @@ export default function FinalCTASection({ onAnalysisStart, onAnalysisComplete, o
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
-  // Show sticky CTA when user scrolls past hero section
+  // Show sticky CTA when user scrolls past hero section but hide when footer is visible
   useEffect(() => {
     const handleScroll = () => {
       const heroHeight = window.innerHeight; // Approximate hero section height
-      setShowSticky(window.scrollY > heroHeight);
+      const scrollPosition = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      
+      // Show sticky after hero section
+      const shouldShowAfterHero = scrollPosition > heroHeight;
+      
+      // Hide when footer section is visible (last 800px of page)
+      const footerThreshold = documentHeight - windowHeight - 800;
+      const shouldHideForFooter = scrollPosition > footerThreshold;
+      
+      setShowSticky(shouldShowAfterHero && !shouldHideForFooter);
     };
 
     window.addEventListener('scroll', handleScroll);
