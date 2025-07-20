@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ShoppingBag, ChartLine, CreditCard, Info, Zap } from "lucide-react";
+import { Search, ArrowRight, CheckCircle, BarChart3, Zap } from "lucide-react";
+import { landingText } from "@/lib/landingText";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AuthModal from "./AuthModal";
 
 interface HeroSectionProps {
@@ -118,98 +118,161 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-primary to-blue-700 text-white py-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-          Analyze Your Store's Performance with <span className="text-blue-200">AI</span>
-        </h1>
-        <p className="text-xl md:text-2xl mb-12 text-blue-100 max-w-3xl mx-auto">
-          Get instant insights on your Shopify or eBay store. Discover what's working, what needs improvement, and how to boost your sales.
-        </p>
-        
-        <div className="bg-white rounded-2xl shadow-2xl p-8 text-gray-900 max-w-2xl mx-auto">
-          <div className="mb-6">
-            <div className="flex justify-center space-x-4 mb-6">
-              <Button
-                onClick={() => setActiveTab('shopify')}
-                variant={activeTab === 'shopify' ? 'default' : 'secondary'}
-                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === 'shopify' 
-                    ? 'bg-primary text-white hover:bg-blue-700' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <ShoppingBag className="mr-2 h-4 w-4" />
-                Shopify Store
-              </Button>
-              <Button
-                onClick={() => setActiveTab('ebay')}
-                variant={activeTab === 'ebay' ? 'default' : 'secondary'}
-                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-                  activeTab === 'ebay' 
-                    ? 'bg-primary text-white hover:bg-blue-700' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <ShoppingBag className="mr-2 h-4 w-4" />
-                eBay Store
-              </Button>
-            </div>
-          </div>
+    <section className="relative bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-700 text-white py-24 overflow-hidden">
+      {/* Background Animation */}
+      <div className="absolute inset-0">
+        <motion.div
+          animate={{
+            backgroundPosition: ["0% 0%", "100% 100%"],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            repeatType: "reverse",
+          }}
+          className="w-full h-full bg-gradient-to-r from-blue-400/20 to-violet-400/20"
+          style={{
+            backgroundSize: "400% 400%",
+          }}
+        />
+      </div>
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
+          >
+            {landingText.hero.headline}
+          </motion.h1>
           
-          {activeTab === 'shopify' ? (
-            <div className="space-y-4">
-              <Label className="block text-sm font-medium text-gray-700 text-left">
-                Enter your Shopify store URL
-              </Label>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input
-                  type="url"
-                  placeholder="https://yourstore.myshopify.com"
-                  value={storeUrl}
-                  onChange={(e) => setStoreUrl(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-gray-900"
-                />
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={analyzeStoreMutation.isPending}
-                  className="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
-                >
-                  <ChartLine className="mr-2 h-4 w-4" />
-                  {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Analyze Store'}
-                </Button>
+          <motion.p 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-xl md:text-2xl mb-12 text-blue-100 max-w-4xl mx-auto leading-relaxed"
+          >
+            {landingText.hero.subheadline}
+          </motion.p>
+
+          {/* Main CTA Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 max-w-3xl mx-auto border border-white/20"
+          >
+            <Tabs defaultValue="shopify" className="w-full" onValueChange={(value) => setActiveTab(value as 'shopify' | 'ebay')}>
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/20">
+                <TabsTrigger value="shopify" className="text-white data-[state=active]:bg-white data-[state=active]:text-gray-900">
+                  Shopify Store
+                </TabsTrigger>
+                <TabsTrigger value="ebay" className="text-white data-[state=active]:bg-white data-[state=active]:text-gray-900">
+                  eBay Store
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="shopify" className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      type="url"
+                      placeholder={landingText.hero.placeholder}
+                      value={storeUrl}
+                      onChange={(e) => setStoreUrl(e.target.value)}
+                      className="h-14 text-lg bg-white/90 border-0 text-gray-900 placeholder:text-gray-500"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAnalyze}
+                    disabled={analyzeStoreMutation.isPending}
+                    size="lg"
+                    className="h-14 px-8 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  >
+                    <Search className="w-5 h-5 mr-2" />
+                    {analyzeStoreMutation.isPending ? 'Analyzing...' : landingText.hero.ctaButton}
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="ebay" className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      placeholder="Enter your eBay username"
+                      value={ebayUsername}
+                      onChange={(e) => setEbayUsername(e.target.value)}
+                      className="h-14 text-lg bg-white/90 border-0 text-gray-900 placeholder:text-gray-500"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAnalyze}
+                    disabled={analyzeStoreMutation.isPending}
+                    size="lg"
+                    className="h-14 px-8 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  >
+                    <Search className="w-5 h-5 mr-2" />
+                    {analyzeStoreMutation.isPending ? 'Analyzing...' : landingText.hero.ctaButton}
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-blue-100 mt-4 flex items-center justify-center space-x-6 text-sm"
+            >
+              <span className="flex items-center">
+                <CheckCircle className="w-4 h-4 mr-1" />
+                Free
+              </span>
+              <span className="flex items-center">
+                <CheckCircle className="w-4 h-4 mr-1" />
+                No sign-up needed
+              </span>
+              <span className="flex items-center">
+                <CheckCircle className="w-4 h-4 mr-1" />
+                Instant results
+              </span>
+            </motion.p>
+          </motion.div>
+
+          {/* Trust indicators */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+          >
+            <div className="flex items-center justify-center space-x-3 text-blue-100">
+              <BarChart3 className="w-8 h-8" />
+              <div className="text-left">
+                <div className="font-semibold text-white">73/100</div>
+                <div className="text-sm">Avg Store Score</div>
               </div>
-              <p className="text-sm text-gray-500 text-left">
-                Try: https://www.allbirds.com or https://gymshark.com
-              </p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <Label className="block text-sm font-medium text-gray-700 text-left">
-                Enter your eBay username
-              </Label>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input
-                  type="text"
-                  placeholder="your-ebay-username"
-                  value={ebayUsername}
-                  onChange={(e) => setEbayUsername(e.target.value)}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-gray-900"
-                />
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={analyzeStoreMutation.isPending}
-                  className="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
-                >
-                  <ChartLine className="mr-2 h-4 w-4" />
-                  {analyzeStoreMutation.isPending ? 'Analyzing...' : 'Analyze Store'}
-                </Button>
+            <div className="flex items-center justify-center space-x-3 text-blue-100">
+              <Zap className="w-8 h-8" />
+              <div className="text-left">
+                <div className="font-semibold text-white">10,000+</div>
+                <div className="text-sm">Stores Analyzed</div>
               </div>
-              <p className="text-sm text-gray-500 text-left">
-                Try: thrift-store-finds or vintage-collectibles
-              </p>
             </div>
-          )}
+            <div className="flex items-center justify-center space-x-3 text-blue-100">
+              <CheckCircle className="w-8 h-8" />
+              <div className="text-left">
+                <div className="font-semibold text-white">&lt; 30sec</div>
+                <div className="text-sm">Analysis Time</div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 

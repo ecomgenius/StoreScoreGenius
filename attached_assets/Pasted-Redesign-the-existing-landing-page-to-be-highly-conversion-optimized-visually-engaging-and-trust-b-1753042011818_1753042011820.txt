@@ -1,0 +1,134 @@
+Redesign the existing landing page to be highly conversion-optimized, visually engaging, and trust-building, while clearly explaining the value of the product and driving user actions.
+
+💻 TECH REQUIREMENTS
+Tech stack: React + TailwindCSS or HTML/CSS + Alpine.js
+
+Mobile responsive (100%)
+
+Animations via Framer Motion or CSS transitions
+
+SEO-optimized headings
+
+Favicon + Meta tags for Twitter/LinkedIn sharing
+
+Clean and scalable component structure
+
+🧠 SECTION REQUIREMENTS
+1. Hero Section
+🔥 Headline:
+Boost Your Sales with AI-Powered Store Analysis
+
+🧠 Subheadline:
+Discover what's working, what needs fixing, and how to grow. Get personalized, actionable feedback powered by AI.
+
+📩 CTA Input Field:
+
+“Enter your Shopify or eBay store URL”
+
+Validate Shopify/eBay domain format
+
+📊 CTA Button: Analyze My Store
+
+✅ Microcopy:
+
+“Free • No sign-up needed • Instant results”
+
+🖼 Background: light-to-dark gradient or animated graph visuals
+
+2. Social Proof Section
+Logos of Shopify sellers / popular tools
+
+Text:
+Trusted by 10,000+ eCommerce Sellers Worldwide
+
+Optional slider with 2–3 testimonials (real/fake placeholder OK)
+
+3. How It Works – Feature Section (3-column)
+Each card includes:
+
+Icon (from Lucide or Heroicons)
+
+Bold title
+
+Short description
+
+Example suggestion (dynamic)
+
+Feature Blocks:
+
+Design Audit – “Optimize layout & brand consistency”
+
+Pricing Intelligence – “AI-suggested product pricing”
+
+Copy & SEO – “Improve titles, descriptions, and visibility”
+
+Store Score – “Benchmark your store against top sellers”
+
+AI Manager Bot – “Get coaching from Alex, your AI ecommerce expert”
+
+4. Live Preview / Animation Block
+Optional animated GIF or embedded Lottie/Framer preview
+
+Title:
+See It In Action
+
+Subtitle:
+Watch how StoreScore reviews and suggests improvements in seconds.
+
+5. Comparison Table – “Why StoreScore?”
+Feature	StoreScore	Others
+Shopify & eBay Scan	✅	❌
+Store Performance Score	✅	✅
+AI Copy & Pricing Optimization	✅	❌
+AI Manager Chatbot	✅	❌
+Learning Recommendations	✅	❌
+
+6. Pricing Section
+Simple 2-tier model: Free vs Pro (placeholder OK)
+
+Table format
+
+CTA: Start Free • No Credit Card Required
+
+Subtext: Cancel anytime • Upgrade later
+
+7. FAQ Section (Accordion)
+What data do you use to analyze my store?
+
+Is this safe to use with Shopify?
+
+Do you store my login or customer data?
+
+Can I use this on multiple stores?
+
+8. Final CTA & Sticky Banner
+Sticky bottom bar with CTA: 🔍 Analyze My Store Now
+
+Exit popup suggestion (optional):
+“Want to get your free Store Report before leaving?”
+
+🎨 DESIGN REQUIREMENTS
+Tailwind utility classes only (no custom CSS unless needed)
+
+Max 2 primary colors (e.g. indigo + sky, or blue + violet)
+
+Use rounded cards with shadows for feature blocks
+
+Fonts: Inter, DM Sans, or system default
+
+✨ BONUS INTERACTIONS
+Animate CTA button on hover
+
+Reveal feature cards on scroll
+
+Animate score counter when store is scanned
+
+✅ DELIVERABLES
+Complete HTML/CSS/JS/React code for landing
+
+All content & sections above, fully populated with dummy data
+
+Editable in Replit with clear comments on structure
+
+All text structured in reusable text.js file for future internationalization
+

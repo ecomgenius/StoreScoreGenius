@@ -5,7 +5,13 @@ import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import LoadingSection from "@/components/LoadingSection";
 import NewResultsSection from "@/components/NewResultsSection";
-// import CTASection from "@/components/CTASection"; // CTA is now built into NewResultsSection
+import SocialProofSection from "@/components/SocialProofSection";
+import FeaturesSection from "@/components/FeaturesSection";
+import LivePreviewSection from "@/components/LivePreviewSection";
+import ComparisonSection from "@/components/ComparisonSection";
+import PricingSection from "@/components/PricingSection";
+import FAQSection from "@/components/FAQSection";
+import FinalCTASection from "@/components/FinalCTASection";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -53,15 +59,26 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Header />
       
       {currentView === 'hero' && (
-        <HeroSection 
-          onAnalysisStart={handleAnalysisStart}
-          onAnalysisComplete={handleAnalysisComplete}
-          onAnalysisError={handleAnalysisError}
-        />
+        <>
+          <HeroSection 
+            onAnalysisStart={handleAnalysisStart}
+            onAnalysisComplete={handleAnalysisComplete}
+            onAnalysisError={handleAnalysisError}
+          />
+          <SocialProofSection />
+          <FeaturesSection />
+          <LivePreviewSection />
+          <ComparisonSection />
+          <PricingSection />
+          <FAQSection />
+          <FinalCTASection 
+            onAnalysisStart={handleAnalysisStart}
+          />
+        </>
       )}
       
       {currentView === 'loading' && <LoadingSection />}
