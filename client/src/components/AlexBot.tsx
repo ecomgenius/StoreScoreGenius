@@ -184,15 +184,7 @@ export default function AlexBot() {
     deleteSessionMutation.mutate(sessionId);
   };
 
-  const initializeChat = () => {
-    // If no current session and no sessions exist, create first session
-    if (!currentSessionId && sessions.length === 0) {
-      handleNewChat();
-    } else if (!currentSessionId && sessions.length > 0) {
-      // Load the most recent session
-      setCurrentSessionId(sessions[0].id);
-    }
-  };
+  // Remove initializeChat function as we're handling this in useEffects
 
   const generateInitialGreeting = () => {
     if (!insights || insights.length === 0) {
@@ -337,11 +329,7 @@ Since your basics are solid, want to explore:`,
     });
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      initializeChat();
-    }
-  }, [isOpen, sessions]);
+  // Don't auto-create sessions - let user click "New Chat" manually
 
   // Auto-select first session when sessions load
   useEffect(() => {
@@ -499,7 +487,24 @@ Since your basics are solid, want to explore:`,
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 h-80">
-              {messages.length === 0 && !isTyping && (
+              {!currentSessionId && sessions.length === 0 && (
+                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                  <div className="text-center">
+                    <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm mb-4">Welcome to Alex AI Assistant!</p>
+                    <Button 
+                      onClick={handleNewChat}
+                      disabled={createSessionMutation.isPending}
+                      className="mb-2"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Start Your First Chat
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {messages.length === 0 && currentSessionId && !isTyping && (
                 <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
                   <div className="text-center">
                     <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -548,24 +553,26 @@ Since your basics are solid, want to explore:`,
             </div>
 
             {/* Input */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex space-x-2">
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask Alex anything..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || chatMutation.isPending}
-                  size="sm"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+            {currentSessionId && (
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex space-x-2">
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Ask Alex anything..."
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleSendMessage}
+                    disabled={!inputValue.trim() || chatMutation.isPending}
+                    size="sm"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
