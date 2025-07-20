@@ -29,6 +29,7 @@ import {
 import { analyzeStoreWithAI } from "./services/openai";
 import { generateDynamicWelcome, generateContextualResponse, extractConversationInsights, type UserContext } from "./services/alexConversational";
 import { subscriptionService } from "./services/subscriptionService";
+import { ALEX } from "@shared/constants";
 import Stripe from "stripe";
 
 // Initialize Stripe if key is available
@@ -1508,7 +1509,7 @@ Return ONLY a JSON object with this exact format:
       let conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
       if (chatSessionId) {
         const messages = await storage.getChatMessages(chatSessionId);
-        conversationHistory = messages.slice(-ALEX.MAX_CONVERSATION_HISTORY).map(msg => ({
+        conversationHistory = messages.slice(-10).map(msg => ({
           role: msg.isFromAlex ? 'assistant' : 'user',
           content: msg.content
         }));
