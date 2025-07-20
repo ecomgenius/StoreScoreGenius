@@ -404,7 +404,7 @@ Since your basics are solid, want to explore:`,
         setShowProactiveNotification(false);
       }, 10000);
     }
-  }, [proactiveOutreach, isOpen, showProactiveNotification]);
+  }, [proactiveOutreach?.shouldNotify, isOpen]); // Fixed dependencies
 
   const getActionIcon = (iconName: string) => {
     switch (iconName) {
@@ -478,8 +478,11 @@ Since your basics are solid, want to explore:`,
           >
             <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg relative">
               <button
-                onClick={() => setShowProactiveNotification(false)}
-                className="absolute top-2 right-2 text-white/80 hover:text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowProactiveNotification(false);
+                }}
+                className="absolute top-2 right-2 text-white/80 hover:text-white transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -488,18 +491,22 @@ Since your basics are solid, want to explore:`,
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setShowProactiveNotification(false);
                     setIsOpen(true);
                   }}
-                  className="bg-white/20 hover:bg-white/30 text-white text-xs"
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs border-0"
                 >
                   Chat now
                 </Button>
                 <Button
-                  size="sm"
+                  size="sm" 
                   variant="ghost"
-                  onClick={() => setShowProactiveNotification(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowProactiveNotification(false);
+                  }}
                   className="text-white/80 hover:text-white hover:bg-white/10 text-xs"
                 >
                   Later

@@ -1425,30 +1425,39 @@ Return ONLY a JSON object with this exact format:
         sessionCount: recentSessions.length 
       });
       
-      // For testing - always show notification for now
-      if (stores.length > 0) {
-        shouldNotify = true;
-        reason = 'test_notification';
-        message = "Hi! 🎯 I noticed you have a store connected. Ready to boost your sales with some AI insights?";
-      }
-      
-      // Check if user has low-performing stores
+      // Check if user has low-performing stores (primary logic)
       if (allAnalyses.length > 0) {
         const latestAnalysis = allAnalyses[0];
         const overallScore = latestAnalysis.overallScore || 0;
         
-        if (overallScore < 80) {
+        if (overallScore < 75) {
           shouldNotify = true;
           reason = 'low_performance';
           message = `Hi! 🚀 Your store scored ${overallScore}/100. I found quick wins that could boost your sales!`;
+        } else if (overallScore < 85) {
+          shouldNotify = true;
+          reason = 'good_performance';
+          message = `Hi! ⭐ Your store is doing well at ${overallScore}/100. Want to push it to the next level?`;
         }
       }
       
-      // New users with stores but no chat history
-      if (recentSessions.length === 0 && stores.length > 0) {
+      // New users with stores but no analysis
+      else if (stores.length > 0) {
         shouldNotify = true;
         reason = 'new_user_guidance';
         message = "Hi! 😊 I'm Alex, your AI assistant. Want me to analyze your store and find growth opportunities?";
+      }
+      
+      // Don't notify too frequently - check last chat activity
+      if (shouldNotify && recentSessions.length > 0) {
+        const lastSession = recentSessions[0];
+        const hoursSinceLastUpdate = (Date.now() - new Date(lastSession.updatedAt).getTime()) / (1000 * 60 * 60);
+        
+        if (hoursSinceLastUpdate < 1) { // 1 hour cooldown
+          shouldNotify = false;
+          reason = 'cooldown_active';
+          message = '';
+        }
       }
       
       console.log('Proactive decision:', { shouldNotify, reason, message });
