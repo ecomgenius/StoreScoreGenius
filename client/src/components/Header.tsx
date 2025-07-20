@@ -37,12 +37,6 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <div className="flex items-center space-x-3">
-                {/* Credits Badge */}
-                <Badge variant="secondary" className="flex items-center space-x-1">
-                  <CreditCard className="h-3 w-3" />
-                  <span>{user?.credits || 0} credits</span>
-                </Badge>
-
                 {/* Dashboard Link */}
                 <Link href="/dashboard">
                   <Button variant="outline" size="sm">
@@ -78,10 +72,7 @@ export default function Header() {
                         Analysis History
                       </DropdownMenuItem>
                     </Link>
-                    <DropdownMenuItem>
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Buy Credits
-                    </DropdownMenuItem>
+
                     <DropdownMenuSeparator />
                     <Link href="/dashboard/settings">
                       <DropdownMenuItem>
