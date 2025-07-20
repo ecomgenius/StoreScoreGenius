@@ -1,0 +1,146 @@
+🔧 Objective
+Upgrade the existing Alex eCommerce bot logic to make it:
+
+🔁 Conversationally dynamic
+
+🧠 Personalized per user/store/product
+
+🤖 OpenAI-driven (not hardcoded)
+
+🧍‍♂️ Memory-aware (per session + persistent)
+
+🚀 Proactive — starts the interaction based on store context, not waiting for user input
+
+✅ KEY REQUIREMENTS
+1. ✅ Keep UI as-is
+Do not change any external UI or style elements.
+All improvements must happen inside the backend and logic layers.
+
+2. 🧠 Dynamic Startup Prompting (OpenAI decides)
+Instead of hardcoding startup text like
+"Hey, your store has X issues...",
+you must:
+
+Send store data + product performance + user profile to OpenAI
+
+Let OpenAI generate the best opening message based on:
+
+Store health
+
+Product weaknesses
+
+Missing scans
+
+User’s past questions
+
+User interaction history
+
+🔁 Example Logic:
+python
+Copy
+Edit
+openai.ChatCompletion.create(
+  model="gpt-4",
+  messages=[
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user", "content": build_dynamic_context(user_data)}
+  ]
+)
+3. 🧩 Dynamic Prompt Template
+Create a prompt that dynamically includes:
+
+✅ Number of connected stores
+
+✅ Scan status (if missing, mention it)
+
+✅ Low-converting products (name, score)
+
+✅ Store score
+
+✅ Past topics discussed
+
+✅ Current dashboard visit timestamp
+
+✅ Time since last message
+
+🧠 Sample user prompt (dynamic):
+txt
+Copy
+Edit
+User opened the dashboard.  
+They have 2 connected Shopify stores: “MinimalTrends” (score 58/100), “TechLuxe” (score 82/100).  
+4 products flagged with low CTR (below 0.9%).  
+Last conversation was 3 days ago, about pricing optimization.  
+No recent full-store scan was performed.  
+User has not responded to Alex in last session.
+
+Write a proactive and friendly welcome message that:
+- References this specific context
+- Suggests next actions or improvements
+- Offers guidance, not static responses
+4. 🧠 Enable Memory + Chat History Evolution
+Alex should:
+
+🔁 Store last 5–10 conversation turns per session
+
+🧠 Save persistent memory (optional via user ID) of:
+
+Past questions/topics
+
+Last suggestions made
+
+Scans already reviewed
+
+💬 Allow user to scroll through past messages (if UI allows)
+
+When user asks something like “what did you tell me yesterday?”, Alex must remember and respond accordingly.
+
+5. 🧠 Evolving Tone and Coaching
+If user continues the chat, Alex must evolve from "assistant" to "coach":
+
+Ask follow-up questions
+
+Give action plans
+
+Recommend what to study
+
+Link improvements to outcomes
+
+Examples:
+“Now that we optimized titles, shall we explore image improvements?”
+
+“Would you like to learn how to A/B test pricing on Shopify?”
+
+“Based on your product, want a lesson on scarcity-based copywriting?”
+
+6. 📚 Education When No Tasks
+If no products/stores need work, OpenAI must generate one of:
+
+🔍 Educational tip
+
+📘 Lesson based on previous weaknesses
+
+💡 Insightful question
+
+🧠 Framework suggestion
+
+Example:
+
+“Your stores look great. Want to explore how to use urgency psychology in product pages?”
+
+7. 🧠 SYSTEM PROMPT (one-time per user session)
+txt
+Copy
+Edit
+You are Alex, an AI-powered eCommerce Manager assistant.  
+Your mission is to help users grow their online stores through suggestions, education and analysis.
+
+You must:
+- Be proactive and guide the user
+- Use the provided context (store data, product performance, history)
+- Avoid hardcoded replies
+- Adapt tone and focus based on store quality and past conversations
+- Teach concepts when no urgent tasks exist
+- Store and recall previous interactions for continuity
+
+Always speak with clarity, personality, and strategic thinking.
