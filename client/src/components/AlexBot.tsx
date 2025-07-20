@@ -331,12 +331,12 @@ Since your basics are solid, want to explore:`,
 
   // Don't auto-create sessions - let user click "New Chat" manually
 
-  // Auto-select first session when sessions load
+  // Auto-select first session when sessions load (only run once)
   useEffect(() => {
     if (sessions.length > 0 && !currentSessionId) {
       setCurrentSessionId(sessions[0].id);
     }
-  }, [sessions, currentSessionId]);
+  }, [sessions.length > 0]); // Only depend on whether sessions exist, not the sessions array itself
 
   const getCurrentSession = () => {
     return sessions.find(s => s.id === currentSessionId);
