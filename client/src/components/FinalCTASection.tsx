@@ -52,9 +52,6 @@ export default function FinalCTASection({ onAnalysisStart, onAnalysisComplete, o
       return await apiRequest('POST', '/api/analyze-store', data);
     },
     onSuccess: (result) => {
-      if (isAuthenticated) {
-        queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
-      }
       onAnalysisComplete(result);
     },
     onError: (error: any) => {
@@ -64,8 +61,8 @@ export default function FinalCTASection({ onAnalysisStart, onAnalysisComplete, o
       
       if (error.status === 402) {
         toast({
-          title: "Insufficient Credits",
-          description: "You need more AI credits to run this analysis. Please purchase credits to continue.",
+          title: "Analysis Limit Reached",
+          description: "Please sign up for an account to continue analyzing stores.",
           variant: "destructive",
         });
         return;

@@ -31,10 +31,6 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
       return await apiRequest('POST', '/api/analyze-store', data);
     },
     onSuccess: (result) => {
-      // Invalidate credits if user is authenticated
-      if (isAuthenticated) {
-        queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
-      }
       onAnalysisComplete(result);
     },
     onError: (error: any) => {
@@ -46,8 +42,8 @@ export default function HeroSection({ onAnalysisStart, onAnalysisComplete, onAna
       // Handle specific error cases
       if (error.status === 402) {
         toast({
-          title: "Insufficient Credits",
-          description: "You need more AI credits to run this analysis. Please purchase credits to continue.",
+          title: "Analysis Limit Reached",
+          description: "Please sign up for an account to continue analyzing stores.",
           variant: "destructive",
         });
         return;
