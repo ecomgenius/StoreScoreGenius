@@ -10,7 +10,8 @@ import {
   User,
   LogOut,
   CreditCard,
-  Megaphone
+  Megaphone,
+  Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -120,14 +121,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Header */}
         <header className="bg-white shadow-sm border-b px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              
+              <Link href="/">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-1 text-sm"
+                >
+                  <Home className="w-4 h-4" />
+                  <span>Homepage</span>
+                </Button>
+              </Link>
+            </div>
+            
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
                 Welcome back, {user?.email?.split('@')[0]}!
