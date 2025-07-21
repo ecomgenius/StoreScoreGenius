@@ -289,10 +289,6 @@ export default function UserStores() {
                 <Store className="mr-2 h-4 w-4" />
                 Connect Shopify
               </Button>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Manual Store
-              </Button>
             </div>
           </div>
         </div>
@@ -309,10 +305,6 @@ export default function UserStores() {
                 <Button onClick={() => setIsShopifyDialogOpen(true)}>
                   <Store className="mr-2 h-4 w-4" />
                   Connect Shopify Store
-                </Button>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Manual Store
                 </Button>
               </div>
             </CardContent>
